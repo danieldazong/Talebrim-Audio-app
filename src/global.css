@@ -1,9 +1,181 @@
-:root {
-  --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
-  --font-serif: Georgia, 'Times New Roman', serif;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+@source "./app/**/*.{ts,tsx}";
+@source "./components/**/*.{ts,tsx}";
+
+/* Design tokens — AGENTS.md § Design System.
+   This @theme block is the single place raw hex appears.
+
+   NOTE: AGENTS.md § Styling Rules says tokens live in `tailwind.config.js`.
+   Tailwind v4 + NativeWind v5 are CSS-first and read no JS config; this
+   @theme block IS that config. Do not create a `tailwind.config.js`.
+   `src/theme/` mirrors these values in TypeScript for § Style Exception
+   Rules only — props that accept no className (StatusBar, contentStyle,
+   placeholderTextColor, gradient colors, SVG props). Change a value here
+   and you must change it there too. */
+@theme {
+  --color-bg: #150e1f;
+  --color-surface: #1f1530;
+  --color-raised: #2c1e42;
+  --color-ember: #e8663f;
+  --color-ember-pressed: #ff8a5c;
+  --color-teal: #9fd8d0;
+  --color-blush: #e9a8c0;
+  --color-champagne: #f4e3ce;
+  --color-body: #f7f4f0;
+  --color-muted: #a79bb5;
+  --color-reader-light: #fbf7f1;
+  --color-reader-sepia: #f2e5d0;
+  --color-ink: #1a1420;
+  --color-destructive: #c9705f;
+
+  /* Typography — AGENTS.md § Design System.
+     One family name per weight. React Native cannot select a weight from a
+     family: `font-semibold` emits a separate font-weight prop and will NOT
+     pick a SemiBold file, so the weight is baked into the token name.
+     Never combine these with font-weight utilities.
+     Values MUST match the useFonts() keys in src/lib/fonts.ts exactly —
+     a typo fails silently to the system font. */
+  --font-display: Fraunces-SemiBold;
+  --font-body: Literata-Regular;
+  --font-body-italic: Literata-Italic;
+  --font-body-emphasis: Literata-SemiBold;
+  --font-ui: Inter-Regular;
+  --font-ui-medium: Inter-Medium;
+  --font-ui-semibold: Inter-SemiBold;
+
+  /* Reader accessibility option — AGENTS.md § Design System / M11.
+     Token defined so the setting can exist; the font is NOT bundled.
+     src/theme/typography.ts resolves this choice to Literata, so this token
+     never reaches a real <Text>. Do not use it directly. */
+  --font-reader-accessible: AtkinsonHyperlegibleNext-Regular;
+
+  /* Radius — AGENTS.md § Layout */
+  --radius-card: 16px;
+  --radius-cover: 12px;
+  --radius-field: 12px;
+  --radius-pill: 999px;
+
+  /* Reader body — AGENTS.md § Design System: Literata 18sp, line-height 1.7.
+     Named `reader`, not `body`: Tailwind v4's --text-* namespace also feeds
+     --text-color, so `--text-body` would be ambiguous against --color-body. */
+  --text-reader: 18px;
+  --text-reader--line-height: 1.7;
+}
+
+/* No --spacing override on purpose. Tailwind v4 ships --spacing: 0.25rem and
+   every numeric spacing utility is calc(var(--spacing) * N), so `p-4` is
+   already 16dp and the 4/8/12/16 scale IS the 8pt grid AGENTS.md § Layout
+   asks for. Overriding it would silently rescale every existing utility.
+   The 56dp mini player is `h-14` (14 * 4 = 56). */
+
+/* ---------------------------------------------------------------------
+   Component utilities — AGENTS.md § Styling Rules (BEM).
+   Built from material/design-system.png. Tokens only, no raw hex.
+
+   Pressed / disabled / selected states are props on Pressable, not CSS
+   pseudo-classes (§ Style Exception Rules) — these utilities cover the
+   default appearance and the modifier classes.
+
+   `@utility` only emits a class Tailwind sees USED in a @source-scanned
+   file. If one of these mysteriously does not apply, it was tree-shaken
+   for lack of a usage site.
+   --------------------------------------------------------------------- */
+
+/* Buttons — the four variants in the design image.
+   min-h-11 = 44dp minimum touch target, AGENTS.md § UI Quality Bar.
+   Ember labels are ink (#1A1420), never white — § Design System. */
+@utility btn {
+  @apply flex-row items-center justify-center gap-2;
+  @apply min-h-11 rounded-pill px-6;
+  font-family: var(--font-ui-semibold);
+  font-size: 16px;
+}
+@utility btn--primary {
+  @apply bg-ember;
+  color: var(--color-ink);
+}
+@utility btn--secondary {
+  @apply bg-raised;
+  color: var(--color-body);
+}
+@utility btn--inverted {
+  @apply bg-blush/20;
+  color: var(--color-champagne);
+}
+@utility btn--outlined {
+  @apply border border-muted/40 bg-transparent;
+  color: var(--color-body);
+}
+
+/* Icon buttons — square tinted tile and the circular tinted row. */
+@utility icon-btn {
+  @apply h-11 w-11 items-center justify-center rounded-field bg-blush/15;
+}
+@utility icon-btn--round {
+  @apply rounded-pill;
+}
+
+/* Search field wrapper. The TextInput itself takes inline styles and
+   placeholderTextColor — § Style Exception Rules. */
+@utility field {
+  @apply h-12 flex-row items-center gap-3 rounded-field bg-raised px-4;
+}
+
+/* Progress — track only. The fill WIDTH is dynamic and must be an inline
+   style (§ Style Exception Rules: "Progress-bar width %"). */
+@utility progress {
+  @apply h-1.5 w-full overflow-hidden rounded-pill bg-raised;
+}
+@utility progress__fill {
+  @apply h-full rounded-pill bg-ember;
+}
+@utility progress__fill--teal {
+  @apply bg-teal;
+}
+@utility progress__fill--blush {
+  @apply bg-blush;
+}
+
+/* Card — AGENTS.md § Layout: 16dp radius, flat, no shadow. */
+@utility card {
+  @apply rounded-card bg-surface p-4;
+}
+
+/* Chip — M2 genre picker, M8 filters. Selected is blush-filled. */
+@utility chip {
+  @apply h-9 flex-row items-center rounded-pill border border-muted/40 px-4;
+  color: var(--color-body);
+  font-family: var(--font-ui-medium);
+  font-size: 14px;
+}
+@utility chip--selected {
+  @apply border-transparent bg-blush;
+  color: var(--color-ink);
+}
+
+/* Bottom nav — three-item, AGENTS.md § Layout. Active item is a filled
+   ember circle with a dark glyph. */
+@utility nav {
+  @apply h-14 flex-row items-center justify-around rounded-pill bg-raised px-2;
+}
+@utility nav__item {
+  @apply h-11 w-11 items-center justify-center rounded-pill;
+}
+@utility nav__item--active {
+  @apply bg-ember;
+}
+
+/* Typography helpers. */
+@utility text-heading {
+  font-family: var(--font-display);
+  color: var(--color-champagne);
+}
+@utility text-reader-body {
+  @apply text-reader;
+  font-family: var(--font-body);
 }
