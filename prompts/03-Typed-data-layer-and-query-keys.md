@@ -78,5 +78,3 @@ missing view; touch `tailwind.config.js`, `global.css` or `types/database.ts`.
 Finish by running `npx tsc --noEmit`, then paste the derived aliases from step 1,
 the live `free_chapters_at_start` value you read in step 9, and the list of keys
 from step 7 that currently have no backing table.
-
-Next prompt: `05-auth-ui.md`.

@@ -28,5 +28,18 @@ export const colors = {
 
 export type ColorName = keyof typeof colors;
 
-/** The only gradient in the app — M6 Now Playing. AGENTS.md § Design System. */
+/**
+ * M6 Now Playing's gradient. AGENTS.md § Design System says gradients are
+ * reserved for M6 — the onboarding collage fade below is a deliberate,
+ * user-approved deviation from that rule (a stacked-opacity-band
+ * approximation was tried first and produces visible banding over
+ * photographic cover art; a real gradient does not).
+ */
 export const nowPlayingGradient = [colors.bg, colors.raised] as const;
+
+/** Onboarding collage fade — see the deviation note on `nowPlayingGradient`. */
+export const collageFadeGradient = [
+  "transparent",
+  `${colors.bg}CC`,
+  colors.bg,
+] as const;

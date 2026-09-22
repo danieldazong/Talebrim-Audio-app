@@ -1,5 +1,7 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
-Design material: @prompt_material/02-auth-screen.png — ensure everything is as is
+Design material:
+C:\Users\PC\Desktop\talebrim-app\material\1.png
+— ensure everything is as is
 shown. This prompt builds the screen only; behaviour is mocked and prompt 06
 replaces the mock.
 
@@ -61,5 +63,3 @@ Finish by running `npx tsc --noEmit`, then paste screenshots or a description of
 all four states from step 6, confirm the keyboard never covers the pill on iOS and
 Android, and list the missing asset from step 2 and the two copy conflicts from
 step 8.
-
-Next prompt: `06-auth-clerk.md`.

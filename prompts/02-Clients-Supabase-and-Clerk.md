@@ -74,5 +74,3 @@ Finish by running `npx tsc --noEmit`, then paste the installed Clerk package nam
 and version, the decoded claim set with both checks from step 6 marked pass/fail,
 the measured latency from step 10, and confirm `types/database.ts` generated
 without errors.
-
-Next prompt: `04-data-layer.md`.

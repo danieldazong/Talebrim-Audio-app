@@ -8,9 +8,21 @@
 // AGENTS.md § Image Generation Rules names `assets/images/`; renaming is a
 // separate change, not part of the design-system work.
 import logo from "@/assets/Image/logo.png";
+import eternalEclipse from "@/assets/Image/covers/eternal-eclipse.jpg";
+import onboardingBanner from "@/assets/Image/covers/Onboarding-banner.png";
+import reignOfAshes from "@/assets/Image/covers/reign-of-ashes.jpg";
+import shadowOfTheMoon from "@/assets/Image/covers/shadow-of-the-moon.jpg";
+import whispersInTheMist from "@/assets/Image/covers/whispers-in-the-mist.jpg";
 
 export const images = {
   logo,
+  onboardingBanner,
+  covers: {
+    eternalEclipse,
+    reignOfAshes,
+    shadowOfTheMoon,
+    whispersInTheMist,
+  },
 } as const;
 
 // STILL MISSING — required before the screens that need them are built.
@@ -19,5 +31,4 @@ export const images = {
 // admin CMS or a designer — AGENTS.md § Image Generation Rules forbids
 // generating them.
 //   cover-placeholder.png   — every nullable books.cover_path renders this
-//   onboarding-collage.png  — M2 genre picker
 //   auth-header.png         — M1 sign in / sign up

@@ -72,5 +72,3 @@ Finish by running `npx tsc --noEmit`, then paste the SDK version and hooks from
 step 1, confirm exactly one email arrives per sign-in attempt and one per sign-up,
 paste the row count and decoded claims from step 9, and confirm a sign-out
 followed by a different sign-in shows no rows from the first account.
-
-Next prompt: `07-genre-picker-ui.md`.

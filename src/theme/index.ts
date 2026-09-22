@@ -1,4 +1,9 @@
-export { colors, nowPlayingGradient, type ColorName } from "./colors";
+export {
+  colors,
+  nowPlayingGradient,
+  collageFadeGradient,
+  type ColorName,
+} from "./colors";
 export {
   fonts,
   readerFontFamily,
