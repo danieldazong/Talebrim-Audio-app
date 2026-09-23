@@ -578,7 +578,7 @@ Never expose secret keys in the mobile app.
 
 Strict split — violating it causes the parity bug this app exists to avoid.
 
-**TanStack Query** owns all server data: catalog, book and chapter metadata, chapter text, audio URLs, entitlements, unlock records. (Entitlements and unlock records have **no table yet** — see Data Contract.) It also owns offline caching via a persister. Query keys are declared in one place.
+**TanStack Query** owns all server data: catalog, book and chapter metadata, chapter text, audio URLs, entitlements, unlock records. (Unlock records live in `unlocks`, which the app can read but never write. There is no entitlement mirror: subscription access comes from RevenueCat. See Data Contract.) It also owns offline caching via a persister. Query keys are declared in one place.
 
 **Zustand** owns transient client state, as listed under `store/`.
 
@@ -586,10 +586,13 @@ Use local component state for temporary UI state.
 
 ### Read/listen parity — required algorithm
 
-> **No table backs this yet.** `reading_positions` does not exist (Data
-> Contract). Steps 1 and 5 work today against Zustand alone; steps 2–4 need
-> that table before they can be implemented. Build it first, or parity — the
-> feature this app exists for — silently degrades to per-device memory.
+> **The table exists; the writer does not yet.** `reading_positions` was
+> created on 2026-09-23 (Data Contract), and `readingPositionByChapterOptions()`
+> reads it. Steps 1 and 5 work today against Zustand alone. Steps 2–4, the
+> debounced writer and last-write-wins, belong to the parity prompt. That
+> prompt must also make every update set `updated_at` on the server: nothing
+> bumps it on update yet (no trigger was allowed), so a writer shipped without
+> that would leave last-write-wins comparing stale timestamps.
 
 1. Write the position to Zustand immediately; local is the source of truth for the current session.
 2. Debounce the write to Supabase — on pause, on chapter change, on app background, and on an interval.
@@ -767,6 +770,16 @@ code. The prompts carry the detail; this is the record.
   exception in Data Contract). It is cached for 24 hours. Dashboard edits
   apply on the next open, never mid-read.
 - **Migrations** live in the dashboard repo (Phase 2).
+- **Unlocks are server-written only.** Readers can select their own
+  `unlocks` rows and cannot insert, update or delete any. Otherwise anyone
+  replaying their own token could grant themselves every locked chapter. The
+  paywall prompt writes unlocks from a server function (`service_role`) after
+  the ad network or the store verifies the ad or purchase.
+- **Supabase's advisor flags all nine reader-table policies** with
+  "auth_rls_initplan". That is a false positive of its text match: Postgres
+  stores `(select auth.jwt() ->> 'sub')` as `( SELECT (auth.jwt() ->> …))`,
+  which the lint does not recognise. `EXPLAIN` shows the claim read once per
+  query as an InitPlan, with an index scan. Do not "fix" these policies.
 - **Libraries approved:** `expo-keep-awake` and
   `@react-native-community/netinfo` (Tech Stack).
 
@@ -775,8 +788,9 @@ code. The prompts carry the detail; this is the record.
 ## Build order — what to build, and what is blocked
 
 **Do not start with the Reader and the Player.** They are the interesting
-screens and they are the blocked ones: both depend on tables that do not exist
-and on a storage decision that has not been made. Discovery is unblocked, and
+screens and they were the blocked ones: they depended on tables that now exist
+(Phase 2, done 2026-09-23) and still depend on a storage decision that has not
+been made. Discovery is unblocked, and
 it teaches the data layer cheaply.
 
 ### Phase 0 — two decisions, before any code
@@ -814,11 +828,11 @@ exists in Phase 2.
 
 **Status, 2026-09-23.** Built: M1 sign-in and M2 genre picker (prompts
 04–07), the navigation shell (08), M3 Discover on `books_catalog` (09–10), M8
-Search on `books_catalog` (11), and live catalog updates from the dashboard
-(see Data Contract). **Next: M4 Story Detail (prompt 12)**, then the Phase 2
-migrations (prompt 13, in the dashboard repo), then M5 (prompts 14–15).
+Search on `books_catalog` (11), live catalog updates from the dashboard (see
+Data Contract), and the Phase 2 reader tables with their read-only fetchers
+(13). **Next: M4 Story Detail (prompt 12)**, then M5 (prompts 14–15).
 
-### Phase 2 — the three missing tables
+### Phase 2 — the three reader tables (done 2026-09-23)
 
 Write these **informed by Phase 1**, not before it. Four product questions have
 to be answered first:
@@ -830,6 +844,11 @@ to be answered first:
    with a count (e.g. re-watchable)?
 
 Then: `reading_positions`, `unlocks`, `library_items`.
+
+**Answered 2026-09-23:** an unlock is permanent; a position is per account;
+My List is sorted by `created_at desc`, with no order column; an unlock
+belongs to the user + chapter pair, one row each. The tables were applied
+that day. See Data Contract for what exists.
 
 **Every migration follows the discipline already proven here on 2026-09-20:**
 
@@ -1010,20 +1029,47 @@ Chapters table does not ship 50,000 words to render word counts), and
 `chapters_needing_attention` is an admin work queue. Do not build reader
 screens on either; they will be joined by a reader-facing view instead.
 
-### Tables this file assumes and that DO NOT EXIST
+### The reader tables (migrations 20260923121634, 20260923121638, 20260923121642)
 
-`unlocks`, `bookmarks`, and any entitlement mirror. **Nothing persists a
-reading position, an ad-unlock, or a library membership today.** That means:
+Applied on 2026-09-23 from the dashboard repo, and **purely additive**. A
+before/after comparison of every object in `public` showed 0 removed and 0
+changed. All 108 additions belong to these three tables, and the generated
+types gained only their three definitions. These tables are this app's; the
+migration files live in the dashboard repo, which holds the only migration
+history (see Phase 2).
 
-- **Read/listen parity (the app's stated core differentiator) has no storage.**
-  The algorithm under State Management Rules is correct and cannot be
-  implemented until a `reading_positions` table exists.
-- Rewarded-ad unlocks cannot survive a reinstall.
-- `My List` (M7) has nothing to read from.
+| Table               | One row per                          | Readers may                               | Read through (`lib/queries/`)        |
+| ------------------- | ------------------------------------ | ----------------------------------------- | ------------------------------------ |
+| `reading_positions` | reader + chapter (unique)            | select, insert, update, delete their own  | `readingPositionByChapterOptions()`  |
+| `unlocks`           | reader + chapter (unique), permanent | **select their own only**                 | `unlocksByUserOptions()`             |
+| `library_items`     | reader + book (unique)               | select, insert, update, delete their own  | `libraryItemsByUserOptions()`        |
 
-These are the first migrations to write, and they belong to this app rather
-than the dashboard. The tables are this app's; the migration files still go in
-the dashboard repo, which holds the only migration history (see Phase 2).
+- `user_id` is `text` (the Clerk `sub`, like the dashboard's
+  `activity_log.actor_id`) and defaults to the caller's own `sub`.
+- `reading_positions` holds `audio_ms`, `text_offset` (a **character**
+  offset) and `last_mode` (`text` | `audio`). A check constraint requires the
+  side named in `last_mode` to hold a value. `updated_at` defaults to `now()`
+  on insert, but **nothing bumps it on update yet** (see parity above).
+  `book_id` is denormalised so Library needs no join.
+- `unlocks.source` is `ad` | `purchase`. A subscription never writes here:
+  access comes from the RevenueCat entitlement at read time.
+- Policies are `to authenticated`, scoped to
+  `user_id = (select auth.jwt() ->> 'sub')`, with **no `is_admin()` branch**.
+  An operator sees only their own rows. `anon` has no grants at all.
+  `authenticated` has exactly the operations above: the project's default
+  privileges would otherwise have handed every new table ALL rights, TRUNCATE
+  included.
+- Every foreign key is **`on delete cascade`**, so a book or chapter the
+  dashboard deletes takes readers' rows with it, instead of the delete failing
+  on them. Each foreign key is indexed, so the cascade never scans.
+- Verified by `supabase/verify/reader_tables_rls.sql` in the dashboard repo:
+  40 impersonation checks covering readers A and B, `anon`, and an admin, all
+  passing on the live tables. It rolls back everything it seeds, so re-run it
+  after any change to these tables:
+  `npx supabase db query --linked -f supabase/verify/reader_tables_rls.sql`.
+
+**Still does not exist:** `bookmarks` (M5's bookmark button is omitted until
+it does) and any entitlement mirror.
 
 ### Column facts that change how screens are built
 
@@ -1270,7 +1316,7 @@ No progress narration. No restating the request. No summarising work visible in 
 
 Use:
 
-- Supabase Postgres for catalog and chapters (existing), plus unlocks and reading positions (**to be created — see Data Contract**)
+- Supabase Postgres for catalog and chapters (existing), plus the reader tables `reading_positions`, `unlocks` and `library_items` (see Data Contract)
 - Supabase Storage + CDN for covers and narration audio
 - TanStack Query for server state
 - Zustand for client state

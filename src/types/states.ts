@@ -3,9 +3,9 @@
 //
 // `chapters.access` (and `chapters_catalog.access`) is only `free | locked`
 // in the database. The four states below are computed PER USER at read
-// time — there is no "unlocked for this user" column, by design (that's
-// per-user state and belongs in the not-yet-existing `unlocks` table, see
-// `types/unbacked.ts`).
+// time — there is no "unlocked for this user" column on `chapters`, by
+// design: that is per-user state and lives in the `unlocks` table
+// (`types/reader.ts`, read through `lib/queries/unlocks.ts`).
 import type { Enums } from "@/types/database";
 
 export type ChapterState =
@@ -26,17 +26,22 @@ export interface ResolveChapterStateInput {
    * `lib/queries/app-settings.ts`.
    */
   freeChaptersAtStart: number;
-  /** True if this chapter is the one currently open in the reader/player. */
+  /**
+   * True if this chapter is the one the reader is on — the chapter of their
+   * most recent `reading_positions` row for this book, or the one open in the
+   * reader/player right now.
+   */
   isCurrentlyReading?: boolean;
   /**
-   * True if an `unlocks` row (rewarded ad, per Phase 2) covers this chapter
-   * for the current user. Always `false` until that table exists.
+   * True if one of the reader's `unlocks` rows (`unlocksByUserOptions()`)
+   * has this chapter's id. Permanent grants only — a subscription is checked
+   * against the RevenueCat entitlement, never through this flag's table.
    */
   isUnlockedByUser?: boolean;
   /**
-   * True if this chapter's audio and/or text is cached for offline use.
-   * Always `false` until the download feature (AGENTS.md § Audio Rules)
-   * lands.
+   * True if this chapter's audio and/or text is stored on this device for
+   * offline use. Local-device state, never a table; always `false` until the
+   * download feature (AGENTS.md § Audio Rules) lands.
    */
   isDownloaded?: boolean;
 }

@@ -76,18 +76,18 @@ export const queryKeys = {
 
   readingPosition: {
     all: (userId: string) => ["readingPosition", userId] as const,
-    /** UNBACKED (types/unbacked.ts) — no `reading_positions` table until prompt 14. */
+    /** One `reading_positions` row — `lib/queries/reading-position.ts`. */
     byChapter: (userId: string, chapterId: string) =>
       [...queryKeys.readingPosition.all(userId), "byChapter", chapterId] as const,
   },
 
   unlocks: {
-    /** UNBACKED (types/unbacked.ts) — no `unlocks` table until prompt 14. */
+    /** Every `unlocks` row the reader holds — `lib/queries/unlocks.ts`. */
     byUser: (userId: string) => ["unlocks", userId] as const,
   },
 
   libraryItems: {
-    /** UNBACKED (types/unbacked.ts) — no `library_items` table until prompt 14. */
+    /** The reader's My List — `lib/queries/library-items.ts`. */
     byUser: (userId: string) => ["libraryItems", userId] as const,
   },
 } as const;
