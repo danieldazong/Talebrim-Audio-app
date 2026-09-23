@@ -48,6 +48,18 @@ export type CarouselBookRow = Pick<
   | "updated_at"
 >;
 
+/** The column subset M8's result rows render — `lib/queries/search.ts` selects exactly these. */
+export type SearchBookRow = Pick<
+  BookCatalogRow,
+  | "id"
+  | "title"
+  | "author"
+  | "cover_path"
+  | "chapter_count"
+  | "audio_count"
+  | "total_duration_seconds"
+>;
+
 /**
  * Chapter metadata only — no `script_text` (the view omits it; fetch prose
  * per chapter from `chapters.script_text` via its own query, never here).

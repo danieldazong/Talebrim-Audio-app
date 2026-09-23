@@ -61,6 +61,7 @@ export const queryKeys = {
 
   search: {
     all: () => ["search"] as const,
+    /** `term` is already normalised by `normalizeSearchTerm()` — see `lib/queries/search.ts`. */
     byTerm: (term: string) => [...queryKeys.search.all(), "byTerm", term] as const,
   },
 

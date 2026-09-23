@@ -1,5 +1,5 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
-Design material: @prompt_material/06-search.png — ensure everything is as is
+Design material: @"/c:/Users/PC/Desktop/talebrim-app/material/4.png" — ensure everything is as is
 shown. This screen ships with its real query in one prompt: there is no mocked
 pass, because the whole screen is the query.
 

@@ -7,6 +7,7 @@ import {
 } from "@/store/onboarding-store";
 import { useParityStore } from "@/store/parity-store";
 import { usePlaybackStore } from "@/store/playback-store";
+import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
 
 /**
  * Removes every user-scoped local artifact.
@@ -21,6 +22,8 @@ import { usePlaybackStore } from "@/store/playback-store";
  *  - the persisted `onboarding` Zustand slice — `hasCompletedOnboarding` and
  *    `selectedGenres` are per-account choices; the next person to sign in on
  *    this device must see M2 again, not the previous account's genres
+ *  - the persisted `search` Zustand slice — M8's recent searches are what
+ *    one account typed, not something the next account should see
  *  - the in-memory `parity` and `playback` slices — never persisted to disk
  *    in the first place (prompt 07 steps 3 and 8), but still reset here so a
  *    stale chapter/position from the old account can't linger in memory
@@ -39,6 +42,7 @@ export async function clearUserScopedState(): Promise<void> {
   queryClient.clear();
   useParityStore.getState().clear();
   usePlaybackStore.getState().reset();
+  useSearchStore.getState().clear();
   useOnboardingStore.setState({
     hasCompletedOnboarding: false,
     selectedGenres: [],
@@ -50,7 +54,9 @@ export async function clearUserScopedState(): Promise<void> {
     const userScoped = keys.filter(
       (key) =>
         // Every persisted Query bucket, whichever user id it is namespaced by.
-        key.startsWith(QUERY_CACHE_PREFIX) || key === ONBOARDING_STORAGE_KEY,
+        key.startsWith(QUERY_CACHE_PREFIX) ||
+        key === ONBOARDING_STORAGE_KEY ||
+        key === SEARCH_STORAGE_KEY,
     );
 
     if (userScoped.length > 0) {

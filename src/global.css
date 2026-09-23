@@ -125,6 +125,12 @@
 @utility field {
   @apply h-12 flex-row items-center gap-3 rounded-field bg-raised px-4;
 }
+/* M8's search field (material/4.png): a full pill on `surface` with a
+   `raised` hairline border, measured tighter icon-to-text spacing. Tailwind
+   emits this after `field`, so it wins wherever the two overlap. */
+@utility field--search {
+  @apply gap-2.5 rounded-pill border border-raised bg-surface;
+}
 
 /* Progress — track only. The fill WIDTH is dynamic and must be an inline
    style (§ Style Exception Rules: "Progress-bar width %"). */
@@ -152,6 +158,12 @@
   color: var(--color-body);
   font-family: var(--font-ui-medium);
   font-size: 14px;
+}
+/* M8 filter row (material/4.png): 32dp, `surface` fill, `raised` border.
+   Emitted after `chip` and before `chip--selected`, so selection still
+   wins for fill and border. */
+@utility chip--filled {
+  @apply h-8 border-raised bg-surface;
 }
 @utility chip--selected {
   @apply border-transparent bg-blush;
