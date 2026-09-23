@@ -56,7 +56,9 @@ export const queryKeys = {
      * 85–200 chapters, so it must never ride along with a list fetch.
      */
     text: (chapterId: string) =>
-      [...queryKeys.chapters.all(), "text", chapterId] as const,
+      [...queryKeys.chapters.textAll(), chapterId] as const,
+    /** Every chapter's text — what a too-large-to-list broadcast invalidates. */
+    textAll: () => [...queryKeys.chapters.all(), "text"] as const,
   },
 
   search: {

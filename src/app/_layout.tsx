@@ -11,6 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthGate } from "@/components/auth-gate";
 import { AuthedQueryProvider } from "@/components/providers";
 import { useAppFonts } from "@/hooks/use-app-fonts";
+import { useCatalogSync } from "@/hooks/use-catalog-sync";
 import { colors, fonts } from "@/theme";
 import { useOnboardingStore } from "@/store/onboarding-store";
 // Imported here (root layout), not just from `(auth)/_layout.tsx`, so its
@@ -70,6 +71,10 @@ function RootNavigator() {
   const hasCompletedOnboarding = useOnboardingStore(
     (state) => state.hasCompletedOnboarding,
   );
+
+  // Dashboard edits reach every screen live. Signed-in only: the Realtime
+  // topic is private.
+  useCatalogSync(Boolean(isSignedIn));
 
   return (
     <Stack screenOptions={screenOptions}>

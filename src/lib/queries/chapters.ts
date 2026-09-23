@@ -43,6 +43,10 @@ export const chapterListByBookOptions = (bookId: string) =>
  * `script_text` is expected to contain exactly three Markdown marks —
  * `**bold**`, `_italic_`, `## heading` — and nothing else; the reader
  * (prompt 16) relies on that and must not assume full Markdown.
+ *
+ * Live: `hooks/use-catalog-sync.ts` invalidates this when the dashboard
+ * saves the script, so an open reader receives new text mid-chapter. M5
+ * must decide how to apply it without jumping the reader's position.
  */
 export const chapterTextOptions = (chapterId: string) =>
   queryOptions({

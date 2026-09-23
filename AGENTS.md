@@ -1051,6 +1051,27 @@ still denied — and separately as an admin, confirming `chapters_list` and
 `chapters_needing_attention` still return what the dashboard expects. The
 dashboard's typecheck, lint and build all pass against regenerated types.
 
+### Live catalog updates (migration 20260923000002)
+
+Applied 2026-09-23 with the owner's explicit approval — **the one sanctioned
+exception to "don't touch `books`/`chapters`"**. Six statement-level triggers
+on `books` and `chapters` call `broadcast_catalog_change()`, which sends
+`{ book_ids, chapter_ids }` (ids only, published books only, including
+published → draft) on the private Realtime topic `catalog`. Its body cannot
+fail a dashboard write: errors downgrade to a WARNING. A select-only policy
+on `realtime.messages` lets signed-in users receive; there is no insert
+policy, so no client can send on the topic.
+
+App side: `hooks/use-catalog-sync.ts` (mounted in `app/_layout.tsx`) listens
+while signed in and in the foreground, then invalidates the affected query
+keys (`lib/catalog-sync.ts`). Every join does a catch-up refresh. Do not drop
+the triggers or add columns to the payload; new screens get live data just by
+using the key factory.
+
+`realtime.messages` is partitioned by day, and Realtime creates the
+partitions only when a client connects. With nobody connected the trigger's
+send fails quietly, which is harmless because nobody is listening.
+
 ### Performance ceiling, stated plainly
 
 The database is a `t3.nano` instance. `AGENTS.md` records a measured **~450ms
