@@ -532,6 +532,7 @@ instead of handing a stale object to a component.
 | `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
 | `playback`   | current chapter, playing state, speed, sleep timer                  | no — session only |
 | `parity`     | the in-session authoritative reading position, keyed by chapter     | no — see Read/listen parity below; marked `// SERVER COPY — added by the parity prompt` |
+| `search`     | M8's `recentSearches` (most recent first, at most 8) — added in prompt 11 | yes — per account, so sign-out clears it; never written to the database, and no search-history table exists or should |
 
 `hasCompletedOnboarding` also drives the routing gate: `app/_layout.tsx` uses
 Expo Router's `Stack.Protected` (not an imperative `router.replace` in a
@@ -543,9 +544,10 @@ the navigator rather than merely redirected away from.
 
 `lib/session.ts`'s `clearUserScopedState()` — called by sign-out and by a
 `__DEV__`-only button on the temporary index route — clears the persisted
-TanStack cache and the persisted `onboarding` slice (so the next account on
-this device sees M2 again, not the previous account's genres), and resets
-`parity`/`playback` in memory. It deliberately leaves the `reader` slice
+TanStack cache, the persisted `onboarding` slice (so the next account on
+this device sees M2 again, not the previous account's genres) and the
+persisted `search` slice (one account's recent searches are not the next
+one's), and resets `parity`/`playback` in memory. It deliberately leaves the `reader` slice
 alone.
 
 ---
@@ -735,6 +737,39 @@ prevent.
 
 ---
 
+## Decisions — 2026-09-23
+
+Made while reconciling prompts 12–15 with this file, the design frames and the
+code. The prompts carry the detail; this is the record.
+
+- **Prompt numbers.** The file names in `prompts/` are the numbers. The
+  prompts were renumbered down by one, so code comments written before
+  2026-09-23 may cite the old number (old 14 = current 13). Prompts not yet
+  written are referred to by feature, never by number: `TODO(paywall)`,
+  `TODO(parity)`, `TODO(handoff)`.
+- **No UI without data behind it.** A frame element with no backing table or
+  column is omitted and reported, not mocked: M4's resume card, My List,
+  finished-chapter marks, rating and "Ongoing" status; M5's bookmark.
+- **M4 Share** sends the title and author only. There is no public book URL
+  and no deep-link scheme yet.
+- **M5 Reader.**
+  - Themes: `light` (default), `sepia`, `dark`.
+  - Listen is teal outlined. The reader has no ember button; its only ember
+    element is the progress bar.
+  - The toolbar's sun icon cycles the theme. There is no brightness library.
+  - Previous/next sit at the end of the chapter, not in the toolbar.
+  - The position label reads "Chapter N of M · X%", where X is progress
+    through this chapter.
+  - The reading position is a character offset.
+- **Chapter text** is read once per chapter from `chapters` (the sanctioned
+  exception in Data Contract). It is cached for 24 hours. Dashboard edits
+  apply on the next open, never mid-read.
+- **Migrations** live in the dashboard repo (Phase 2).
+- **Libraries approved:** `expo-keep-awake` and
+  `@react-native-community/netinfo` (Tech Stack).
+
+---
+
 ## Build order — what to build, and what is blocked
 
 **Do not start with the Reader and the Player.** They are the interesting
@@ -774,6 +809,12 @@ which is the point of doing this before Phase 2.
 `onboarding` Zustand store (AsyncStorage-backed) rather than to Supabase —
 that remains the only durable home for genre choices until a profile table
 exists in Phase 2.
+
+**Status, 2026-09-23.** Built: M1 sign-in and M2 genre picker (prompts
+04–07), the navigation shell (08), M3 Discover on `books_catalog` (09–10), M8
+Search on `books_catalog` (11), and live catalog updates from the dashboard
+(see Data Contract). **Next: M4 Story Detail (prompt 12)**, then the Phase 2
+migrations (prompt 13, in the dashboard repo), then M5 (prompts 14–15).
 
 ### Phase 2 — the three missing tables
 
@@ -1096,6 +1137,15 @@ while signed in and in the foreground, then invalidates the affected query
 keys (`lib/catalog-sync.ts`). Every join does a catch-up refresh. Do not drop
 the triggers or add columns to the payload; new screens get live data just by
 using the key factory.
+
+**Tokens keep the channel alive.** Realtime closes a private channel the
+moment the token it holds expires, and realtime-js never rejoins a closed
+channel. Clerk tokens live 60 seconds, and a cached one can already be expired
+by the server's clock (seen on Android 2026-09-23 as "Token has expired 1
+seconds ago"). So `refreshRealtimeAuth()` in `lib/supabase.ts` hands the
+socket a newly issued token (`skipCache`) before every join, on every channel
+error, and every 30 seconds. The hook rebuilds a closed channel with backoff
+(1s, 3s, 10s, 30s). Ordinary REST queries keep using Clerk's cached token.
 
 `realtime.messages` is partitioned by day, and Realtime creates the
 partitions only when a client connects. With nobody connected the trigger's
