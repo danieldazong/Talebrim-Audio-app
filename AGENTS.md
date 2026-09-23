@@ -18,8 +18,9 @@ every RLS policy in this document. Anything needing it runs in an Edge
 Function. If a task seems to require it in the client, the task is wrong.
 
 **2 · Never write to `books`, `chapters`, `app_settings` or `activity_log`.**
-This app is a **reader**. Those tables belong to the admin dashboard
-(`AGENTS.md`, same repo), which is in production at `talebrim.com`. Create your
+This app is a **reader**. Those tables belong to the admin dashboard — a
+separate repo, `C:\Users\PC\Desktop\story-app-dashboad`, with its own
+`AGENTS.md` — which is in production at `talebrim.com`. Create your
 own per-user tables; altering theirs breaks a live product.
 
 **3 · Filter `status = 'published'` on every catalog read — or use the views
@@ -87,12 +88,15 @@ Use the following stack:
 - Zustand
 - AsyncStorage
 - TanStack Query
-- Clerk for authentication (`@clerk/clerk-expo`)
+- Clerk for authentication (`@clerk/expo`)
 - Supabase for database and media storage (`@supabase/supabase-js`)
 - `react-native-track-player` for audio playback
 - RevenueCat for subscriptions and entitlements
 - `react-native-google-mobile-ads` for rewarded ads
 - Server-side route handlers or Supabase Edge Functions for secrets and privileged operations
+- `expo-keep-awake` — M5 only (approved 2026-09-23; prompt 14 installs it)
+- `@react-native-community/netinfo` — wired once into TanStack Query's
+  `onlineManager` (approved 2026-09-23; prompt 15 installs it)
 
 Do not introduce new major libraries unless there is a strong reason.
 
@@ -140,7 +144,10 @@ Also:
 
 ## Architecture Guidelines
 
-Use this structure unless there is a strong reason to change it:
+Use this structure unless there is a strong reason to change it. Everything
+below lives under `src/` (`src/app`, `src/components`, …) and `@/` resolves to
+`src/`. The one exception is `assets/`, which stays at the repo root
+(`@/assets/*` → `./assets/*`).
 
 ```txt
 app/
@@ -248,7 +255,7 @@ Numeric disagreements between frames (the same serial showing different chapter 
 | `ink`           | `#1A1420` | Text on light surfaces **and labels on ember buttons** |
 | `destructive`   | `#C9705F` | Sign-out, destructive links                            |
 
-Rules: flat surfaces; no shadows, glows, sparkles or text shadows; **no gradients anywhere except** one soft vertical `#150E1F → #2C1E42` on Now Playing; **exactly one ember element per screen**, on the primary action; blush is decorative only, never body text; status is always a labelled pill, never color alone.
+Rules: flat surfaces; no shadows, glows, sparkles or text shadows; **no gradients anywhere except** one soft vertical `#150E1F → #2C1E42` on Now Playing, plus two fades approved on 2026-09-23 because a flat scrim left a hard seam over cover art: the onboarding collage fade and the M3 hero card's cover fade. All three live in `src/theme/colors.ts`; add no others without approval; **exactly one ember element per screen**, on the primary action; blush is decorative only, never body text; status is always a labelled pill, never color alone.
 
 Ember button labels are `#1A1420`. Never white.
 
@@ -282,7 +289,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet, lock icon, headline naming the next chapter. Ember `Watch ad & continue`. Teal outlined `Go Ad-Free`. Muted restore-purchases and manage-subscription links. States the ad-free value proposition before any purchase. Never shown for an already-unlocked chapter.
 
-**M6 · Now Playing** — The app's only gradient. Dismiss chevron. Large square cover with a thin ember rim. Title, author, chapter. Scrub bar with ember track and thumb, elapsed and remaining labels. Transport row: back-15, previous, 72dp ember play/pause with a `#1A1420` icon, next, forward-15. Secondary teal controls: speed, `Sleep timer`, `Read instead` — hands back to M5 at the equivalent position.
+**M6 · Now Playing** — The app's only full-screen gradient. Dismiss chevron. Large square cover with a thin ember rim. Title, author, chapter. Scrub bar with ember track and thumb, elapsed and remaining labels. Transport row: back-15, previous, 72dp ember play/pause with a `#1A1420` icon, next, forward-15. Secondary teal controls: speed, `Sleep timer`, `Read instead` — hands back to M5 at the equivalent position.
 
 **M7 · My Library** — Fraunces title. Segmented toggle (Books / Audiobooks) on a dark track. `Continue` card: cover, title, progress label, ember progress bar, resume button. `My List` as a 3-column cover grid with an ember progress line under each; audiobook items carry a teal headphone badge. Mini player above bottom nav.
 
@@ -298,7 +305,7 @@ Ember button labels are `#1A1420`. Never white.
 
 ## Image Generation Rules
 
-Do **not** generate, synthesize or substitute artwork, covers, avatars or illustrations. Cover art enters the system only through the admin CMS upload path, and missing art uses the placeholder in `constants/images.ts`.
+Do **not** generate, synthesize or substitute artwork, covers, avatars or illustrations. Cover art enters the system only through the admin CMS upload path, and missing art uses the placeholder in `constants/images.ts`. **That placeholder is not supplied yet:** until `cover-placeholder.png` exists, `Cover` renders a flat `surface` box (`// MISSING ASSET: cover-placeholder`).
 
 Do not describe or imply AI-generated imagery in shipped UI copy.
 
@@ -306,10 +313,10 @@ If the user explicitly enables image generation for a local asset:
 
 - match the provided reference exactly — do not change style, colors or composition
 - keep consistency with the design system above
-- place output in `assets/images/` with clear naming:
+- place output in `assets/Image/` (capital I, singular — the folder on disk) with clear naming:
 
 ```txt
-assets/images/
+assets/Image/
   onboarding-collage.png
   auth-header.png
   cover-placeholder.png
@@ -334,7 +341,7 @@ When building from an attached design image:
 - use consistent reusable styles
 - make the UI responsive across screen sizes
 
-Design tokens live in `tailwind.config.js` as named colors, so classes read `bg-bg`, `bg-surface`, `text-ember`. **Raw hex appears in exactly one place: the config.**
+Design tokens live in the `@theme` block of `src/global.css` as named colors, so classes read `bg-bg`, `bg-surface`, `text-ember`. Tailwind v4 and NativeWind v5 are CSS-first and read no JS config — there is no `tailwind.config.js`, and none should be created. **Raw hex appears in exactly one place: that `@theme` block**, mirrored in `src/theme/colors.ts` only for props that take no className (see Style Exception Rules).
 
 Prefer reusable class patterns through utilities in `global.css`. If no utility exists and you see a repeated pattern, create one there following the BEM method.
 
@@ -378,7 +385,7 @@ Use `StyleSheet` or inline styles for these components/scenarios instead of Nati
 | **Shadow (iOS/Android)**                    | Different syntax per platform                                                      | `StyleSheet` with platform checks     |
 | **Transform arrays**                        | Complex transform combinations                                                     | `StyleSheet`                          |
 | **Z-index**                                 | Sometimes needs explicit StyleSheet                                                | `StyleSheet`                          |
-| **expo-linear-gradient** (Now Playing only) | Colors are a prop, not a style                                                     | Color array prop                      |
+| **expo-linear-gradient** (the three approved gradients only) | Colors are a prop, not a style                                    | Color array prop                      |
 | **react-native-svg props**                  | No className support                                                               | `StyleSheet` or props                 |
 
 ### When to Use StyleSheet
@@ -459,8 +466,8 @@ Before using any image asset:
 Example:
 
 ```ts
-import onboardingCollage from "@/assets/images/onboarding-collage.png";
-import coverPlaceholder from "@/assets/images/cover-placeholder.png";
+import onboardingCollage from "@/assets/Image/onboarding-collage.png";
+import coverPlaceholder from "@/assets/Image/cover-placeholder.png";
 
 export const images = {
   onboardingCollage,
@@ -503,7 +510,9 @@ Use Zustand for:
 - in-flight read/listen parity position
 - playback status and scrub position
 - reader settings (theme, text size, font choice)
-- reader scroll offset
+- reader position — a **character offset** into `script_text`, never a pixel
+  scroll offset (a pixel offset breaks on a font-size change and cannot map to
+  audio; see parity step 4)
 - selected genre chips
 - app settings
 
@@ -522,7 +531,7 @@ instead of handing a stale object to a component.
 | `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — the only durable home for genres until Phase 2's profile table |
 | `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
 | `playback`   | current chapter, playing state, speed, sleep timer                  | no — session only |
-| `parity`     | the in-session authoritative reading position, keyed by chapter     | no — see Read/listen parity below; marked `// SERVER COPY ADDED IN 14/17` |
+| `parity`     | the in-session authoritative reading position, keyed by chapter     | no — see Read/listen parity below; marked `// SERVER COPY — added by the parity prompt` |
 
 `hasCompletedOnboarding` also drives the routing gate: `app/_layout.tsx` uses
 Expo Router's `Stack.Protected` (not an imperative `router.replace` in a
@@ -781,6 +790,11 @@ Then: `reading_positions`, `unlocks`, `library_items`.
 
 **Every migration follows the discipline already proven here on 2026-09-20:**
 
+- **Written, tested and pushed from the dashboard repo**
+  (`story-app-dashboad/supabase/migrations`). It holds this database's only
+  migration history, including this app's earlier `20260920000001` and
+  `20260923000001`. This repo has no `supabase/migrations` and must not grow
+  one — two histories against one database break `supabase db push`.
 - **Additive only.** No `alter` on `books`, `chapters`, `app_settings` or
   `activity_log`. Those belong to a dashboard running in production.
 - RLS on from the start, scoped to `auth.jwt() ->> 'sub'`, so a reader can
@@ -799,7 +813,17 @@ Then: `reading_positions`, `unlocks`, `library_items`.
 Read/listen parity becomes implementable at this point and not before: steps
 2–4 of its algorithm write to `reading_positions`.
 
-### Before production — two things to plan for now
+### Before production — three things to plan for now
+
+**Locked chapter text is not protected server-side.** RLS lets any signed-in
+reader select `chapters.script_text` for any published chapter, locked or not
+— by design, `locked` is enforced in the app, not a row-level secret. The app
+never runs the text query for a locked chapter, which keeps the UI honest but
+is not security: anyone replaying their own token can read every chapter.
+Before launch, serve text through a server-side check of unlocks and
+subscription entitlement (a `security definer` function or an Edge Function),
+written as an additive migration in the dashboard repo — the `chapters`
+policies stay the dashboard's.
 
 **The instance is `t3.nano`.** `AGENTS.md` measures a **~450ms floor for a
 trivial query** and concludes that **instance size outranks every code-level
@@ -923,7 +947,7 @@ signed out too, and returns nothing else from the row.
 ## Data Contract — what actually exists in Supabase
 
 > Verified against the live schema on 2026-09-20. The admin dashboard
-> (`AGENTS.md`, same repo) owns this database; this app is a **reader** of it.
+> (`story-app-dashboad`, a separate repo with its own `AGENTS.md`) owns this database; this app is a **reader** of it.
 > Anything below marked **does not exist** has to be built before the screen
 > that needs it, and building it is a schema change that must not break the
 > dashboard.
@@ -955,7 +979,8 @@ reading position, an ad-unlock, or a library membership today.** That means:
 - `My List` (M7) has nothing to read from.
 
 These are the first migrations to write, and they belong to this app rather
-than the dashboard.
+than the dashboard. The tables are this app's; the migration files still go in
+the dashboard repo, which holds the only migration history (see Phase 2).
 
 ### Column facts that change how screens are built
 
@@ -1040,6 +1065,10 @@ zero**, when nothing has a measured duration.
 **`chapters_catalog`** — chapter metadata for M4's preview and M9's full list,
 with `has_audio` / `has_text` booleans and **no `script_text`**. Fetch prose
 per chapter from `chapters.script_text` when the reader actually opens one.
+That single-row read by id (`chapterTextOptions()` in
+`lib/queries/chapters.ts`) is the **one sanctioned direct read of `chapters`**.
+It runs only after `chapters_catalog` has returned the same chapter — which
+proves it is published — and never for a chapter that resolves to locked.
 
 Both views set `security_invoker = on`, so the caller's RLS still applies.
 Drafts are excluded **by construction**: a mobile query that forgets
@@ -1120,7 +1149,7 @@ app. Do not create one.
 
 ## Content Rules
 
-Catalog and chapter content come from Supabase, loaded through the admin CMS — the Talebrim Admin Dashboard, whose own `AGENTS.md` lives in the same repo and **owns this schema**. Read its Data Model Notes and Upload Rules before changing anything in Postgres: a migration written for this app can break that dashboard, and its three gates (`typecheck`, `lint`, `build`) plus its RLS verification are what prove it did not.
+Catalog and chapter content come from Supabase, loaded through the admin CMS — the Talebrim Admin Dashboard, a separate repo at `C:\Users\PC\Desktop\story-app-dashboad` whose own `AGENTS.md` **owns this schema**. Read its Data Model Notes and Upload Rules before changing anything in Postgres: a migration written for this app can break that dashboard, and its three gates (`typecheck`, `lint`, `build`) plus its RLS verification are what prove it did not.
 
 This app is a **reader**. It creates its own per-user tables (unlocks, reading positions) but must not alter `books`, `chapters`, `app_settings` or `activity_log`.
 
@@ -1144,7 +1173,7 @@ Refactor only when needed.
 
 Only create reusable components when necessary. Ask if unsure.
 
-Check `components/ui/` first — `Button`, `Chip`, `Pill`, `ProgressBar`, `Badge`, `SegmentedControl` and `Cover` already exist or should.
+Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `Screen` and the `Body`/`Heading` type helpers. `ProgressBar`, `SegmentedControl` and similar do not exist yet — add them there when a screen first needs them.
 
 Components take data via props and do not fetch. Fetching lives in `hooks/`.
 

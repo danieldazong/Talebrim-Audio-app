@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-// SERVER COPY ADDED IN 14/17.
+// SERVER COPY — added by the parity prompt.
 //
 // `reading_positions` does not exist yet (AGENTS.md Data Contract), so this
 // store is the ONLY copy of a user's position right now — there is no server
