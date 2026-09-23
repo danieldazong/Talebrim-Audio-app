@@ -69,11 +69,9 @@ export const seedBooks: BookCatalogRow[] = [
       "Ashira was born from the last ember of a burned dynasty. To reclaim her throne she must serve the general who lit the fire — and survive falling for him.",
     genres: ["Fantasy", "Billionaire"],
     maturity: "general",
-    // A real, expected null — resolves to the local placeholder, never a
-    // broken image.
-    cover_path: null,
-    cover_width: null,
-    cover_height: null,
+    cover_path: "covers/reign-of-ashes.jpg",
+    cover_width: 800,
+    cover_height: 1200,
     default_chapter_access: "free",
     chapter_count: 31,
     audio_count: 12,
@@ -81,6 +79,49 @@ export const seedBooks: BookCatalogRow[] = [
     total_duration_seconds: 28800,
     created_at: "2025-11-02T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000004",
+    title: "Whispers in the Mist",
+    author: "Elara Vance",
+    short_description: "A lone wanderer answers a forest that has been calling her by name.",
+    synopsis:
+      "Every villager who enters the mist forest returns changed, or does not return at all. Wren goes in anyway, chasing a voice only she can hear — and finds a court that has been waiting for her longer than she has been alive.",
+    genres: ["Fantasy", "Dark Romance"],
+    maturity: "mature_17",
+    cover_path: "covers/whispers-in-the-mist.jpg",
+    cover_width: 800,
+    cover_height: 1200,
+    default_chapter_access: "locked",
+    chapter_count: 9,
+    audio_count: 0,
+    free_chapter_count: 3,
+    total_duration_seconds: null,
+    created_at: "2026-03-05T00:00:00Z",
+    updated_at: "2026-08-15T00:00:00Z",
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000005",
+    title: "Crown of Thorned Vows",
+    author: "N. Castellan",
+    short_description: "An arranged royal marriage neither of them wanted, and neither can leave.",
+    synopsis:
+      "A treaty bride and a king with no interest in ruling. Neither is who the court thinks they are — and the wedding night is only the first lie they will have to keep together.",
+    genres: ["Royalty", "Romance"],
+    maturity: "general",
+    // A real, expected null — resolves to the local placeholder, never a
+    // broken image. Deliberately kept alongside the 4 mapped covers above so
+    // the placeholder gap (step 7) still has a real row to exercise it.
+    cover_path: null,
+    cover_width: null,
+    cover_height: null,
+    default_chapter_access: "locked",
+    chapter_count: 15,
+    audio_count: 6,
+    free_chapter_count: 3,
+    total_duration_seconds: 19800,
+    created_at: "2026-04-18T00:00:00Z",
+    updated_at: "2026-09-10T00:00:00Z",
   },
 ];
 

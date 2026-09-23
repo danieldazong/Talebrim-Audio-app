@@ -1,58 +1,33 @@
 import { useAuth } from "@clerk/expo";
-import { useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { type ReactNode, useEffect } from "react";
 
-import { routeAfterAuth } from "@/lib/auth-routing";
+import { useStoresHydrated } from "@/hooks/use-stores-hydrated";
 
 /**
- * Holds the splash until Clerk resolves, then keeps unauthenticated users in
- * the (auth) group.
+ * Holds the splash until BOTH Clerk resolves and every persisted Zustand
+ * store has rehydrated from AsyncStorage.
  *
- * `isLoaded` is the whole point: rendering a protected route for even one
- * frame while auth resolves shows a signed-out user the shell of a screen
- * they should never see.
+ * `isLoaded` alone is not enough: AsyncStorage rehydrates after first render,
+ * so a persisted store's initial value is always its pre-hydration default.
+ * Hiding the splash on `isLoaded` alone would let the `Stack.Protected` gate
+ * in `app/_layout.tsx` read `hasCompletedOnboarding: false` for one frame and
+ * flash M2 at a returning user on every cold start (prompt 07 step 4).
  */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
+  const { isLoaded } = useAuth();
+  const storesHydrated = useStoresHydrated();
 
-  const inAuthGroup = segments[0] === "(auth)";
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    // Scaffolding routes from prompts 02/04 stay reachable while the real
-    // navigation shell (prompt 08) does not exist yet.
-    const root = segments[0] as string | undefined;
-    // `sso-callback` is mid-flight OAuth: the session exists server-side but
-    // may not have propagated to this hook yet, so redirecting here would
-    // abort a sign-in that actually succeeded.
-    const midFlight = root === "sso-callback";
-    const onScaffolding = root === undefined || root === "health" || midFlight;
-
-    if (!isSignedIn && !inAuthGroup && !onScaffolding) {
-      router.replace("/(auth)/sign-in");
-      return;
-    }
-
-    // Already signed in but sitting on a sign-in/verify screen: attempting a
-    // second sign-in makes Clerk reject it with `session_exists`, which reads
-    // as a broken app. Onboarding is exempt — it is marketing, not auth.
-    const onAuthEntry =
-      inAuthGroup && (segments[1] === "sign-in" || segments[1] === "verify");
-
-    if (isSignedIn && onAuthEntry) {
-      routeAfterAuth();
-    }
-  }, [isLoaded, isSignedIn, inAuthGroup, segments, router]);
+  const ready = isLoaded && storesHydrated;
 
   useEffect(() => {
-    if (isLoaded) void SplashScreen.hideAsync();
-  }, [isLoaded]);
+    if (ready) void SplashScreen.hideAsync();
+  }, [ready]);
 
-  // Nothing renders until Clerk has resolved — no protected frame leaks out.
-  if (!isLoaded) return null;
+  // Nothing renders until both Clerk and the stores have resolved — no
+  // protected frame leaks out, and the routing gate never reads a stale
+  // default.
+  if (!ready) return null;
 
   return <>{children}</>;
 }

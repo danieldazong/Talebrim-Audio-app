@@ -5,6 +5,7 @@ import { CoverCollage } from "@/components/onboarding/cover-collage";
 import { Body, Button, Chip, Heading, Screen } from "@/components/ui";
 import { GENRES, type Genre } from "@/data/genres";
 import { routeAfterAuth } from "@/lib/auth-routing";
+import { useOnboardingStore } from "@/store/onboarding-store";
 
 // UNDEFINED STEP 3: the design material shows three step dots with the
 // second one active, implying a step after this screen. AGENTS.md's Screen
@@ -14,14 +15,18 @@ import { routeAfterAuth } from "@/lib/auth-routing";
 const STEP_COUNT = 3;
 const CURRENT_STEP_INDEX = 1;
 
-// Selection is local-component state only, per prompt 07 step 9 — no
-// AsyncStorage, no Zustand, no Supabase write. AGENTS.md has no profile
-// table until Phase 2. Prompt 08 persists this to AsyncStorage and adds the
-// completion flag that must gate this route from ever re-showing; until
-// then this screen is reachable every time via the scaffolding link in
-// app/index.tsx.
+// Selection is local-component state until submit — AGENTS.md has no
+// profile table until Phase 2, so the onboarding Zustand store (persisted to
+// AsyncStorage) is the only durable home for it. Writing on every toggle
+// would persist an abandoned, half-made selection; the store only receives
+// the choice on "Start Reading" or "Skip", both of which also set the
+// completion flag that gates this route from ever re-showing.
 export default function Genres() {
   const [selected, setSelected] = useState<ReadonlySet<Genre>>(new Set());
+  const completeOnboarding = useOnboardingStore(
+    (state) => state.completeOnboarding,
+  );
+  const skipOnboarding = useOnboardingStore((state) => state.skipOnboarding);
 
   function toggle(value: Genre) {
     setSelected((prev) => {
@@ -36,15 +41,15 @@ export default function Genres() {
   }
 
   function onSubmit() {
-    // TODO(08): persist `selected` to AsyncStorage instead of logging it.
-    console.log("[genres] selected:", Array.from(selected));
+    completeOnboarding(Array.from(selected));
     routeAfterAuth();
   }
 
   function onSkip() {
     // Skip is a real path onward with an empty selection, not a disabled
-    // state — AGENTS.md sets no minimum on this screen.
-    console.log("[genres] skipped, selected:", Array.from(selected));
+    // state — AGENTS.md sets no minimum on this screen. It is still a
+    // completed state: a user who skips is never shown M2 again.
+    skipOnboarding();
     routeAfterAuth();
   }
 

@@ -496,7 +496,7 @@ Content must be typed. Never inline prose or catalog data into components.
 
 ## store/
 
-Use Zustand stores here.
+Use Zustand stores here — one store per concern, not one god store.
 
 Use Zustand for:
 
@@ -507,7 +507,37 @@ Use Zustand for:
 - selected genre chips
 - app settings
 
-Use AsyncStorage persistence where needed.
+Use AsyncStorage persistence where needed — `persist` + `createJSONStorage`
+over `@react-native-async-storage/async-storage`, with `partialize` so only
+local-only data is written to disk. Never persist a session token, a Clerk
+object, an email, or a verification code — those belong in
+`expo-secure-store`. Every persisted store ships a `version` and a `migrate`
+function from its first commit, so a future shape change has somewhere to go
+instead of handing a stale object to a component.
+
+**Built (prompt 07):**
+
+| Store        | Holds                                                              | Persisted?                                     |
+| ------------ | ------------------------------------------------------------------- | ----------------------------------------------- |
+| `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — the only durable home for genres until Phase 2's profile table |
+| `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
+| `playback`   | current chapter, playing state, speed, sleep timer                  | no — session only |
+| `parity`     | the in-session authoritative reading position, keyed by chapter     | no — see Read/listen parity below; marked `// SERVER COPY ADDED IN 14/17` |
+
+`hasCompletedOnboarding` also drives the routing gate: `app/_layout.tsx` uses
+Expo Router's `Stack.Protected` (not an imperative `router.replace` in a
+`useEffect`) to compose it with the Clerk auth gate — not signed in → M1;
+signed in and incomplete → M2; signed in and complete → past onboarding. A
+completed user cannot navigate back into M2 by any path, including a
+force-quit or a reinstall-then-sign-in, because the screen is removed from
+the navigator rather than merely redirected away from.
+
+`lib/session.ts`'s `clearUserScopedState()` — called by sign-out and by a
+`__DEV__`-only button on the temporary index route — clears the persisted
+TanStack cache and the persisted `onboarding` slice (so the next account on
+this device sees M2 again, not the previous account's genres), and resets
+`parity`/`playback` in memory. It deliberately leaves the `reader` slice
+alone.
 
 ---
 
@@ -731,8 +761,10 @@ These run against `books_catalog` and `chapters_catalog` now. Expect a real app
 against real data quickly, and expect to learn what the schema actually needs —
 which is the point of doing this before Phase 2.
 
-`M2` (genre picker) is unblocked too, but persists to AsyncStorage only until
-a profile table exists.
+`M2` (genre picker) is unblocked too, and as of prompt 07 persists through the
+`onboarding` Zustand store (AsyncStorage-backed) rather than to Supabase —
+that remains the only durable home for genre choices until a profile table
+exists in Phase 2.
 
 ### Phase 2 — the three missing tables
 

@@ -32,3 +32,26 @@ export const images = {
 // generating them.
 //   cover-placeholder.png   — every nullable books.cover_path renders this
 //   auth-header.png         — M1 sign in / sign up
+
+// `cover_path` in the DB (and in `data/seed-catalog.ts`) is a storage-style
+// path like `covers/shadow-of-the-moon.jpg`, not a key into `images.covers`.
+// This is a LOCAL-DEV-ONLY lookup for the 4 seed covers that happen to have
+// a matching bundled asset — prompt 11 replaces this with real Supabase
+// Storage / CDN URLs built from `app_settings.public_cdn_domain`, at which
+// point this map is deleted, not extended.
+const SEED_COVER_PATH_TO_ASSET: Record<string, (typeof images.covers)[keyof typeof images.covers]> = {
+  "covers/eternal-eclipse.jpg": images.covers.eternalEclipse,
+  "covers/reign-of-ashes.jpg": images.covers.reignOfAshes,
+  "covers/shadow-of-the-moon.jpg": images.covers.shadowOfTheMoon,
+  "covers/whispers-in-the-mist.jpg": images.covers.whispersInTheMist,
+};
+
+/**
+ * Resolves a seed `cover_path` to its bundled local asset, or `null` when
+ * the path is null/unmapped — callers render the flat placeholder box in
+ * that case (see `components/ui/cover.tsx`), never a broken image.
+ */
+export function resolveSeedCoverAsset(coverPath: string | null) {
+  if (coverPath === null) return null;
+  return SEED_COVER_PATH_TO_ASSET[coverPath] ?? null;
+}

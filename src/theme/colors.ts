@@ -43,3 +43,15 @@ export const collageFadeGradient = [
   `${colors.bg}CC`,
   colors.bg,
 ] as const;
+
+/**
+ * M3 hero card's bottom fade, blending its cover art into the card's own
+ * `surface` background below it. Same deviation as `collageFadeGradient` —
+ * a flat scrim leaves a hard visible seam where the design shows a smooth
+ * blend; approved on 2026-09-23 to match the reference exactly.
+ */
+export const heroCardFadeGradient = [
+  "transparent",
+  `${colors.surface}CC`,
+  colors.surface,
+] as const;

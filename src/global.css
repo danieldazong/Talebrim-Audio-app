@@ -158,6 +158,26 @@
   color: var(--color-ink);
 }
 
+/* Tab strip — M3's Discover/New/Werewolf/... filter row (prompt 09 step 3).
+   A FILTER, not navigation — distinct from `chip`/`chip--selected` (blush-
+   filled, used by M2/M8). Selected state is an ember underline; exempt from
+   the one-ember-element-per-screen rule, same as nav active state. */
+@utility tab-strip__item {
+  @apply items-start gap-2 pb-2;
+}
+@utility tab-strip__label {
+  font-family: var(--font-ui-medium);
+  font-size: 15px;
+  color: var(--color-muted);
+}
+@utility tab-strip__label--active {
+  font-family: var(--font-ui-semibold);
+  color: var(--color-body);
+}
+@utility tab-strip__underline {
+  @apply h-0.5 w-full rounded-pill bg-ember;
+}
+
 /* Bottom nav — three-item, AGENTS.md § Layout. Active item is a filled
    ember circle with a dark glyph. */
 @utility nav {
@@ -178,4 +198,35 @@
 @utility text-reader-body {
   @apply text-reader;
   font-family: var(--font-body);
+}
+
+/* Expo's own web reset (injected as <style id="expo-reset">) sets
+   `body{overflow:hidden}` but leaves `html` and `#root` without an
+   `overflow` rule. `#root` is `height:100%` of `body`, so if any child's
+   computed height exceeds the viewport by even a pixel (safe-area insets,
+   font metrics, the Clerk captcha div), the overflow escapes past `#root`
+   to `html`, which the browser scrolls on its own — showing a page-edge
+   scrollbar no in-app ScrollView contains or controls. Clip both so no
+   overflow can reach past this app's own scroll containers. Web-only by
+   nature: RN has no `html`/`#root` in its tree, so this is inert on native. */
+html,
+#root {
+  overflow: hidden;
+}
+
+/* Hides the browser's own OS scrollbar on a react-native-web ScrollView.
+   `showsVerticalScrollIndicator={false}` only suppresses RN's native scroll
+   thumb on iOS/Android — on web a ScrollView renders as an overflowing div,
+   and the platform scrollbar shows through regardless of that prop. These
+   selectors are web-only by nature (native ignores unknown CSS, and neither
+   `::-webkit-scrollbar` nor `scrollbar-width` mean anything off-web), so
+   this is safe to apply everywhere without a platform check. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }

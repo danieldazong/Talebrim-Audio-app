@@ -1,13 +1,45 @@
 import { useAuth } from "@clerk/expo";
+import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 
 import { Button, Screen } from "@/components/ui";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { clearUserScopedState } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 
 // SCAFFOLDING for prompt 09: a wiring probe, not a product screen. Delete
 // when the navigation shell lands.
+
+/**
+ * Dev-only clear-storage button (prompt 07 step 9). Calls the SAME
+ * `clearUserScopedState()` sign-out calls, so the two paths cannot drift —
+ * this exercises exactly what a real sign-out clears, without needing a
+ * second account to test with.
+ *
+ * Lives here rather than at `/` (prompt 08 step 11): `app/index.tsx` was
+ * deleted because it collided with `(tabs)/index.tsx` for the bare `/` URL.
+ * `health` is the one screen this file already keeps reachable outside every
+ * routing gate, so it is the button's new home.
+ */
+function DevClearStorageButton() {
+  if (!__DEV__) return null;
+
+  async function onPress() {
+    await clearUserScopedState();
+    router.replace("/health");
+    Alert.alert("Storage cleared", "User-scoped local state was cleared.");
+  }
+
+  return (
+    <Button
+      label="DEV: Clear local storage"
+      variant="outlined"
+      className="mb-10 mt-3 h-14 w-full border-destructive"
+      onPress={() => void onPress()}
+    />
+  );
+}
 
 type Claims = Record<string, unknown>;
 
@@ -105,7 +137,7 @@ export default function Health() {
 
   return (
     <Screen className="px-6">
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView className="no-scrollbar" showsVerticalScrollIndicator={false}>
         <Text className="text-heading mt-6 text-2xl">Health</Text>
         <Text className="font-ui text-muted mt-1 text-sm">
           Scaffolding for prompt 09 — wiring probe only.
@@ -164,12 +196,11 @@ export default function Health() {
           <Button
             label="Sign out"
             variant="secondary"
-            className="mb-10 mt-3 h-14 w-full"
+            className="mt-3 h-14 w-full"
             onPress={() => void signOut()}
           />
-        ) : (
-          <View className="mb-10" />
-        )}
+        ) : null}
+        <DevClearStorageButton />
       </ScrollView>
     </Screen>
   );

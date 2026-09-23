@@ -6,8 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CoverCollage } from "@/components/onboarding/cover-collage";
 import { images } from "@/constants/images";
-import { setOnboardingSeen } from "@/lib/onboarding";
 import { colors } from "@/theme";
+import { useSplashStore } from "@/store/splash-store";
 
 // STATIC MARKETING COPY — never wire this to reading_positions or the
 // parity writer. It illustrates read/listen parity; it is not user data.
@@ -24,7 +24,7 @@ const PARITY_CARD_DEMO = {
 const FREE_CHAPTERS_PLACEHOLDER = 3;
 
 function goToSignIn() {
-  void setOnboardingSeen();
+  useSplashStore.getState().markSplashSeen();
   router.push("/(auth)/sign-in");
 }
 

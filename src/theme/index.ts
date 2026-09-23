@@ -2,6 +2,7 @@ export {
   colors,
   nowPlayingGradient,
   collageFadeGradient,
+  heroCardFadeGradient,
   type ColorName,
 } from "./colors";
 export {
