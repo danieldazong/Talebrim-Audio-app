@@ -11,10 +11,16 @@ import {
   parseCatalogChange,
   type CatalogChange,
 } from "@/lib/catalog-sync";
-import { supabase } from "@/lib/supabase";
+import { refreshRealtimeAuth, supabase } from "@/lib/supabase";
 
 /** Collects a burst of broadcasts into one round of refetches. */
 const FLUSH_DELAY_MS = 750;
+
+/**
+ * How often the channel gets a newly issued token. Clerk tokens live 60s, so
+ * the one Realtime holds always has at least 30s left.
+ */
+const AUTH_REFRESH_MS = 30_000;
 
 /** Backoff before rebuilding a channel the server closed. */
 const RECONNECT_DELAYS_MS = [1_000, 3_000, 10_000, 30_000];
@@ -99,9 +105,9 @@ export function useCatalogSync(enabled: boolean): void {
     async function connect() {
       reconnectTimer = null;
       await previousRemoval.current;
-      // Put a token on the socket BEFORE joining. A join sent without one is
-      // refused, and realtime-js only retries it seconds later.
-      await supabase.realtime.setAuth().catch((error: unknown) => log("setAuth failed", error));
+      // Put a newly issued token on the socket BEFORE joining. A join sent
+      // with none, or with an expired one, is refused.
+      await refreshRealtimeAuth().catch((error: unknown) => log("token refresh failed", error));
       if (disposed) return;
 
       const current = supabase
@@ -120,6 +126,9 @@ export function useCatalogSync(enabled: boolean): void {
           caughtUpAfterFailure = false;
           enqueue(null);
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          // realtime-js retries the join with whatever token the socket
+          // holds, so give it a new one before that retry goes out.
+          void refreshRealtimeAuth().catch((err: unknown) => log("token refresh failed", err));
           // Can't listen right now — still refresh once, so returning to the
           // app shows current data even without a live channel.
           if (!caughtUpAfterFailure) {
@@ -136,9 +145,14 @@ export function useCatalogSync(enabled: boolean): void {
     }
 
     void connect();
+    const authTimer = setInterval(
+      () => void refreshRealtimeAuth().catch((error: unknown) => log("token refresh failed", error)),
+      AUTH_REFRESH_MS,
+    );
 
     return () => {
       disposed = true;
+      clearInterval(authTimer);
       if (flushTimer) clearTimeout(flushTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (channel) previousRemoval.current = supabase.removeChannel(channel);

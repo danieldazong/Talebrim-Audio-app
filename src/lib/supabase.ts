@@ -11,48 +11,11 @@ import type { Database } from "@/types/database";
 // still be in its temporal dead zone and throw.
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>;
 let clerkGetToken: GetToken | null = null;
-let pendingRefresh: Promise<string | null> | null = null;
+let pendingRealtimeAuth: Promise<void> | null = null;
 
 /** Called once from the provider tree; never from feature code. */
 export function setClerkTokenGetter(getToken: GetToken | null) {
   clerkGetToken = getToken;
-}
-
-/**
- * Clerk session tokens live 60 seconds. A cached token with less than this
- * left is replaced before use. This matters for Realtime above all: it closes
- * a private channel the moment the channel's token expires, and realtime-js
- * only re-sends the token every 25 seconds. With at least 30 seconds on every
- * token handed out, the channel's token can never lapse between re-sends.
- */
-const MIN_TOKEN_LIFETIME_S = 30;
-
-/** Seconds until a JWT's `exp`, or null if unreadable. Decoding only — the server verifies. */
-function secondsUntilExpiry(jwt: string): number | null {
-  const segment = jwt.split(".")[1];
-  if (!segment) return null;
-  try {
-    const base64 = segment.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const { exp } = JSON.parse(atob(padded)) as { exp?: unknown };
-    return typeof exp === "number" ? exp - Date.now() / 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
-async function freshClerkToken(getToken: GetToken): Promise<string | null> {
-  const token = await getToken();
-  if (token === null) return null;
-
-  const remaining = secondsUntilExpiry(token);
-  if (remaining === null || remaining >= MIN_TOKEN_LIFETIME_S) return token;
-
-  // One forced refresh at a time, however many requests ask at once.
-  pendingRefresh ??= getToken({ skipCache: true }).finally(() => {
-    pendingRefresh = null;
-  });
-  return pendingRefresh;
 }
 
 /**
@@ -77,7 +40,7 @@ export const supabase = createClient<Database>(
       // Null only before AuthedQueryProvider first renders. A request sent
       // without a token gets an empty result from RLS, not an error.
       if (!clerkGetToken) return null;
-      return freshClerkToken(clerkGetToken);
+      return (await clerkGetToken()) ?? null;
     },
     auth: {
       persistSession: false,
@@ -86,4 +49,25 @@ export const supabase = createClient<Database>(
     },
   },
 );
+
+/**
+ * Hands Realtime a newly issued Clerk token instead of the cached one.
+ *
+ * Realtime closes a private channel the moment the token it holds expires.
+ * Clerk tokens live 60 seconds, and a cached token can already be expired by
+ * the server's clock: seen on Android 2026-09-23 as "Token has expired 1
+ * seconds ago" straight after a refresh. A token issued now is good for 60
+ * seconds on the server whatever the phone's clock says. `skipCache` also
+ * refills Clerk's cache, so realtime-js's own heartbeat re-send, which goes
+ * through the callback above, picks up the same new token.
+ */
+export function refreshRealtimeAuth(): Promise<void> {
+  pendingRealtimeAuth ??= (async () => {
+    const token = await clerkGetToken?.({ skipCache: true });
+    if (token) await supabase.realtime.setAuth(token);
+  })().finally(() => {
+    pendingRealtimeAuth = null;
+  });
+  return pendingRealtimeAuth;
+}
 
