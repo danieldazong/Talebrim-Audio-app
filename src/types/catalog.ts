@@ -60,6 +60,22 @@ export type SearchBookRow = Pick<
   | "total_duration_seconds"
 >;
 
+/** The column subset M4's header renders — `bookDetailOptions()` selects exactly these. */
+export type BookDetailRow = Pick<
+  BookCatalogRow,
+  | "id"
+  | "title"
+  | "author"
+  | "synopsis"
+  | "short_description"
+  | "genres"
+  | "maturity"
+  | "cover_path"
+  | "chapter_count"
+  | "audio_count"
+  | "total_duration_seconds"
+>;
+
 /**
  * Chapter metadata only — no `script_text` (the view omits it; fetch prose
  * per chapter from `chapters.script_text` via its own query, never here).
@@ -70,3 +86,12 @@ export type SearchBookRow = Pick<
  *   over inferring presence from a nullable path column.
  */
 export type ChapterCatalogRow = Tables<"chapters_catalog">;
+
+/** The column subset M4's chapter preview rows render — `chapterPreviewOptions()` selects exactly these. */
+export type ChapterPreviewRow = Pick<
+  ChapterCatalogRow,
+  "id" | "number" | "title" | "access" | "has_audio" | "audio_duration_seconds"
+>;
+
+/** Enough of a chapter to run the lock check and navigate — M4's Listen target. */
+export type ChapterTargetRow = Pick<ChapterCatalogRow, "id" | "number" | "access">;

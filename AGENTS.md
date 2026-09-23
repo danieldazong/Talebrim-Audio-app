@@ -279,11 +279,11 @@ Ember button labels are `#1A1420`. Never white.
 
 **M1 · Sign In / Sign Up** — Cover collage across the top third. Fraunces headline "Pick up where you left off". Outlined pill buttons for Google and Apple. Email input. Ember pill `Continue with email`. Legal line noting 18+ (see Data Contract on the label-vs-enum split). No bottom nav, no mini player.
 
-**M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid (Romance, Werewolf, Vampire, Fantasy, Possessive, Billionaire, Dark); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
+**M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid — the dashboard's genre list, mirrored in `data/genres.ts` (see Decisions); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
 
 **M3 · Home / Discover** — Wordmark left; search and notification icons right. Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen`. Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
-**M4 · Story Detail** — Blurred cover backdrop; back and share icons. Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9.
+**M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons. Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9. **No bottom nav, no mini player.**
 
 **M5 · Reader** — Light mode `#FBF7F1` by default (sepia and dark are user choices). Literata 18sp/1.7. Minimal top bar: back, chapter title, `Aa`. Fraunces chapter heading. Floating bottom toolbar on `#2C1E42` with brightness, `Aa`, bookmark, and a teal Listen icon that hands off to M6 at the equivalent position. Ember progress bar with position label. **No bottom nav, no mini player.**
 
@@ -757,6 +757,18 @@ code. The prompts carry the detail; this is the record.
   finished-chapter marks, rating and "Ongoing" status; M5's bookmark.
 - **M4 Share** sends the title and author only. There is no public book URL
   and no deep-link scheme yet.
+- **M4 layout.** No blurred backdrop: the frame has none, and the flat-surface
+  rule argues against one. No mini player: the frame shows none, and the mini
+  player lives in the tab shell, which M4 is pushed over.
+- **Genres are the dashboard's slugs.** `books.genres` holds values such as
+  `dark_romance`, written by the dashboard from
+  `story-app-dashboad/src/data/genres.ts`. This app's `data/genres.ts`
+  mirrors that list exactly; keep the two in step. Filters and saved
+  onboarding picks use the slug. Every screen shows `genreLabel()`
+  (`lib/labels.ts`), never the raw value. M2 offers the dashboard's twelve
+  genres, replacing the eleven chips copied from the M2 frame, three of which
+  (Mafia, Royalty, Forbidden) the dashboard cannot tag. The `onboarding`
+  store's version 2 migrates saved names to slugs.
 - **M5 Reader.**
   - Themes: `light` (default), `sepia`, `dark`.
   - Listen is teal outlined. The reader has no ember button; its only ember
@@ -829,8 +841,11 @@ exists in Phase 2.
 **Status, 2026-09-23.** Built: M1 sign-in and M2 genre picker (prompts
 04–07), the navigation shell (08), M3 Discover on `books_catalog` (09–10), M8
 Search on `books_catalog` (11), live catalog updates from the dashboard (see
-Data Contract), and the Phase 2 reader tables with their read-only fetchers
-(13). **Next: M4 Story Detail (prompt 12)**, then M5 (prompts 14–15).
+Data Contract), the Phase 2 reader tables with their read-only fetchers
+(13), and M4 Story Detail (12). **Next: M5 (prompts 14–15).** Open before M5
+ships: the age gate (§ Content Rules) — every live book is `mature_17`, and
+nothing gates it yet. It needs its own prompt, and a decision on whether M1's
+18+ legal line is enough.
 
 ### Phase 2 — the three reader tables (done 2026-09-23)
 

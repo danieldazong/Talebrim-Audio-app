@@ -7,13 +7,14 @@ import {
 
 import { colors } from "@/theme";
 
-type Variant = "primary" | "secondary" | "inverted" | "outlined";
+type Variant = "primary" | "secondary" | "inverted" | "outlined" | "audio";
 
 const VARIANT_CLASS: Record<Variant, string> = {
   primary: "btn--primary",
   secondary: "btn--secondary",
   inverted: "btn--inverted",
   outlined: "btn--outlined",
+  audio: "btn--audio",
 };
 
 // Ember labels are ink, never white — AGENTS.md § Design System.
@@ -22,6 +23,7 @@ const LABEL_CLASS: Record<Variant, string> = {
   secondary: "text-body",
   inverted: "text-champagne",
   outlined: "text-body",
+  audio: "text-teal",
 };
 
 const SPINNER_COLOR: Record<Variant, string> = {
@@ -29,6 +31,7 @@ const SPINNER_COLOR: Record<Variant, string> = {
   secondary: colors.body,
   inverted: colors.champagne,
   outlined: colors.body,
+  audio: colors.teal,
 };
 
 type ButtonProps = {

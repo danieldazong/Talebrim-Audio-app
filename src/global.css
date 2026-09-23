@@ -111,6 +111,13 @@
   @apply border border-muted/40 bg-transparent;
   color: var(--color-body);
 }
+/* Audio action — M4's Listen (material/6.png): teal-outlined pill with a
+   teal label. Teal marks audio affordances (§ Design System). The border
+   is measured at 1.5dp in the frame. */
+@utility btn--audio {
+  @apply border-[1.5px] border-teal bg-transparent;
+  color: var(--color-teal);
+}
 
 /* Icon buttons — square tinted tile and the circular tinted row. */
 @utility icon-btn {
@@ -118,6 +125,12 @@
 }
 @utility icon-btn--round {
   @apply rounded-pill;
+}
+/* M4's back and share (material/6.png): a `bg` fill with a `raised`
+   hairline instead of the blush tint, so they stay legible over content
+   scrolling beneath them. */
+@utility icon-btn--outline {
+  @apply border border-raised bg-bg;
 }
 
 /* Search field wrapper. The TextInput itself takes inline styles and

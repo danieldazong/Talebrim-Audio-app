@@ -1,9 +1,15 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
 Design material: @"/c:/Users/PC/Desktop/talebrim-app/material/6.png" — ensure everything is as is
-shown, except where a step below says otherwise. This screen ships with its
-real queries in one prompt. Per-user state (resume position, finished
-chapters, My List, ad unlocks) is not rendered at all yet. Prompt 13 creates
-those tables and later prompts wire them in.
+shown, except where a step below says otherwise. This prompt builds M4 Story
+Detail only. `material/5.png` is M9, the full chapter list that "See all
+chapters" opens. M9 gets its own prompt after the Reader (prompts 14–15), so
+don't build it here. This screen ships with its real queries in one prompt.
+
+Prompt 13 created the reader tables, with read-only fetchers. Of the
+per-user state, only unlocks feed this screen: the reader's own unlocks count
+in the lock check (steps 3e and 12). Nothing writes reading positions yet, so
+the resume card and finished-chapter marks stay hidden, and the frame has no
+My List control.
 
 1. Replace the `book/[id]` placeholder from prompt 08. It is a pushed stack
    route outside the tab group and receives only the book id from the route
@@ -17,33 +23,40 @@ those tables and later prompts wire them in.
 2. Keep the route file thin. Put the header, chapter row and states in
    `components/book/`, following `components/discover/` and
    `components/search/`.
-3. All reads go through `lib/query-keys.ts` (prompt 03) and hit views only.
-   Never read `books`, `chapters`, `chapters_list` or
+3. All reads go through `lib/query-keys.ts` (prompt 03). Catalogue reads hit
+   views only: never read `books`, `chapters`, `chapters_list` or
    `chapters_needing_attention`. Select explicit columns and never use
    `select('*')`.
    a. Book row: change the existing `bookDetailOptions` in
-      `lib/queries/book.ts`. It currently does `select('*')` + `.single()`.
-      Add a `BookDetailRow` `Pick` to `types/catalog.ts`, declared like
-      `CarouselBookRow` and `SearchBookRow`, and select exactly those
-      columns.
+   `lib/queries/book.ts`. It currently does `select('*')` + `.single()`.
+   Add a `BookDetailRow` `Pick` to `types/catalog.ts`, declared like
+   `CarouselBookRow` and `SearchBookRow`, and select exactly those
+   columns.
    b. Chapter preview: the first `PREVIEW_CHAPTER_LIMIT` (5) chapters from
-      `chapters_catalog`, ordered by `number` ascending. The frame's preview
-      starts at chapter 11, but that is the reader's own position, and
-      per-user state isn't rendered yet, so start from chapter 1. Do NOT
-      reuse `chapterListByBookOptions` / `queryKeys.chapters.listByBook`.
-      That key belongs to M9's unlimited list, and a limited result cached
-      under it would hand M9 five chapters. Nest the preview key under it
-      instead: `[...queryKeys.chapters.listByBook(bookId), "preview"]`.
-      `invalidateCatalog()` in `lib/catalog-sync.ts` matches by prefix, so
-      it will refresh the preview when the dashboard edits this book's
-      chapters. Confirm that a live edit reaches an open M4.
+   `chapters_catalog`, ordered by `number` ascending. The frame's preview
+   starts at chapter 11, but that is the reader's own position, and
+   per-user state isn't rendered yet, so start from chapter 1. Do NOT
+   reuse `chapterListByBookOptions` / `queryKeys.chapters.listByBook`.
+   That key belongs to M9's unlimited list, and a limited result cached
+   under it would hand M9 five chapters. Nest the preview key under it
+   instead: `[...queryKeys.chapters.listByBook(bookId), "preview"]`.
+   `invalidateCatalog()` in `lib/catalog-sync.ts` matches by prefix, so
+   it will refresh the preview when the dashboard edits this book's
+   chapters. Confirm that a live edit reaches an open M4.
    c. Listen target: only when `audio_count > 0`, fetch the first chapter
-      with `has_audio` (`order("number")`, `limit(1)`). It can lie past the
-      preview rows, so it can't be read from them.
+   with `has_audio` (`order("number")`, `limit(1)`). It can lie past the
+   preview rows, so it can't be read from them.
    d. `free_chapters_at_start` and `public_cdn_domain` come from the existing
-      `appSettingsOptions()`, which calls `reader_settings()`. Never select
-      `app_settings`. Its policy is admin-only, so a reader gets zero rows
-      (AGENTS.md § Storage and the CDN).
+   `appSettingsOptions()`, which calls `reader_settings()`. Never select
+   `app_settings`. Its policy is admin-only, so a reader gets zero rows
+   (AGENTS.md § Storage and the CDN).
+   e. The reader's unlocks: the existing `unlocksByUserOptions(userId)` in
+   `lib/queries/unlocks.ts` (prompt 13), with `userId` from Clerk's
+   `useAuth()`. RLS returns only the reader's own rows. Nobody holds an
+   unlock yet, because rows are written by a server function the paywall
+   prompt adds. Reading them now means M4 shows an unlocked chapter
+   correctly from the day unlocks start. This is the reader's own table,
+   not the catalogue, so the views-only rule above doesn't apply to it.
 4. Use `.maybeSingle()` for the book row, not `.single()`
    (https://supabase.com/docs/reference/javascript/maybesingle). `.single()`
    errors on zero rows. A book that is unpublished or invisible to this
@@ -66,6 +79,7 @@ those tables and later prompts wire them in.
 
    The frame has no blurred backdrop, although AGENTS.md's M4 spec lists
    one. The image wins for layout, so don't add it; report the conflict.
+
 6. Metadata row: keep the chapter count and the total duration from the
    frame. Drop the "★ 4.9" rating and the teal "Ongoing" status, because
    neither has a backing column. (`status` is `draft | published`, and every
@@ -97,8 +111,8 @@ those tables and later prompts wire them in.
    - Listen is a teal-outlined pill with a headphone icon. `Button` has no
      such variant, so add one (a `btn--audio` utility in `global.css` plus a
      `Button` variant) rather than styling it inline.
-   - Read pushes `reader/[chapterId]` for the first preview row. No reading
-     position exists yet, so there is no resume target:
+   - Read pushes `reader/[chapterId]` for the first preview row. Nothing
+     writes reading positions yet, so there is no resume target:
      `// TODO(parity): resume position`.
    - Listen pushes `player/[chapterId]` for the chapter from step 3c. When
      `audio_count` is 0, Listen renders disabled, with an accessible label
@@ -108,10 +122,10 @@ those tables and later prompts wire them in.
    - Both are disabled while their target is loading and when the book has
      no chapters.
 10. Resume card ("You're on Chapter 12 · 34% complete" with its progress
-    bar): this is a per-user reading position, and nothing backs it until
-    `reading_positions` is wired. Don't render it, don't mock it and don't
-    reserve its space. Mark it
-    `// UNBACKED — resume card needs reading_positions`.
+    bar): this is a per-user reading position. The `reading_positions`
+    table exists, but it stays empty until the parity prompt adds its writer.
+    Don't render the card, don't mock it and don't reserve its space. Mark
+    it `// UNBACKED — resume card needs the parity writer`.
 11. Synopsis: use `synopsis`, falling back to `short_description`, and hide
     the section when both are null. Truncate with `numberOfLines` and a teal
     "More" that expands in place. Show "More" only when the text actually
@@ -130,19 +144,28 @@ those tables and later prompts wire them in.
     - Omit the frame's "8 min read" (no word count) and the check mark with
       its "Read" label (a finished state with no backing). The frame shows
       audio as text, not a badge, so don't add a headphone badge.
-    - Lock is the only per-user state available today. Compute it with
-      `resolveChapterState()` from `types/states.ts`, using `access`,
-      `number` and the live `free_chapters_at_start` from step 3d. Never
-      hardcode 3.
-    - Fail closed: while settings are loading or have failed, and for any
-      row whose `access` is null, treat the row as locked, never free.
-      Locked rows show a lock icon on the right. Skip rows with a null `id`
-      or `number`. Don't render unlocked, downloaded or reading visuals.
+    - Lock is the only per-user state shown here. Compute it with
+      `resolveChapterState()` from `types/states.ts`, using:
+      - `access` and `number` from the row
+      - the live `free_chapters_at_start` from step 3d. Never hardcode 3.
+      - `isUnlockedByUser`: whether step 3e's unlocks include the row's
+        `id`
+    - The chapters section shows its skeleton rows until the preview rows,
+      the settings and the unlocks have all loaded, so a row never flashes
+      locked and then opens. If settings or unlocks fail, show the section's
+      inline error with its retry. Never fall through to free.
+    - A row whose `access` is null is locked. Locked rows show a lock icon
+      on the right. Skip rows with a null `id` or `number`.
+    - A chapter opened by an unlock looks exactly like a free one here. M9 is
+      where "Unlocked" gets its own visual. Don't render Unlocked,
+      Downloaded or Reading visuals on this screen.
     - There are only a few preview rows, so `.map()` inside the page's
       `ScrollView` is fine. Prompt 09's no-`.map()` rule was for unbounded
       lists.
 13. After the rows, a "See all chapters" link pushes `chapters/[bookId]` (M9,
-    still a placeholder). Show it whenever `chapter_count > 0`.
+    `material/5.png`). That route stays a placeholder until M9's own prompt,
+    so keep the push and don't build the screen. Show the link whenever
+    `chapter_count > 0`.
 14. Tapping an unlocked row pushes `reader/[chapterId]`. The rows have no
     listen path in the frame. Tapping a locked row must NOT navigate: make
     it a no-op marked `// TODO(paywall)`, because the paywall prompt opens
@@ -154,13 +177,14 @@ those tables and later prompts wire them in.
     - not found (step 4): its own state, with a way back
     - book error: inline with a retry, reusing M8's error look
       (`cloud-offline-outline` plus connection copy)
-    - chapter or settings error: inline inside the chapters section with its
-      own retry, while the header stays on screen
+    - chapter, settings or unlocks error: inline inside the chapters section
+      with its own retry, while the header stays on screen
     - no chapters: "No chapters yet", with Read and Listen disabled
 
     Offline: the project has no NetInfo. As in M3 and M8, a warm persisted
     cache renders offline and a cold one shows the error state. Don't add a
     library for this here. No `Alert.alert` and no toast anywhere.
+
 16. Share: the frame shows it, so use React Native's built-in `Share`
     (https://reactnative.dev/docs/share). Share the title and author only.
     There is no public book URL (talebrim.com is the admin dashboard) and no
@@ -174,27 +198,34 @@ those tables and later prompts wire them in.
     disabled Listen says why it is disabled.
 
 Do not:
+
 - fetch `script_text` on this screen. It is fetched per chapter, only when
   the reader opens one, and serials run 85–200 chapters.
-- INSERT, UPDATE or DELETE anything, including a view count. The frame has no
-  My List control, so don't add one.
-- create a migration, table, view or RLS policy. Prompt 13 owns schema work.
+- INSERT, UPDATE or DELETE anything, including a view count, a reading
+  position or a My List entry. The frame has no My List control, so don't
+  add one. The app can never write `unlocks` at all.
+- create a migration, table, view or RLS policy. Schema changes happen in the
+  dashboard repo, and prompt 13 has already made this app's.
 - invent a rating, review count, reader count, trending rank or completion
   status.
-- render unlocked, downloaded, reading or finished states, or a resume card.
+- render the Unlocked, Downloaded, Reading or finished visuals, or a resume
+  card.
 - add a second ember element.
-- add a gradient, glow, blur or shadow. The one permitted gradient belongs to
-  M6.
+- add a gradient, glow, blur or shadow. The gradients AGENTS.md permits are
+  not on this screen.
 - use raw hex outside `global.css`'s `@theme` block (`theme/colors.ts` only
   for props that take no className).
-- build M9, M5, M6, the paywall or an age gate.
+- build M9 (`material/5.png`), M5, M6, the paywall or an age gate.
 
 Finish by running `npm run typecheck` and `npm run lint`. Then:
+
 - paste the live `free_chapters_at_start` value you read through
   `reader_settings()`
 - confirm the metadata row uses view-computed counts, not client-side ones
 - confirm that neither a locked chapter row nor a locked Read/Listen target
   navigates
+- confirm the unlocks query runs and feeds `isUnlockedByUser`. It returns zero
+  rows today, so the rows follow the free-run rule alone.
 - describe the not-found state from step 4
 - confirm a dashboard edit refreshes an open M4 (step 3b)
 - list every frame element you omitted or changed, with the reason: rating,

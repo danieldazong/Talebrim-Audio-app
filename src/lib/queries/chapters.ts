@@ -2,7 +2,14 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { queryKeys } from "@/lib/query-keys";
 import { supabase } from "@/lib/supabase";
-import type { ChapterCatalogRow } from "@/types/catalog";
+import type {
+  ChapterCatalogRow,
+  ChapterPreviewRow,
+  ChapterTargetRow,
+} from "@/types/catalog";
+
+/** How many chapters M4 previews before "See all chapters". */
+export const PREVIEW_CHAPTER_LIMIT = 5;
 
 /**
  * Chapter metadata for one book (M4 preview, M9 full list). Reads
@@ -19,6 +26,50 @@ export const chapterListByBookOptions = (bookId: string) =>
         .select("*")
         .eq("book_id", bookId)
         .order("number", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+/**
+ * M4's preview: the book's first `PREVIEW_CHAPTER_LIMIT` chapters, from
+ * chapter 1. Keyed under `listByBook` but never AS it — see
+ * `queryKeys.chapters.preview`.
+ */
+export const chapterPreviewOptions = (bookId: string) =>
+  queryOptions({
+    queryKey: queryKeys.chapters.preview(bookId),
+    queryFn: async (): Promise<ChapterPreviewRow[]> => {
+      const { data, error } = await supabase
+        .from("chapters_catalog")
+        .select("id, number, title, access, has_audio, audio_duration_seconds")
+        .eq("book_id", bookId)
+        .order("number", { ascending: true })
+        .limit(PREVIEW_CHAPTER_LIMIT);
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+/**
+ * The first chapter that has audio — M4's Listen target. Its own query
+ * because it can sit past the preview rows. `null` when no chapter has
+ * audio; callers only run it for a book whose `audio_count > 0`.
+ */
+export const firstAudioChapterOptions = (bookId: string) =>
+  queryOptions({
+    queryKey: queryKeys.chapters.firstAudio(bookId),
+    queryFn: async (): Promise<ChapterTargetRow | null> => {
+      const { data, error } = await supabase
+        .from("chapters_catalog")
+        .select("id, number, access")
+        .eq("book_id", bookId)
+        .eq("has_audio", true)
+        .order("number", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
       return data;

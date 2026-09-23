@@ -51,6 +51,16 @@ export const queryKeys = {
     listByBook: (bookId: string) =>
       [...queryKeys.chapters.all(), "listByBook", bookId] as const,
     /**
+     * M4's first few rows. Nested under `listByBook` rather than reusing it:
+     * a limited result cached under M9's key would hand M9 five chapters.
+     * Nesting keeps the prefix, so invalidating `listByBook` refreshes both.
+     */
+    preview: (bookId: string) =>
+      [...queryKeys.chapters.listByBook(bookId), "preview"] as const,
+    /** M4's Listen target — the book's first chapter with audio. Nested for the same reason. */
+    firstAudio: (bookId: string) =>
+      [...queryKeys.chapters.listByBook(bookId), "firstAudio"] as const,
+    /**
      * `chapters.script_text` for exactly one chapter. Kept out of
      * `listByBook` deliberately — chapter text is large and serials run
      * 85–200 chapters, so it must never ride along with a list fetch.
