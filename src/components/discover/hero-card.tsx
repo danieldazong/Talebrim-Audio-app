@@ -38,6 +38,8 @@ export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
           source={coverUrl}
           style={{ height: 320, justifyContent: "flex-start" }}
           contentFit="cover"
+          // Crop from the bottom, not both edges — cover titles sit at the top.
+          contentPosition="top"
         >
           <View
             className="flex-row items-center gap-1 self-start rounded-pill bg-bg/70 px-3 py-1.5"

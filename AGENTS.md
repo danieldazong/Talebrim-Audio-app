@@ -485,6 +485,8 @@ Do not require/import image assets directly inside screens or components unless 
 
 Remote covers come from Supabase Storage / CDN URLs stored in the database. Render them with `expo-image`, always with a placeholder and a 2:3 aspect ratio. Never hotlink third-party image URLs.
 
+Where a cover must be cropped to a frame that is not 2:3 — the M3 hero card is the case today — use `contentFit="cover"` with `contentPosition="top"`. Cover art puts the title lettering at the top, and the default centre crop cut it off (fixed 2026-09-23). Crop from the bottom, where the card's fade covers the loss anyway.
+
 ---
 
 ## data/
