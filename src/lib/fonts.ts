@@ -10,21 +10,17 @@
 export const fontMap = {
   "Fraunces-SemiBold": require("@/assets/fonts/Fraunces_72pt-SemiBold.ttf"),
 
-  // TODO(fonts): the static Inter and Literata weights are not in
-  // assets/fonts/ yet — the repo ships only variable-font files whose
-  // filenames contain commas (a Metro asset-resolution hazard) and whose
-  // weight axes are unreliable on Android. Download the six static files
-  // from Google Fonts (Inter/static/, Literata/static/) and uncomment.
-  // Until then these four families resolve to the system font, which is
-  // visibly wrong but harmless — a require() of a missing file is a fatal
-  // bundling error, so the entries stay commented rather than dangling.
-  //
-  // "Literata-Regular": require("@/assets/fonts/Literata_18pt-Regular.ttf"),
-  // "Literata-Italic": require("@/assets/fonts/Literata_18pt-Italic.ttf"),
-  // "Literata-SemiBold": require("@/assets/fonts/Literata_18pt-SemiBold.ttf"),
-  // "Inter-Regular": require("@/assets/fonts/Inter_18pt-Regular.ttf"),
-  // "Inter-Medium": require("@/assets/fonts/Inter_18pt-Medium.ttf"),
-  // "Inter-SemiBold": require("@/assets/fonts/Inter_18pt-SemiBold.ttf"),
+  // Static files from Google Fonts (Inter/static/, Literata/static/), never
+  // the variable ones beside them: those filenames contain commas (a Metro
+  // asset-resolution hazard) and their weight axes are unreliable on
+  // Android. The 18pt optical size is the cut drawn for 14–18sp text.
+  // Licences: assets/fonts/*-OFL.txt, which must ship with the files.
+  "Literata-Regular": require("@/assets/fonts/Literata_18pt-Regular.ttf"),
+  "Literata-Italic": require("@/assets/fonts/Literata_18pt-Italic.ttf"),
+  "Literata-SemiBold": require("@/assets/fonts/Literata_18pt-SemiBold.ttf"),
+  "Inter-Regular": require("@/assets/fonts/Inter_18pt-Regular.ttf"),
+  "Inter-Medium": require("@/assets/fonts/Inter_18pt-Medium.ttf"),
+  "Inter-SemiBold": require("@/assets/fonts/Inter_18pt-SemiBold.ttf"),
 } as const;
 
 // Atkinson Hyperlegible Next is deliberately absent: the files are not in the

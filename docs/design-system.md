@@ -63,12 +63,12 @@ semibold face.
 feeds `--text-color`, which would make `--text-body` ambiguous against
 `--color-body`.
 
-> **Status:** only Fraunces is loaded. The six static Inter and Literata files
-> are not in `assets/fonts/` yet, so `font-body` and `font-ui*` currently fall
-> back to the system font. See [`src/lib/fonts.ts`](../src/lib/fonts.ts) —
-> uncomment the entries once the files land. Atkinson Hyperlegible Next has a
-> token but is deliberately never loaded; `readerFontFamily()` maps it to
-> Literata.
+> **Status:** Fraunces, Inter and Literata are loaded — the static 18pt Inter
+> and Literata files from Google Fonts, never the variable ones beside them
+> (see [`src/lib/fonts.ts`](../src/lib/fonts.ts)). Their OFL licences are in
+> `assets/fonts/*-OFL.txt` and must ship with the files. Atkinson Hyperlegible
+> Next has a token but is deliberately never loaded; `readerFontFamily()` maps
+> it to Literata.
 
 ## Radius
 
