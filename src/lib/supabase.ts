@@ -36,8 +36,8 @@ export const supabase = createClient<Database>(
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
   {
     accessToken: async () => {
-      // Null until the provider tree mounts and calls setClerkTokenGetter;
-      // requests before then go out unauthenticated, which RLS handles.
+      // Null only before AuthedQueryProvider first renders. A request sent
+      // without a token gets an empty result from RLS, not an error.
       if (!clerkGetToken) return null;
       return (await clerkGetToken()) ?? null;
     },

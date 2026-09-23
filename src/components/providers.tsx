@@ -19,12 +19,12 @@ import { setClerkTokenGetter } from "@/lib/supabase";
 export function AuthedQueryProvider({ children }: { children: ReactNode }) {
   const { getToken, userId, isLoaded } = useAuth();
 
-  // Hand Clerk's live getToken to the Supabase client. Re-runs when the
-  // session changes so a signed-out client stops sending a stale token.
-  useEffect(() => {
-    setClerkTokenGetter(getToken);
-    return () => setClerkTokenGetter(null);
-  }, [getToken]);
+  // Set during render, not in an effect: child effects run before parent
+  // effects, so a screen's first query could otherwise go out without a
+  // token — and RLS answers that with an empty list, not an error, which
+  // then gets cached as "no books".
+  setClerkTokenGetter(getToken);
+  useEffect(() => () => setClerkTokenGetter(null), []);
 
   // Re-created per user so one account never restores another's rows.
   const persistOptions = useMemo(

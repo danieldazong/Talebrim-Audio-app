@@ -73,7 +73,7 @@ export default function Genres() {
 
         <Heading className="mt-6">What you love to read</Heading>
         <Body className="mt-2">
-          Pick the genres that pull you in — we'll use them to recommend
+          Pick the genres that pull you in — we&apos;ll use them to recommend
           stories.
         </Body>
 
