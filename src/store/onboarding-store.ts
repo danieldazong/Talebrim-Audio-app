@@ -17,6 +17,23 @@ interface OnboardingState {
   skipOnboarding: () => void;
 }
 
+/**
+ * Version 1 saved display names ("Dark Romance"); version 2 saves the
+ * dashboard's slugs. Mafia, Royalty and Forbidden have no slug — the
+ * dashboard cannot tag them — so they are dropped. If nothing survives,
+ * "Picked for You" falls back to the unfiltered catalogue, as after Skip.
+ */
+const V1_GENRE_SLUGS: Partial<Record<string, Genre>> = {
+  Romance: "romance",
+  Werewolf: "werewolf",
+  Vampire: "vampire",
+  Fantasy: "fantasy",
+  Billionaire: "billionaire",
+  Possessive: "possessive_alpha",
+  "Dark Romance": "dark_romance",
+  Shifter: "shifter",
+};
+
 registerHydratingStore(STORE_NAME);
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -32,11 +49,20 @@ export const useOnboardingStore = create<OnboardingState>()(
     {
       name: ONBOARDING_STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
-      // No shape change yet — this exists so a future field rename/removal
-      // has somewhere to go instead of handing a stale object straight to a
-      // component (prompt 07 step 10).
-      migrate: (persisted) => persisted as OnboardingState,
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as OnboardingState;
+        if (version >= 2) return state;
+
+        const saved: unknown[] = Array.isArray(state.selectedGenres) ? state.selectedGenres : [];
+        return {
+          ...state,
+          selectedGenres: saved.flatMap((name) => {
+            const slug = typeof name === "string" ? V1_GENRE_SLUGS[name] : undefined;
+            return slug ? [slug] : [];
+          }),
+        };
+      },
       onRehydrateStorage: () => () => {
         markStoreHydrated(STORE_NAME);
       },

@@ -10,11 +10,11 @@ import { layout } from "@/theme";
 // distinct from `Chip`/`chip--selected` (blush-filled, used by M2/M8) — see
 // the `tab-strip__*` utilities in global.css.
 //
-// DEVIATION TO REPORT: this strip shows 6 entries; `data/genres.ts` holds 11
-// (Romance, Werewolf, Vampire, Fantasy, Billionaire, Possessive, Dark
-// Romance, Mafia, Royalty, Shifter, Forbidden). Most of those 11 have no tab
-// here, and "New" below is a recency filter, not a genre at all. Not
-// reconciled here per prompt 09 step 3 — reported as a conflict instead.
+// DEVIATION TO REPORT: this strip shows 6 entries; `data/genres.ts` holds
+// the dashboard's 12. Most of those have no tab here, and "New" below is a
+// recency filter, not a genre at all. Not reconciled here per prompt 09
+// step 3 — reported as a conflict instead. Labels here are display text; the
+// slug each genre tab filters on lives in `TAB_GENRE` (app/(tabs)/index.tsx).
 export const DISCOVER_TABS = [
   "Discover",
   "New",

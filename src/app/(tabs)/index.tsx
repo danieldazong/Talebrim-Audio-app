@@ -29,10 +29,10 @@ import type { CarouselBookRow } from "@/types/catalog";
 
 /** Tab strip entries that map onto a real `books.genres` value. "Discover" and "New" are not genres. */
 const TAB_GENRE: Partial<Record<DiscoverTab, Genre>> = {
-  Werewolf: "Werewolf",
-  Romance: "Romance",
-  Vampire: "Vampire",
-  Fantasy: "Fantasy",
+  Werewolf: "werewolf",
+  Romance: "romance",
+  Vampire: "vampire",
+  Fantasy: "fantasy",
 };
 
 export default function Discover() {

@@ -1,5 +1,26 @@
 // Enum-to-label maps. No React, no hooks, no JSX — AGENTS.md § lib/.
+import { GENRES } from "@/data/genres";
 import type { Enums } from "@/types/database";
+
+const GENRE_LABELS = new Map<string, string>(GENRES.map((genre) => [genre.value, genre.label]));
+
+/**
+ * A `books.genres` value → display label: `dark_romance` → "Dark Romance".
+ *
+ * The column is free text, so a slug the app doesn't know yet is humanised
+ * (`slow_burn` → "Slow Burn") instead of shown raw, and a value that is
+ * already prose ("Dark Romance") passes through unchanged.
+ */
+export function genreLabel(value: string): string {
+  return (
+    GENRE_LABELS.get(value) ??
+    value
+      .split("_")
+      .filter((word) => word.length > 0)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  );
+}
 
 /**
  * `maturity` enum → display label.

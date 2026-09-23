@@ -5,6 +5,7 @@ import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui";
 import { formatDurationCompact } from "@/lib/format";
+import { genreLabel } from "@/lib/labels";
 import { colors, heroCardFadeGradient, radius } from "@/theme";
 import type { CarouselBookRow } from "@/types/catalog";
 
@@ -77,7 +78,7 @@ export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
             {genres.slice(0, 2).map((genre) => (
               <View key={genre} className="rounded-pill bg-blush/20 px-3 py-1">
                 <Text className="font-ui-medium text-blush text-xs" maxFontSizeMultiplier={1.3}>
-                  {genre}
+                  {genreLabel(genre)}
                 </Text>
               </View>
             ))}
