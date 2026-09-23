@@ -2,8 +2,9 @@ import { create } from "zustand";
 
 // SERVER COPY — added by the parity prompt.
 //
-// `reading_positions` does not exist yet (AGENTS.md Data Contract), so this
-// store is the ONLY copy of a user's position right now — there is no server
+// `reading_positions` exists (AGENTS.md Data Contract, created 2026-09-23),
+// but nothing writes it yet: its writer belongs to the parity prompt. Until
+// then this store is the ONLY copy of a user's position — there is no server
 // row to reconcile against and no last-write-wins comparison to make. It is
 // written so that a server sync can be layered on without changing this
 // public API: a future write here becomes "write local, then debounce a

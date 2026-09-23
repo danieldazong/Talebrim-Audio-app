@@ -11,8 +11,8 @@ export const READER_STORAGE_KEY = "talebrim.store.reader";
 // user choices.
 export type ReaderTheme = "light" | "sepia" | "dark";
 
-const FONT_SIZE_MIN = 14;
-const FONT_SIZE_MAX = 28;
+export const FONT_SIZE_MIN = 14;
+export const FONT_SIZE_MAX = 28;
 const FONT_SIZE_DEFAULT = 18; // AGENTS.md § Typography — Literata 18sp.
 
 const LINE_SPACING_MIN = 1.4;
@@ -27,7 +27,7 @@ interface ReaderState {
   theme: ReaderTheme;
   fontSize: number;
   lineSpacing: number;
-  /** AGENTS.md § Typography — Atkinson Hyperlegible Next reader accessibility choice. */
+  /** AGENTS.md § Typography — the Atkinson Hyperlegible reader accessibility font. */
   atkinsonEnabled: boolean;
   setTheme: (theme: ReaderTheme) => void;
   setFontSize: (size: number) => void;

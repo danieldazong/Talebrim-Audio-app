@@ -21,8 +21,12 @@ export const fontMap = {
   "Inter-Regular": require("@/assets/fonts/Inter_18pt-Regular.ttf"),
   "Inter-Medium": require("@/assets/fonts/Inter_18pt-Medium.ttf"),
   "Inter-SemiBold": require("@/assets/fonts/Inter_18pt-SemiBold.ttf"),
-} as const;
 
-// Atkinson Hyperlegible Next is deliberately absent: the files are not in the
-// repo. src/theme/typography.ts maps that reader choice to Literata so the
-// M11 setting can exist without naming an unresolvable font.
+  // The reader's accessibility font (AGENTS.md § Typography). The original
+  // Atkinson Hyperlegible family: 400 and 700, each with an italic, so bold
+  // inside italic gets a real file here.
+  "AtkinsonHyperlegible-Regular": require("@/assets/fonts/AtkinsonHyperlegible-Regular.ttf"),
+  "AtkinsonHyperlegible-Italic": require("@/assets/fonts/AtkinsonHyperlegible-Italic.ttf"),
+  "AtkinsonHyperlegible-Bold": require("@/assets/fonts/AtkinsonHyperlegible-Bold.ttf"),
+  "AtkinsonHyperlegible-BoldItalic": require("@/assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf"),
+} as const;

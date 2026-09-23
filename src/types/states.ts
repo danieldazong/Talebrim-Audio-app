@@ -14,6 +14,19 @@ export type ChapterState =
   | { kind: "downloaded" }
   | { kind: "reading" };
 
+/**
+ * What M5 Reader shows (prompt 14 step 18). Exactly one at a time; prompt 15
+ * derives it from the chapter queries.
+ */
+export type ReaderStatus =
+  | "ready"
+  | "loading"
+  | "failed"
+  | "offline"
+  | "unavailable"
+  | "no-text"
+  | "locked";
+
 export interface ResolveChapterStateInput {
   /** `chapters.access` / `chapters_catalog.access` for this chapter. */
   access: Enums<"chapter_access">;

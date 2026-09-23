@@ -48,11 +48,13 @@
   --font-ui-medium: Inter-Medium;
   --font-ui-semibold: Inter-SemiBold;
 
-  /* Reader accessibility option — AGENTS.md § Design System / M11.
-     Token defined so the setting can exist; the font is NOT bundled.
-     src/theme/typography.ts resolves this choice to Literata, so this token
-     never reaches a real <Text>. Do not use it directly. */
-  --font-reader-accessible: AtkinsonHyperlegibleNext-Regular;
+  /* Reader accessibility option — AGENTS.md § Design System / M11. Body
+     text only, chosen by the reader's Atkinson Hyperlegible switch; the
+     faces are picked in components/reader/reader-theme.ts. */
+  --font-reader-accessible: AtkinsonHyperlegible-Regular;
+  --font-reader-accessible-italic: AtkinsonHyperlegible-Italic;
+  --font-reader-accessible-bold: AtkinsonHyperlegible-Bold;
+  --font-reader-accessible-bold-italic: AtkinsonHyperlegible-BoldItalic;
 
   /* Radius — AGENTS.md § Layout */
   --radius-card: 16px;
@@ -219,10 +221,6 @@
 @utility text-heading {
   font-family: var(--font-display);
   color: var(--color-champagne);
-}
-@utility text-reader-body {
-  @apply text-reader;
-  font-family: var(--font-body);
 }
 
 /* Expo's own web reset (injected as <style id="expo-reset">) sets

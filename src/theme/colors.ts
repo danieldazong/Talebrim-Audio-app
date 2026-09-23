@@ -29,6 +29,18 @@ export const colors = {
 export type ColorName = keyof typeof colors;
 
 /**
+ * M5 Reader pages, keyed by `ReaderTheme` (store/reader-store.ts), for props
+ * that take no className: the safe areas, icons and the StatusBar. The
+ * matching classNames live in `components/reader/reader-theme.ts`.
+ * `secondary` on light pages is ink at 65% (`A6`), the `text-ink/65` class.
+ */
+export const readerColors = {
+  light: { page: colors.readerLight, text: colors.ink, secondary: `${colors.ink}A6` },
+  sepia: { page: colors.readerSepia, text: colors.ink, secondary: `${colors.ink}A6` },
+  dark: { page: colors.bg, text: colors.body, secondary: colors.muted },
+} as const;
+
+/**
  * M6 Now Playing's gradient. AGENTS.md § Design System says gradients are
  * reserved for M6 — the onboarding collage fade below is a deliberate,
  * user-approved deviation from that rule (a stacked-opacity-band
