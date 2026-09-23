@@ -1,84 +1,202 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
-Design material: @prompt_material/07-story-detail.png — ensure everything is as is
-shown. This screen ships with its real queries in one prompt; only the per-user
-states are mocked, and prompt 14 plus prompt 17 replace them.
+Design material: @"/c:/Users/PC/Desktop/talebrim-app/material/6.png" — ensure everything is as is
+shown, except where a step below says otherwise. This screen ships with its
+real queries in one prompt. Per-user state (resume position, finished
+chapters, My List, ad unlocks) is not rendered at all yet. Prompt 13 creates
+those tables and later prompts wire them in.
 
-1. Replace the `book/[id]` placeholder from prompt 09. Pushed stack route outside
-   the tab group, receiving only the book id from the route param — no data passed
-   through params. Follow the prompt-09 mini-player map; if M4 is absent from it,
-   render no mini player and report the route as unspecified.
-2. Two queries, both through the prompt-04 key factory, both on views only:
-   the book row from `books_catalog`, and the chapter preview rows from
-   `chapters_catalog` filtered by book id. Never touch `books`, `chapters`, or
-   the admin-only `chapters_list` / `chapters_needing_attention`. Select explicit
-   columns and limit the preview rows — the full list is M9's job in prompt 21.
-3. Use `.maybeSingle()` for the book row, not `.single()`
-   (https://supabase.com/docs/reference/javascript/v1/maybesingle). `.single()`
-   throws on zero rows, so a book that is unpublished or RLS-invisible to this
-   reader would surface as an error screen when the correct rendering is a
-   "story not available" state. Handle null data as its own state.
-4. Header block: cover at 12dp via `Cover`, title in Fraunces 600, author,
-   genre chips, and the metadata row. Every metadata value comes from the view's
-   pre-computed columns — `chapter_count`, `audio_count`, `free_chapter_count`,
-   `total_duration_seconds` — never counted client-side from the preview rows,
-   which are limited and would give a wrong total.
-5. Duration through `formatDuration()` only. Null `total_duration_seconds`
-   renders the unknown label — never `00:00`, never a hidden row. Null
-   `cover_path` renders the local `cover-placeholder.png` from
-   `constants/images.ts`. No remote placeholder service, no generated artwork,
-   no hotlinked image.
-6. Maturity label comes from `lib/labels.ts` (prompt 04): the enum value
-   `mature_17` displays as "Mature 18+". Never render the raw enum value. If the
-   design shows a different string, report the difference and render the mapped
-   label.
-7. Primary action is the single ember element on this screen — the "Read" or
-   "Read or Listen" pill with an `ink #1A1420` label. Secondary actions (Listen if
-   separate, Add to My List, Share) are outline or text variants. "Add to My List"
-   has no backing table until prompt 14: render it, keep its state in local
-   component state, mark it `// UNBACKED — prompt 14 adds library_items`, and do
-   not write anywhere. If you implement Share, use React Native's built-in
-   `Share` (https://reactnative.dev/docs/share) rather than adding a dependency,
-   and only if the design shows it.
-8. Synopsis with a truncation and an expand affordance. Use `numberOfLines` plus
-   `onTextLayout` to decide whether the affordance is needed at all
-   (https://reactnative.dev/docs/text) — do not always show "more", and do not add
-   a read-more library.
-9. Chapter preview rows show number, title, a teal headphone badge when
-   `has_audio`, and a lock affordance when locked. Locked is the ONLY per-user
-   state derivable today: compute it with `resolveChapterState()` from prompt 04,
-   using the chapter's `access` value and the live `free_chapters_at_start` from
-   `app_settings`. Read that setting at runtime — do not hardcode 3 and do not
-   trust the migration default. The other three states (unlocked, downloaded,
-   reading) are unbacked; do not render them here.
-10. A "See all chapters" affordance pushes `chapters/[bookId]` (M9), which is
-    still a placeholder until prompt 21. Keep the push; it is correct now and the
-    screen fills in later.
-11. Tapping a free chapter pushes `reader/[chapterId]` (M5) and, where the design
-    shows a listen path, `player/[chapterId]` (M6) — both still placeholders until
-    prompts 15 and 18. Tapping a locked chapter must NOT navigate: it opens the
-    paywall in prompt 23, so for now it is a no-op with a
-    `// TODO(23)` marker. Do not let a locked chapter open the reader.
-12. States, all surface-matched on `plum-deep`: loading skeletons shaped like the
-    real header and rows; not-found from step 3 as its own screen state with a way
-    back; error inline with retry. No `Alert.alert`, no red toast, no spinner on a
-    blank screen.
-13. If the design shows a collapsing or parallax header, implement it with the
-    `Animated` value exception the AGENTS.md style table permits and keep it
-    subtle. If it does not, use a plain scroll view — do not invent motion.
-14. `accessibilityRole` and a label on everything interactive, 44dp minimum touch
-    targets, and an accessible label on each locked row that says it is locked
-    rather than conveying it by icon alone.
+1. Replace the `book/[id]` placeholder from prompt 08. It is a pushed stack
+   route outside the tab group and receives only the book id from the route
+   param. Pass no data through params. Because it sits outside `(tabs)`, it
+   has no mini player by construction (`lib/mini-player-visibility.ts`,
+   prompt 08). AGENTS.md's M4 spec doesn't say whether M4 shows one, so
+   report the route as unspecified, as prompt 11 did for M8. If the id is not
+   a UUID (a stale or hand-typed deep link), render the not-found state from
+   step 4 without querying. PostgREST returns an error for a malformed UUID,
+   not zero rows.
+2. Keep the route file thin. Put the header, chapter row and states in
+   `components/book/`, following `components/discover/` and
+   `components/search/`.
+3. All reads go through `lib/query-keys.ts` (prompt 03) and hit views only.
+   Never read `books`, `chapters`, `chapters_list` or
+   `chapters_needing_attention`. Select explicit columns and never use
+   `select('*')`.
+   a. Book row: change the existing `bookDetailOptions` in
+      `lib/queries/book.ts`. It currently does `select('*')` + `.single()`.
+      Add a `BookDetailRow` `Pick` to `types/catalog.ts`, declared like
+      `CarouselBookRow` and `SearchBookRow`, and select exactly those
+      columns.
+   b. Chapter preview: the first `PREVIEW_CHAPTER_LIMIT` (5) chapters from
+      `chapters_catalog`, ordered by `number` ascending. The frame's preview
+      starts at chapter 11, but that is the reader's own position, and
+      per-user state isn't rendered yet, so start from chapter 1. Do NOT
+      reuse `chapterListByBookOptions` / `queryKeys.chapters.listByBook`.
+      That key belongs to M9's unlimited list, and a limited result cached
+      under it would hand M9 five chapters. Nest the preview key under it
+      instead: `[...queryKeys.chapters.listByBook(bookId), "preview"]`.
+      `invalidateCatalog()` in `lib/catalog-sync.ts` matches by prefix, so
+      it will refresh the preview when the dashboard edits this book's
+      chapters. Confirm that a live edit reaches an open M4.
+   c. Listen target: only when `audio_count > 0`, fetch the first chapter
+      with `has_audio` (`order("number")`, `limit(1)`). It can lie past the
+      preview rows, so it can't be read from them.
+   d. `free_chapters_at_start` and `public_cdn_domain` come from the existing
+      `appSettingsOptions()`, which calls `reader_settings()`. Never select
+      `app_settings`. Its policy is admin-only, so a reader gets zero rows
+      (AGENTS.md § Storage and the CDN).
+4. Use `.maybeSingle()` for the book row, not `.single()`
+   (https://supabase.com/docs/reference/javascript/maybesingle). `.single()`
+   errors on zero rows. A book that is unpublished or invisible to this
+   reader under RLS would then show an error screen, when it should show
+   "story not available". Return `BookDetailRow | null` and handle null as
+   its own state. A book the dashboard unpublishes while it is open lands
+   here too, because catalog sync refetches it.
+5. Header, top to bottom as in the frame:
+   - round back and share buttons
+   - centred `Cover`, resolved through `resolveCoverUrl()`. A null
+     `cover_path`, or settings that haven't loaded yet, renders `Cover`'s
+     flat `surface` box. `cover-placeholder.png` does not exist yet (see
+     `constants/images.ts`).
+   - title in Fraunces 600
+   - "By {author}", with the line omitted when `author` is null
+   - metadata row
+   - genre pills
+   - Read and Listen
+   - synopsis
 
-Do not: fetch `script_text` on this screen — it is fetched per chapter only when
-the reader opens, and serials run 85–200 chapters; INSERT, UPDATE or DELETE
-anything, including a "My List" row or a view count; create a migration, table or
-RLS policy — prompt 14 owns all schema work; invent a rating, review count,
-reader count or trending rank, none of which have a backing column; render
-unlocked, downloaded or reading states; add a second ember element; add a
-gradient, glow, blur or shadow — the one permitted gradient belongs to M6; use
-raw hex outside `tailwind.config.js`; build M9, M5, M6 or the paywall.
+   The frame has no blurred backdrop, although AGENTS.md's M4 spec lists
+   one. The image wins for layout, so don't add it; report the conflict.
+6. Metadata row: keep the chapter count and the total duration from the
+   frame. Drop the "★ 4.9" rating and the teal "Ongoing" status, because
+   neither has a backing column. (`status` is `draft | published`, and every
+   row in the view is published.) Mark the omission `// NO BACKING METRIC`,
+   as M8's result row does.
+   - Chapter count comes from `chapter_count`, pluralised. Never count the
+     preview rows.
+   - Duration: show `total_duration_seconds` through
+     `formatDurationCompact()` (the same helper as M3's hero), and only when
+     `audio_count > 0`. A text-only book has nothing to measure, so "Duration
+     unknown" would misdescribe it (M8 precedent). When audio exists but the
+     total is null, show the unknown label, never `00:00`.
+   - The frame shows "18h 40m", but the helper rounds that to "19h". Report
+     the difference; don't add a third formatter.
+7. Maturity: the frame shows no maturity label. For `mature_17` only, render
+   `maturityLabel()` from `lib/labels.ts` ("Mature 18+") as a `Badge`
+   `outline` pill in the metadata row. Render nothing for `general`, and
+   never the raw enum value. AGENTS.md § Content Rules asks for an age gate
+   before content access, and none exists. Report that as open; don't build
+   it.
+8. Genre pills: blush-tinted and wrapping, showing `genres` exactly as
+   stored. The values are free text and may not match `data/genres.ts`. They
+   are labels, not controls, so don't use `Chip`, which is a Pressable
+   announced as a button. Render non-interactive pills the way `HeroCard`'s
+   genre row does.
+9. Read and Listen sit side by side, as in the frame.
+   - Read is the single ember element on this screen: `Button` `primary`,
+     book icon, `ink` label.
+   - Listen is a teal-outlined pill with a headphone icon. `Button` has no
+     such variant, so add one (a `btn--audio` utility in `global.css` plus a
+     `Button` variant) rather than styling it inline.
+   - Read pushes `reader/[chapterId]` for the first preview row. No reading
+     position exists yet, so there is no resume target:
+     `// TODO(parity): resume position`.
+   - Listen pushes `player/[chapterId]` for the chapter from step 3c. When
+     `audio_count` is 0, Listen renders disabled, with an accessible label
+     saying this story has no narration.
+   - Both apply step 12's lock rule to their target. A locked target does
+     not navigate: `// TODO(paywall)`.
+   - Both are disabled while their target is loading and when the book has
+     no chapters.
+10. Resume card ("You're on Chapter 12 · 34% complete" with its progress
+    bar): this is a per-user reading position, and nothing backs it until
+    `reading_positions` is wired. Don't render it, don't mock it and don't
+    reserve its space. Mark it
+    `// UNBACKED — resume card needs reading_positions`.
+11. Synopsis: use `synopsis`, falling back to `short_description`, and hide
+    the section when both are null. Truncate with `numberOfLines` and a teal
+    "More" that expands in place. Show "More" only when the text actually
+    overflows, decided with `onTextLayout`
+    (https://reactnative.dev/docs/text). Verify this on Android. If `lines`
+    is capped at `numberOfLines` there, measure an unconstrained hidden copy
+    instead. Don't add a read-more library.
+12. Chapters section:
+    - Heading: "Chapters ({chapter_count})". Omit the frame's right-hand
+      "Read / Audio Parity" label and report it. It explains a "min read ·
+      audio" pair that half can't be filled, because there is no word-count
+      column.
+    - Rows are cards, as in the frame, showing "{number}. {title}".
+      Only when `has_audio`, add `formatDuration(audio_duration_seconds)`
+      followed by " audio"; a null duration shows the unknown label.
+    - Omit the frame's "8 min read" (no word count) and the check mark with
+      its "Read" label (a finished state with no backing). The frame shows
+      audio as text, not a badge, so don't add a headphone badge.
+    - Lock is the only per-user state available today. Compute it with
+      `resolveChapterState()` from `types/states.ts`, using `access`,
+      `number` and the live `free_chapters_at_start` from step 3d. Never
+      hardcode 3.
+    - Fail closed: while settings are loading or have failed, and for any
+      row whose `access` is null, treat the row as locked, never free.
+      Locked rows show a lock icon on the right. Skip rows with a null `id`
+      or `number`. Don't render unlocked, downloaded or reading visuals.
+    - There are only a few preview rows, so `.map()` inside the page's
+      `ScrollView` is fine. Prompt 09's no-`.map()` rule was for unbounded
+      lists.
+13. After the rows, a "See all chapters" link pushes `chapters/[bookId]` (M9,
+    still a placeholder). Show it whenever `chapter_count > 0`.
+14. Tapping an unlocked row pushes `reader/[chapterId]`. The rows have no
+    listen path in the frame. Tapping a locked row must NOT navigate: make
+    it a no-op marked `// TODO(paywall)`, because the paywall prompt opens
+    M5a there. A locked chapter must never open the reader.
+15. States, all on the `bg` surface (`plum-deep` is not a token in this
+    project):
+    - loading: skeletons shaped like the real header and rows, with no
+      spinner
+    - not found (step 4): its own state, with a way back
+    - book error: inline with a retry, reusing M8's error look
+      (`cloud-offline-outline` plus connection copy)
+    - chapter or settings error: inline inside the chapters section with its
+      own retry, while the header stays on screen
+    - no chapters: "No chapters yet", with Read and Listen disabled
 
-Finish by running `npx tsc --noEmit`, then paste the live `free_chapters_at_start`
-value you read, confirm the metadata row uses view-computed counts rather than
-client-side counts, confirm a locked chapter does not navigate, and describe the
-not-found state from step 3.
+    Offline: the project has no NetInfo. As in M3 and M8, a warm persisted
+    cache renders offline and a cold one shows the error state. Don't add a
+    library for this here. No `Alert.alert` and no toast anywhere.
+16. Share: the frame shows it, so use React Native's built-in `Share`
+    (https://reactnative.dev/docs/share). Share the title and author only.
+    There is no public book URL (talebrim.com is the admin dashboard) and no
+    deep-link scheme, so don't invent a link. Mark it
+    `// TODO: add a link once public book URLs exist`.
+17. Use a plain `ScrollView`. The frame shows no collapsing or parallax
+    header, so don't add motion.
+18. Give everything interactive an `accessibilityRole` and a label, with 44dp
+    minimum touch targets (the round icon buttons included). A locked row's
+    label says it is locked, rather than relying on the icon alone. A
+    disabled Listen says why it is disabled.
+
+Do not:
+- fetch `script_text` on this screen. It is fetched per chapter, only when
+  the reader opens one, and serials run 85–200 chapters.
+- INSERT, UPDATE or DELETE anything, including a view count. The frame has no
+  My List control, so don't add one.
+- create a migration, table, view or RLS policy. Prompt 13 owns schema work.
+- invent a rating, review count, reader count, trending rank or completion
+  status.
+- render unlocked, downloaded, reading or finished states, or a resume card.
+- add a second ember element.
+- add a gradient, glow, blur or shadow. The one permitted gradient belongs to
+  M6.
+- use raw hex outside `global.css`'s `@theme` block (`theme/colors.ts` only
+  for props that take no className).
+- build M9, M5, M6, the paywall or an age gate.
+
+Finish by running `npm run typecheck` and `npm run lint`. Then:
+- paste the live `free_chapters_at_start` value you read through
+  `reader_settings()`
+- confirm the metadata row uses view-computed counts, not client-side ones
+- confirm that neither a locked chapter row nor a locked Read/Listen target
+  navigates
+- describe the not-found state from step 4
+- confirm a dashboard edit refreshes an open M4 (step 3b)
+- list every frame element you omitted or changed, with the reason: rating,
+  "Ongoing", resume card, the rows' read time and finished marks, "Read /
+  Audio Parity", the backdrop blur, and the duration format
