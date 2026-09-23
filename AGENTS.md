@@ -910,6 +910,14 @@ read the row. If `app_settings` is ever empty the dashboard falls back to
 `SETTINGS_DEFAULTS`; this app should surface an error rather than invent a
 domain.
 
+**Readers cannot select `app_settings` itself** — its policy is `is_admin()`,
+so a normal reader gets zero rows (verified 2026-09-23; testing as the admin
+hides this). Read the three values this app needs — `public_cdn_domain`,
+`free_chapters_at_start`, `default_chapter_access` — through the
+`reader_settings()` function (dashboard migration `20260923000001`), which
+`appSettingsOptions()` in `lib/queries/app-settings.ts` already calls. It works
+signed out too, and returns nothing else from the row.
+
 ---
 
 ## Data Contract — what actually exists in Supabase

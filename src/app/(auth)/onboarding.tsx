@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
@@ -6,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CoverCollage } from "@/components/onboarding/cover-collage";
 import { images } from "@/constants/images";
+import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { colors } from "@/theme";
 import { useSplashStore } from "@/store/splash-store";
 
@@ -18,11 +20,6 @@ const PARITY_CARD_DEMO = {
   audioLabel: "Audio · 18:42 left",
 } as const;
 
-// SHELL PLACEHOLDER — swap for the live `app_settings.free_chapters_at_start`
-// read once Supabase is wired up for this screen. Never ship this hardcoded
-// value past that point.
-const FREE_CHAPTERS_PLACEHOLDER = 3;
-
 function goToSignIn() {
   useSplashStore.getState().markSplashSeen();
   router.push("/(auth)/sign-in");
@@ -30,6 +27,8 @@ function goToSignIn() {
 
 export default function Onboarding() {
   const insets = useSafeAreaInsets();
+  // Live value — this screen runs signed out, which `reader_settings()` allows.
+  const freeChapters = useQuery(appSettingsOptions()).data?.free_chapters_at_start ?? null;
 
   return (
     <View className="flex-1 bg-bg">
@@ -144,14 +143,20 @@ export default function Onboarding() {
 
         <View className="min-h-4 flex-1" />
 
+        {/* Hidden, not removed, until the live count arrives: removing it
+            would let the spacers re-divide the slack and shift the headline,
+            and showing a guessed number is the thing AGENTS.md forbids. Stays
+            hidden if the request fails. */}
         <Text
-          className="font-ui-medium text-body text-center text-[17px]"
+          className={`font-ui-medium text-body text-center text-[17px] ${freeChapters === null ? "opacity-0" : ""}`}
           maxFontSizeMultiplier={1.3}
+          accessibilityElementsHidden={freeChapters === null}
+          importantForAccessibility={freeChapters === null ? "no-hide-descendants" : "auto"}
         >
           Start with
           <Text className="font-ui-semibold text-ember">
             {" "}
-            {FREE_CHAPTERS_PLACEHOLDER}{" "}
+            {freeChapters ?? ""}{" "}
           </Text>
           free chapters.
         </Text>

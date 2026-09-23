@@ -14,8 +14,8 @@
  * `covers/` prefix into their own `cover_path` strings, which is fixture
  * noise, not the real convention — don't pattern-match against them.)
  *
- * `publicCdnDomain` must come from the live `app_settings` row
- * (`appSettingsOptions()`), never hardcoded — the migration's default is a
+ * `publicCdnDomain` must come from the live `app_settings` row, read through
+ * `appSettingsOptions()` (`reader_settings()`), never hardcoded — the migration's default is a
  * stale pre-rename domain (AGENTS.md § Storage and the CDN).
  *
  * Returns `null` for a null `cover_path` — callers render the placeholder
