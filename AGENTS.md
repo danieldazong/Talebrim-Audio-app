@@ -264,7 +264,9 @@ Ember button labels are `#1A1420`. Never white.
 - Fraunces 600 — titles and headings, in champagne
 - Literata 18sp, line-height 1.7 — reader body text only
 - Inter 14–16sp — all UI chrome
-- Atkinson Hyperlegible Next — optional reader accessibility choice
+- Atkinson Hyperlegible — the reader's optional accessibility font, body
+  text only. The original family (Regular, Italic, Bold, Bold Italic) is
+  bundled, not the newer "Next" release.
 - No script or decorative fonts
 
 ### Layout
@@ -775,9 +777,15 @@ code. The prompts carry the detail; this is the record.
     element is the progress bar.
   - The toolbar's sun icon cycles the theme. There is no brightness library.
   - Previous/next sit at the end of the chapter, not in the toolbar.
-  - The position label reads "Chapter N of M · X%", where X is progress
-    through this chapter.
-  - The reading position is a character offset.
+  - The position label sits inside the toolbar, in the bookmark's slot,
+    and reads "N of M · X%", where X is progress through this chapter. A
+    floating label over the text was tried and read as clutter.
+  - A tap on the page toggles the toolbar; scrolling down hides it.
+  - The reading position is a character offset, recorded once the scroll
+    settles. Android sends no momentum-end event to a UI-thread scroll
+    handler, so scroll-end events alone record the wrong spot.
+  - Settings sheet: text size, theme, line spacing and a working Atkinson
+    Hyperlegible switch.
 - **Chapter text** is read once per chapter from `chapters` (the sanctioned
   exception in Data Contract). It is cached for 24 hours. Dashboard edits
   apply on the next open, never mid-read.
@@ -842,9 +850,10 @@ exists in Phase 2.
 04–07), the navigation shell (08), M3 Discover on `books_catalog` (09–10), M8
 Search on `books_catalog` (11), live catalog updates from the dashboard (see
 Data Contract), the Phase 2 reader tables with their read-only fetchers
-(13), and M4 Story Detail (12). **Next: M5 (prompts 14–15).** Open before M5
-ships: the age gate (§ Content Rules) — every live book is `mature_17`, and
-nothing gates it yet. It needs its own prompt, and a decision on whether M1's
+(13), M4 Story Detail (12), and the M5 Reader on mock text (14). **Next:
+prompt 15 wires M5 to real chapter text.** Open before M5 ships: the age
+gate (§ Content Rules) — every live book is `mature_17`, and nothing gates
+it yet. It needs its own prompt, and a decision on whether M1's
 18+ legal line is enough.
 
 ### Phase 2 — the three reader tables (done 2026-09-23)
@@ -1286,7 +1295,7 @@ Refactor only when needed.
 
 Only create reusable components when necessary. Ask if unsure.
 
-Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `Screen` and the `Body`/`Heading` type helpers. `ProgressBar`, `SegmentedControl` and similar do not exist yet — add them there when a screen first needs them.
+Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `Screen`, `SegmentedControl` and the `Body`/`Heading` type helpers. `ProgressBar` and similar do not exist yet — add them there when a screen first needs them.
 
 Components take data via props and do not fetch. Fetching lives in `hooks/`.
 
