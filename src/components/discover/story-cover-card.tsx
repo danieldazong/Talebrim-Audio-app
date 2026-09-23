@@ -1,13 +1,14 @@
 import { Pressable, Text, View } from "react-native";
 
-import { resolveSeedCoverAsset } from "@/constants/images";
 import { Badge, Cover } from "@/components/ui";
-import type { BookCatalogRow } from "@/types/catalog";
+import type { CarouselBookRow } from "@/types/catalog";
 
 export const STORY_COVER_CARD_WIDTH = 128;
 
 type StoryCoverCardProps = {
-  book: BookCatalogRow;
+  book: CarouselBookRow;
+  /** Resolved via `resolveCoverUrl()` against the live `public_cdn_domain` — never built inline here. */
+  coverUrl: string | null;
   onPress: (id: string) => void;
 };
 
@@ -16,7 +17,7 @@ type StoryCoverCardProps = {
  * 12dp cover radius, Inter title, teal headphone `Badge` when the book has
  * audio (`audio_count > 0`).
  */
-export function StoryCoverCard({ book, onPress }: StoryCoverCardProps) {
+export function StoryCoverCard({ book, coverUrl, onPress }: StoryCoverCardProps) {
   const hasAudio = (book.audio_count ?? 0) > 0;
 
   return (
@@ -29,7 +30,7 @@ export function StoryCoverCard({ book, onPress }: StoryCoverCardProps) {
     >
       <View>
         <Cover
-          source={resolveSeedCoverAsset(book.cover_path)}
+          source={coverUrl === null ? null : { uri: coverUrl }}
           recyclingKey={book.id ?? undefined}
           width={STORY_COVER_CARD_WIDTH}
         />

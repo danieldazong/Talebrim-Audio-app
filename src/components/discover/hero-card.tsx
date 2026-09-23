@@ -3,14 +3,15 @@ import { ImageBackground } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text, View } from "react-native";
 
-import { resolveSeedCoverAsset } from "@/constants/images";
 import { Button } from "@/components/ui";
 import { formatDurationCompact } from "@/lib/format";
 import { colors, heroCardFadeGradient, radius } from "@/theme";
-import type { BookCatalogRow } from "@/types/catalog";
+import type { CarouselBookRow } from "@/types/catalog";
 
 type HeroCardProps = {
-  book: BookCatalogRow;
+  book: CarouselBookRow;
+  /** Resolved via `resolveCoverUrl()` against the live `public_cdn_domain` — never built inline here. */
+  coverUrl: string | null;
   onPress: (id: string) => void;
 };
 
@@ -23,19 +24,18 @@ type HeroCardProps = {
  * The rank number is omitted; "Serial" alone is kept as it's a real content
  * classification (every seed book here IS a serial), not an invented metric.
  */
-export function HeroCard({ book, onPress }: HeroCardProps) {
-  const coverAsset = resolveSeedCoverAsset(book.cover_path);
+export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
   const genres = book.genres ?? [];
 
   return (
     <View className="mx-4 overflow-hidden rounded-card bg-surface" style={{ borderRadius: radius.card }}>
-      {coverAsset === null ? (
+      {coverUrl === null ? (
         // MISSING ASSET: cover-placeholder — flat surface box, no icon, no
         // generated art (AGENTS.md § Image Generation Rules).
         <View className="h-80 bg-surface" />
       ) : (
         <ImageBackground
-          source={coverAsset}
+          source={coverUrl}
           style={{ height: 320, justifyContent: "flex-start" }}
           contentFit="cover"
         >

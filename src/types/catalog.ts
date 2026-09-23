@@ -28,6 +28,27 @@ import type { Tables } from "@/types/database";
 export type BookCatalogRow = Tables<"books_catalog">;
 
 /**
+ * The column subset M3's hero card and carousels actually render. Every
+ * `lib/queries/catalog.ts` fetcher selects exactly these columns (never
+ * `select('*')` — prompt 11 step 2), so this is the honest return type
+ * rather than the full `BookCatalogRow` shape those queries don't fetch.
+ */
+export type CarouselBookRow = Pick<
+  BookCatalogRow,
+  | "id"
+  | "title"
+  | "author"
+  | "genres"
+  | "cover_path"
+  | "chapter_count"
+  | "audio_count"
+  | "free_chapter_count"
+  | "total_duration_seconds"
+  | "created_at"
+  | "updated_at"
+>;
+
+/**
  * Chapter metadata only — no `script_text` (the view omits it; fetch prose
  * per chapter from `chapters.script_text` via its own query, never here).
  *

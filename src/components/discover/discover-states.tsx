@@ -52,7 +52,7 @@ type DiscoverEmptyScreenProps = {
   onRetry: () => void;
 };
 
-/** Whole-screen empty state — the seed catalog returned zero books. */
+/** Whole-screen empty state — the active tab's `books_catalog` query returned zero books. */
 export function DiscoverEmptyScreen({ onRetry }: DiscoverEmptyScreenProps) {
   return (
     <View className="flex-1 items-center justify-center gap-4 px-8">

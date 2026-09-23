@@ -1,3 +1,4 @@
+import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useBottomTabBarHeight } from "expo-router/tabs";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
@@ -13,40 +14,54 @@ import {
 } from "@/components/discover/discover-states";
 import { GenreTabStrip, type DiscoverTab } from "@/components/discover/genre-tab-strip";
 import { HeroCard } from "@/components/discover/hero-card";
-import { seedBooks } from "@/data/seed-catalog";
-import type { BookCatalogRow } from "@/types/catalog";
+import type { Genre } from "@/data/genres";
+import { resolveCoverUrl } from "@/lib/covers";
+import { appSettingsOptions } from "@/lib/queries/app-settings";
+import { catalogByTabOptions, newAudioReleasesOptions, pickedForYouOptions } from "@/lib/queries/catalog";
+import { useOnboardingStore } from "@/store/onboarding-store";
+import type { CarouselBookRow } from "@/types/catalog";
 
-// M3 Discover — AGENTS.md prompt 09. Built against `data/seed-catalog.ts`
-// ONLY ("Do not: call Supabase, TanStack Query or any network in this
-// prompt"); prompt 11 swaps in the real `books_catalog` query behind the
-// same layout, at which point the branches below map directly onto a
-// TanStack Query result (`isPending` / `isError` / empty data / data).
+// M3 Discover — AGENTS.md prompt 11. Reads `books_catalog` through the
+// fetchers in `lib/queries/catalog.ts`; `data/seed-catalog.ts` (prompt 09) is
+// no longer imported here, per that file's own header ("import this ONLY
+// from a screen's explicit mock path... once wired to real data, remove the
+// import").
 
-/** Filters the seed catalog by the active tab. "Discover"/"New" show everything — neither is a real genre filter. */
-function booksForTab(tab: DiscoverTab): BookCatalogRow[] {
-  if (tab === "Discover" || tab === "New") return seedBooks;
-  return seedBooks.filter((book) => book.genres?.includes(tab));
-}
+/** Tab strip entries that map onto a real `books.genres` value. "Discover" and "New" are not genres. */
+const TAB_GENRE: Partial<Record<DiscoverTab, Genre>> = {
+  Werewolf: "Werewolf",
+  Romance: "Romance",
+  Vampire: "Vampire",
+  Fantasy: "Fantasy",
+};
 
 export default function Discover() {
   const tabBarHeight = useBottomTabBarHeight();
   const [tab, setTab] = useState<DiscoverTab>("Discover");
-  // Seed data is read synchronously — there is no real request in this
-  // prompt — so `isLoading`/`hasError` never flip themselves. Both branches
-  // still render real, correct UI (prompt 09 step 11); prompt 11 wires them
-  // to a TanStack Query result's actual `isPending`/`isError`.
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const selectedGenres = useOnboardingStore((state) => state.selectedGenres);
 
-  const books = useMemo(() => booksForTab(tab), [tab]);
+  const genreForTab = TAB_GENRE[tab] ?? null;
+
+  const appSettings = useQuery(appSettingsOptions());
+  const tabQuery = useQuery({
+    ...catalogByTabOptions(tab, genreForTab),
+    placeholderData: keepPreviousData,
+  });
+  const pickedForYou = useQuery(pickedForYouOptions(selectedGenres));
+  const newAudioReleases = useQuery(newAudioReleasesOptions());
+
+  const isPending = tabQuery.isPending;
+  const isError = tabQuery.isError;
+  const books = tabQuery.data ?? [];
 
   function openBook(id: string) {
     router.push({ pathname: "/book/[id]", params: { id } });
   }
 
   function retry() {
-    setHasError(false);
-    setIsLoading(false);
+    tabQuery.refetch();
+    pickedForYou.refetch();
+    newAudioReleases.refetch();
   }
 
   return (
@@ -57,34 +72,48 @@ export default function Discover() {
       <DiscoverHeader onPressSearch={() => router.push("/search")} />
       <GenreTabStrip value={tab} onChange={setTab} />
 
-      {isLoading ? (
+      {isPending ? (
         <DiscoverSkeleton />
-      ) : hasError ? (
+      ) : isError ? (
         <DiscoverError onRetry={retry} />
       ) : books.length === 0 ? (
         <DiscoverEmptyScreen onRetry={retry} />
       ) : (
-        <DiscoverContent books={books} onOpenBook={openBook} bottomPadding={tabBarHeight} />
+        <DiscoverContent
+          books={books}
+          pickedForYou={pickedForYou}
+          newAudioReleases={newAudioReleases}
+          publicCdnDomain={appSettings.data?.public_cdn_domain ?? null}
+          onOpenBook={openBook}
+          bottomPadding={tabBarHeight}
+        />
       )}
     </Screen>
   );
 }
 
 type DiscoverContentProps = {
-  books: BookCatalogRow[];
+  books: CarouselBookRow[];
+  /** Passed as the live query result, not just `.data` — each carousel needs its own pending/error state, not the parent tab query's (a sibling section still loading must render its own skeleton, not an empty state). */
+  pickedForYou: UseQueryResult<CarouselBookRow[]>;
+  newAudioReleases: UseQueryResult<CarouselBookRow[]>;
+  publicCdnDomain: string | null;
   onOpenBook: (id: string) => void;
   bottomPadding: number;
 };
 
-function DiscoverContent({ books, onOpenBook, bottomPadding }: DiscoverContentProps) {
+function DiscoverContent({
+  books,
+  pickedForYou,
+  newAudioReleases,
+  publicCdnDomain,
+  onOpenBook,
+  bottomPadding,
+}: DiscoverContentProps) {
   const hero = books[0];
-  const pickedForYou = books;
-  // NO BACKING METRIC — trending order is seed-array order reversed, not a
-  // real signal (AGENTS.md Data Contract: no reads table exists).
-  const trendingNow = useMemo(() => [...books].reverse(), [books]);
-  const newAudioReleases = useMemo(
-    () => books.filter((book) => (book.audio_count ?? 0) > 0),
-    [books],
+  const heroCoverUrl = useMemo(
+    () => (hero && publicCdnDomain ? resolveCoverUrl(publicCdnDomain, hero.cover_path) : null),
+    [hero, publicCdnDomain],
   );
 
   return (
@@ -94,26 +123,38 @@ function DiscoverContent({ books, onOpenBook, bottomPadding }: DiscoverContentPr
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
     >
-      {hero ? <HeroCard book={hero} onPress={onOpenBook} /> : null}
+      {hero ? <HeroCard book={hero} coverUrl={heroCoverUrl} onPress={onOpenBook} /> : null}
 
       <CarouselSection
         title="Picked for You"
-        books={pickedForYou}
+        books={pickedForYou.data ?? []}
+        isLoading={pickedForYou.isPending}
+        isError={pickedForYou.isError}
+        onRetry={() => pickedForYou.refetch()}
+        publicCdnDomain={publicCdnDomain}
         onPressBook={onOpenBook}
         onPressSeeAll={() => router.push("/search")}
         emptyLabel="We're still learning your taste — check back soon."
       />
 
+      {/* NO BACKING METRIC — there is no view-counts or reads table to rank
+          "trending" by (AGENTS.md Data Contract). Rendered as its written
+          empty state rather than a fake ordering; see lib/queries/catalog.ts. */}
       <CarouselSection
         title="Trending Now"
-        books={trendingNow}
+        books={[]}
+        publicCdnDomain={publicCdnDomain}
         onPressBook={onOpenBook}
         emptyLabel="Nothing trending yet."
       />
 
       <CarouselSection
         title="New Audio Releases"
-        books={newAudioReleases}
+        books={newAudioReleases.data ?? []}
+        isLoading={newAudioReleases.isPending}
+        isError={newAudioReleases.isError}
+        onRetry={() => newAudioReleases.refetch()}
+        publicCdnDomain={publicCdnDomain}
         onPressBook={onOpenBook}
         emptyLabel="No audio releases yet."
       />

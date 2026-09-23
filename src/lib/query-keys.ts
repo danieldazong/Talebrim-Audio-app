@@ -13,13 +13,29 @@ import type { Genre } from "@/data/genres";
 export const queryKeys = {
   catalog: {
     all: () => ["catalog"] as const,
-    /** Published books for a genre tab/filter. `genre: null` means the unfiltered "Discover" list. */
-    byGenre: (genre: Genre | null) =>
-      [...queryKeys.catalog.all(), "byGenre", genre] as const,
+    /**
+     * Published books for one M3 tab-strip entry. `tab` is the strip label
+     * itself (`DiscoverTab`, e.g. "Discover" | "New" | "Werewolf" …) rather
+     * than just the genre, because "Discover" and "New" both query with
+     * `genre: null` but are semantically different lists and must cache
+     * under separate keys (prompt 11 step 9).
+     */
+    byTab: (tab: string, genre: Genre | null) =>
+      [...queryKeys.catalog.all(), "byTab", tab, genre] as const,
+    /**
+     * "Picked for You" — genre-containment filter keyed on the exact
+     * selection so results cache per combination, plus the no-genre
+     * fallback (`genres: []`, prompt 11 step 4).
+     */
+    pickedForYou: (genres: Genre[]) =>
+      [...queryKeys.catalog.all(), "pickedForYou", [...genres].sort()] as const,
     // NO BACKING METRIC — there is no view-counts or reads table behind a
     // "trending" ranking (AGENTS.md Data Contract). Key reserved so callers
     // that need it later invalidate correctly; no fetcher exists for it.
     trending: () => [...queryKeys.catalog.all(), "trending"] as const,
+    /** "New Audio Releases" — `audio_count > 0`, ordered newest-first. */
+    newAudioReleases: () =>
+      [...queryKeys.catalog.all(), "newAudioReleases"] as const,
   },
 
   book: {
