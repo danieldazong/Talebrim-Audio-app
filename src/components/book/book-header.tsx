@@ -208,10 +208,11 @@ export function BookHeader({ book, coverUrl, read, listen, onRead, onListen }: B
         />
       </View>
 
-      {/* UNBACKED — resume card needs the parity writer. The frame's "You're
-          on Chapter 12 · 34% complete" card is a per-user reading position;
-          `reading_positions` stays empty until the parity prompt adds its
-          writer, so it is not rendered, mocked or given reserved space. */}
+      {/* NOT BUILT — the frame's "You're on Chapter 12 · 34% complete" card.
+          Its chapter now has data behind it (`resumeTargetOptions()`, which
+          Read already resumes to), but its percentage does not: nothing
+          stores progress through a book. Not rendered, mocked or given
+          reserved space until a prompt decides what that percentage means. */}
     </View>
   );
 }

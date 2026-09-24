@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { clearParityQueue } from "@/lib/parity/writer";
 import { QUERY_CACHE_PREFIX, queryClient } from "@/lib/query-client";
 import {
   ONBOARDING_STORAGE_KEY,
@@ -28,6 +29,8 @@ import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
  *    in the first place (prompt 07 steps 3 and 8), but still reset here so a
  *    stale chapter/position from the old account can't linger in memory
  *    across a sign-out/sign-in within the same app session
+ *  - the parity writer's queue — `useSignOut` flushed it first; anything
+ *    still queued belongs to the old account and must never be sent
  *
  * Kept (device-scoped, not user data):
  *  - the persisted `reader` Zustand slice — font size, theme, line spacing,
@@ -40,6 +43,7 @@ export async function clearUserScopedState(): Promise<void> {
   // never leave the previous account's rows or onboarding state live in
   // memory, even if the disk write can't be cleared.
   queryClient.clear();
+  clearParityQueue();
   useParityStore.getState().clear();
   usePlaybackStore.getState().reset();
   useSearchStore.getState().clear();

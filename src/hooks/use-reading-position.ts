@@ -1,8 +1,8 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { LayoutChangeEvent, ScrollView } from "react-native";
 
 import { blockIndexAtOffset, type ReaderBlock } from "@/lib/chapter-text";
-import { useParityStore } from "@/store/parity-store";
+import { flush, recordPosition } from "@/lib/parity/writer";
 import type { ReaderFont } from "@/theme";
 
 type BlockLayout = { y: number; height: number };
@@ -12,7 +12,10 @@ const SETTLE_MS = 150;
 
 type UseReadingPositionInput = {
   chapterId: string;
+  bookId: string;
   blocks: readonly ReaderBlock[];
+  /** Where to open: a character offset from `useChapterReader`'s reconciled position, or null for the top. */
+  restoreOffset: number | null;
   scrollRef: RefObject<Pick<ScrollView, "scrollTo"> | null>;
   fontSize: number;
   lineSpacing: number;
@@ -26,32 +29,35 @@ type UseReadingPositionInput = {
  * of the paragraph at the top of the viewport), never pixels: a pixel offset
  * breaks on a font change and cannot map to audio.
  *
- * - Written to the session-only `parity` store once the scroll settles,
- *   whatever moved it: a drag, a fling, a mouse wheel or a screen reader.
- *   Scroll-end events cannot do this: Android sends no momentum-end event
- *   here, and a wheel or a screen reader sends no drag events at all.
- * - Restored on remount by holding the stored paragraph at the top.
+ * - Recorded through the parity writer (`lib/parity/writer.ts`) once the
+ *   scroll settles, whatever moved it: a drag, a fling, a mouse wheel or a
+ *   screen reader. Scroll-end events cannot do this: Android sends no
+ *   momentum-end event here, and a wheel or a screen reader sends no drag
+ *   events at all. The settle is the reader's "pause".
+ * - Restored on mount by holding `restoreOffset`'s paragraph at the top.
  * - Held across a font, font size or line spacing change the same way.
+ * - Flushed on unmount (a chapter change or leaving the reader): the writer
+ *   sends it now instead of after its debounce.
  *
  * A held paragraph is re-applied on every layout pass until the reader
  * starts dragging, so it survives however many passes the layout takes to
- * settle. Nothing here writes `reading_positions`: the parity prompt owns
- * that writer.
+ * settle.
  */
 export function useReadingPosition({
   chapterId,
+  bookId,
   blocks,
+  restoreOffset,
   scrollRef,
   fontSize,
   lineSpacing,
   font,
   restoreInset,
 }: UseReadingPositionInput) {
-  // Read once, on mount: where this chapter was left earlier in the session.
-  const [restoredIndex] = useState(() => {
-    const stored = useParityStore.getState().getPosition(chapterId);
-    return stored ? blockIndexAtOffset(blocks, stored.textOffset) : null;
-  });
+  // Read once, on mount: where this chapter was left, on this device or another.
+  const [restoredIndex] = useState(() =>
+    restoreOffset === null ? null : blockIndexAtOffset(blocks, restoreOffset),
+  );
   const [percent, setPercent] = useState(0);
 
   const layouts = useRef<BlockLayout[]>([]);
@@ -63,6 +69,11 @@ export function useReadingPosition({
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestY = useRef(0);
   const typeSettings = useRef({ fontSize, lineSpacing, font });
+
+  // Unmount is a chapter change or leaving the reader: send the position now.
+  // A settle still pending records after this and goes on the writer's
+  // debounce, which no unmount can cancel.
+  useEffect(() => () => void flush(), []);
 
   // Runs after the commit that applies the new type and before the new
   // layout reports back, so the paragraph is held in time for it.
@@ -128,24 +139,12 @@ export function useReadingPosition({
     pendingAnchor.current = null;
   };
 
-  const recordPosition = (y: number) => {
+  const recordAt = (y: number) => {
     if (blocks.length === 0) return;
     const index = blockAtY(y);
     topIndex.current = index;
     updatePercent(y);
-
-    const { getPosition, setPosition } = useParityStore.getState();
-    const existing = getPosition(chapterId);
-    const textOffset = blocks[index].start;
-    if (existing?.textOffset === textOffset && existing.lastWrittenBy === "text") return;
-    setPosition({
-      chapterId,
-      textOffset,
-      // Kept as the store holds it for this chapter; the handoff maps it.
-      audioMs: existing?.audioMs ?? 0,
-      lastWrittenBy: "text",
-      updatedAt: Date.now(),
-    });
+    recordPosition({ chapterId, bookId, mode: "text", value: blocks[index].start });
   };
 
   // A pending timer that fires after unmount still records where the reader
@@ -155,7 +154,7 @@ export function useReadingPosition({
     if (settleTimer.current !== null) clearTimeout(settleTimer.current);
     settleTimer.current = setTimeout(() => {
       settleTimer.current = null;
-      recordPosition(latestY.current);
+      recordAt(latestY.current);
     }, SETTLE_MS);
   };
 

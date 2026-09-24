@@ -3,6 +3,9 @@ import { useQuery, useQueryClient, type FetchStatus } from "@tanstack/react-quer
 import { useEffect, useMemo, useState } from "react";
 
 import { parseChapterText, unsupportedMarks, type ReaderBlock } from "@/lib/chapter-text";
+import { textRestoreOffset } from "@/lib/parity/convert";
+import { fromServerRow, reconcile } from "@/lib/parity/reconcile";
+import { adoptServerPosition } from "@/lib/parity/writer";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
 import {
@@ -11,7 +14,9 @@ import {
   chapterTextOptions,
   lastChapterNumberOptions,
 } from "@/lib/queries/chapters";
+import { readingPositionByChapterOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
+import { useParityStore } from "@/store/parity-store";
 import type { ChapterDetailRow, ChapterTargetRow } from "@/types/catalog";
 import {
   chapterStateFor,
@@ -23,6 +28,8 @@ import {
 /** The ready state's chapter. */
 export type ReadyChapter = {
   id: string;
+  /** Every reading position is written with its book (`reading_positions.book_id`). */
+  bookId: string;
   number: number;
   title: string | null;
   /** Parsed once per text value. */
@@ -32,6 +39,8 @@ export type ReadyChapter = {
   /** Null at either end of the book, and while the neighbours load or after they fail. */
   previousId: string | null;
   nextId: string | null;
+  /** Where the chapter opens: a character offset, or null for the top. */
+  restoreOffset: number | null;
 };
 
 export type ChapterReaderView =
@@ -43,6 +52,8 @@ type OpenChapter = LockableChapter & {
   bookId: string;
   title: string | null;
   hasText: boolean | null;
+  /** The narration's measured length, which parity maps positions against. */
+  durationSeconds: number | null;
 };
 
 /** What the hook reads from a query it is waiting on. */
@@ -70,6 +81,7 @@ function toOpenChapter(row: ChapterDetailRow | null): OpenChapter | null {
     title: row.title,
     access: row.access,
     hasText: row.has_text,
+    durationSeconds: row.audio_duration_seconds,
   };
 }
 
@@ -180,6 +192,37 @@ export function useChapterReader(chapterId: string) {
     console.warn(`[chapter-text] chapter ${chapterId} contains ${marks.join("; ")}`);
   }, [chapterId, shownText]);
 
+  // The reader's place (AGENTS.md § Read/listen parity). A position already in
+  // this session opens at once. Without one (a new app session, or a place
+  // left on another device) the server row is one more input to the ready
+  // state, fetched fresh on this open rather than trusted from a cache another
+  // device may have overtaken. It never fails or blocks the chapter: after an
+  // error, or offline, it opens from the cached row if there is one, else the
+  // top.
+  const [sessionAtOpen] = useState(() => useParityStore.getState().getPosition(chapterId));
+  const serverPosition = useQuery({
+    ...readingPositionByChapterOptions(userId ?? "", chapterId),
+    enabled: Boolean(userId),
+    refetchOnMount: sessionAtOpen === undefined ? "always" : true,
+    // One try: a missing position must not hold the chapter through retries.
+    retry: false,
+  });
+  const positionAnswered =
+    !userId ||
+    (!serverPosition.isFetching &&
+      (serverPosition.status !== "pending" || serverPosition.fetchStatus === "paused"));
+  // Latched, so a later refetch (the app returning to the foreground) never
+  // sends an open chapter back to the skeleton.
+  const [positionSettled, setPositionSettled] = useState(sessionAtOpen !== undefined);
+  if (!positionSettled && positionAnswered) setPositionSettled(true);
+
+  // Last write wins by the server's clock: a newer row from another device
+  // replaces the session copy. The open text stays where it is (the same rule
+  // as a text edit) and the new place applies on the next open.
+  useEffect(() => {
+    if (serverPosition.data !== undefined) adoptServerPosition(chapterId, serverPosition.data);
+  }, [chapterId, serverPosition.data]);
+
   const next = toNeighbour(neighbours.data?.next);
   const nextLockState =
     next && freeChaptersAtStart !== undefined
@@ -199,12 +242,20 @@ export function useChapterReader(chapterId: string) {
     if (shownText === null) return open.hasText === false ? settled("no-text") : waitFor([text]);
     // Null, empty or whitespace-only text parses to no blocks.
     if (blocks.length === 0) return settled("no-text");
+    // The text is ready; the place to open it at is not yet. Never an error.
+    if (!positionSettled) return { view: { status: "loading" }, waitingOn: [] };
+
+    const restoreFrom =
+      reconcile(sessionAtOpen, serverPosition.data) === "adopt" && serverPosition.data
+        ? fromServerRow(serverPosition.data)
+        : sessionAtOpen;
 
     return {
       view: {
         status: "ready",
         chapter: {
           id: open.id,
+          bookId: open.bookId,
           number: open.number,
           title: open.title,
           blocks,
@@ -214,6 +265,13 @@ export function useChapterReader(chapterId: string) {
           lastChapterNumber: Math.max(lastNumber.data ?? book.data.chapter_count ?? 0, open.number),
           previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
           nextId: next?.id ?? null,
+          restoreOffset: restoreFrom
+            ? textRestoreOffset(restoreFrom, {
+                textLength: shownText.value?.length ?? 0,
+                blocks,
+                durationSeconds: open.durationSeconds,
+              })
+            : null,
         },
       },
       waitingOn: [],

@@ -77,12 +77,13 @@ export const firstAudioChapterOptions = (bookId: string) =>
     },
   });
 
-
 /**
- * One chapter's metadata for M5 — its number, title, lock inputs and whether
- * it has text. `null` means not available to this reader: missing,
- * unpublished, or hidden by RLS (`.maybeSingle()`, as `bookDetailOptions()`
- * explains). Callers must not pass a malformed id (`isUuid()`).
+ * One chapter's metadata for M5 — its number, title, lock inputs, whether it
+ * has text, and the narration's duration that parity maps positions against
+ * (`lib/parity/convert.ts`). `null` means not available to this reader:
+ * missing, unpublished, or hidden by RLS (`.maybeSingle()`, as
+ * `bookDetailOptions()` explains). Callers must not pass a malformed id
+ * (`isUuid()`).
  *
  * Invalidated per chapter by catalog sync, so a title edited in the
  * dashboard reaches an open reader.
@@ -93,7 +94,7 @@ export const chapterDetailOptions = (chapterId: string) =>
     queryFn: async (): Promise<ChapterDetailRow | null> => {
       const { data, error } = await supabase
         .from("chapters_catalog")
-        .select("id, book_id, number, title, access, has_text, has_audio")
+        .select("id, book_id, number, title, access, has_text, has_audio, audio_duration_seconds")
         .eq("id", chapterId)
         .maybeSingle();
 

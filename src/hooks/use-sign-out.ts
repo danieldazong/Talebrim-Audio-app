@@ -1,7 +1,11 @@
 import { useClerk } from "@clerk/expo";
 import { useCallback } from "react";
 
+import { flushWithin } from "@/lib/parity/writer";
 import { clearUserScopedState } from "@/lib/session";
+
+/** How long sign-out waits for a queued reading position to reach the server. */
+const SIGN_OUT_FLUSH_MS = 2_000;
 
 /**
  * The app's only sign-out path.
@@ -14,6 +18,10 @@ export function useSignOut() {
   const { signOut } = useClerk();
 
   return useCallback(async () => {
+    // Send the reader's place while this account's token still works. Bounded,
+    // so sign-out never hangs on the network; whatever is left is dropped by
+    // `clearUserScopedState()`, never sent under the next account.
+    await flushWithin(SIGN_OUT_FLUSH_MS);
     try {
       await signOut();
     } finally {

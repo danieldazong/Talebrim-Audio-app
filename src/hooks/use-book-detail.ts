@@ -3,9 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
-import { chapterPreviewOptions, firstAudioChapterOptions } from "@/lib/queries/chapters";
+import {
+  chapterDetailOptions,
+  chapterPreviewOptions,
+  firstAudioChapterOptions,
+} from "@/lib/queries/chapters";
+import { resumeTargetOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
-import { chapterStateFor, type ChapterLockInputs, type ChapterState } from "@/types/states";
+import {
+  chapterStateFor,
+  type ChapterLockInputs,
+  type ChapterState,
+  type LockableChapter,
+} from "@/types/states";
 
 /** A preview row that passed the null checks, with its lock state resolved. */
 export type PreviewChapter = {
@@ -40,11 +50,12 @@ function hasFailed(query: { isError: boolean; isFetching: boolean }): boolean {
 /**
  * Everything M4 reads, and the per-user lock state derived from it.
  *
- * The book, the preview rows, the settings and the unlocks run in parallel.
- * The Listen target waits for the book, because it runs only when
- * `audio_count > 0`. Rows and targets resolve only once settings AND unlocks
- * have loaded, so a chapter never renders locked and then opens, and a failed
- * read never falls through to free.
+ * The book, the preview rows, the settings, the unlocks and the reader's
+ * latest position in the book run in parallel. The Listen target waits for
+ * the book, because it runs only when `audio_count > 0`. Rows and targets
+ * resolve only once settings AND unlocks have loaded, so a chapter never
+ * renders locked and then opens, and a failed read never falls through to
+ * free.
  */
 export function useBookDetail(bookId: string) {
   const { userId } = useAuth();
@@ -58,6 +69,15 @@ export function useBookDetail(bookId: string) {
   // Signed-in route, so `userId` is set. RLS returns only this reader's rows,
   // and nothing writes them until the paywall's server function exists.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
+  // Where the reader left off in this book, and that chapter's number and
+  // access for the lock check. Usually cached: the parity writer puts every
+  // row it writes into the resume key.
+  const resume = useQuery({ ...resumeTargetOptions(userId ?? "", bookId), enabled: Boolean(userId) });
+  const resumeChapterId = resume.data?.chapter_id ?? null;
+  const resumeChapter = useQuery({
+    ...chapterDetailOptions(resumeChapterId ?? ""),
+    enabled: resumeChapterId !== null,
+  });
 
   const lockInputs: ChapterLockInputs | null =
     settings.data && unlocks.data
@@ -93,15 +113,37 @@ export function useBookDetail(bookId: string) {
     chapters = { status: "loading" };
   }
 
-  // TODO(parity): resume position. Nothing writes reading positions yet, so
-  // Read always starts at the first preview row.
+  // Read resumes the chapter of the reader's latest position in this book.
+  // A failed lookup, no position, or a chapter no longer available opens the
+  // first chapter instead: parity never blocks reading.
+  let resumeAt: LockableChapter | null | "pending";
+  if (!userId || resume.isError || resume.data === null) {
+    resumeAt = null;
+  } else if (resume.data === undefined) {
+    resumeAt = "pending";
+  } else if (resumeChapter.isError || resumeChapter.data === null) {
+    resumeAt = null;
+  } else if (resumeChapter.data === undefined) {
+    resumeAt = "pending";
+  } else {
+    const { id, number, access } = resumeChapter.data;
+    resumeAt = id === null || number === null ? null : { id, number, access };
+  }
+
   let read: ChapterTarget;
   if (book.data?.chapter_count === 0) {
     read = { kind: "none" };
   } else if (chapters.status === "error") {
     read = { kind: "failed" };
-  } else if (chapters.status === "loading") {
+  } else if (chapters.status === "loading" || resumeAt === "pending") {
     read = { kind: "pending" };
+  } else if (resumeAt && lockInputs) {
+    read = {
+      kind: "ready",
+      chapterId: resumeAt.id,
+      number: resumeAt.number,
+      locked: chapterStateFor(resumeAt, lockInputs).kind === "locked",
+    };
   } else {
     const first = chapters.rows[0];
     read = first

@@ -102,5 +102,5 @@ export type ChapterTargetRow = Pick<ChapterCatalogRow, "id" | "number" | "access
 /** The column subset M5 reads for the open chapter — `chapterDetailOptions()` selects exactly these. */
 export type ChapterDetailRow = Pick<
   ChapterCatalogRow,
-  "id" | "book_id" | "number" | "title" | "access" | "has_text" | "has_audio"
+  "id" | "book_id" | "number" | "title" | "access" | "has_text" | "has_audio" | "audio_duration_seconds"
 >;

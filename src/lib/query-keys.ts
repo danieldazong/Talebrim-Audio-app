@@ -103,6 +103,13 @@ export const queryKeys = {
     /** One `reading_positions` row — `lib/queries/reading-position.ts`. */
     byChapter: (userId: string, chapterId: string) =>
       [...queryKeys.readingPosition.all(userId), "byChapter", chapterId] as const,
+    /**
+     * The most recent position in one book — `resumeTargetOptions()`. Every
+     * position-derived key sits under `all(userId)`, Library's included, so
+     * one invalidation refreshes them all.
+     */
+    resumeByBook: (userId: string, bookId: string) =>
+      [...queryKeys.readingPosition.all(userId), "resumeByBook", bookId] as const,
   },
 
   unlocks: {

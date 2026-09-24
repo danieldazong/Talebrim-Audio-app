@@ -226,10 +226,12 @@ function ReadingView({
   useKeepAwake();
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const { id, number, title, blocks, lastChapterNumber, previousId, nextId } = chapter;
+  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, restoreOffset } = chapter;
   const position = useReadingPosition({
     chapterId: id,
+    bookId,
     blocks,
+    restoreOffset,
     scrollRef,
     fontSize,
     lineSpacing,

@@ -7,11 +7,14 @@ import {
   createPersister,
   queryClient,
 } from "@/lib/query-client";
+import { setParityUser } from "@/lib/parity/writer";
 import { setClerkTokenGetter } from "@/lib/supabase";
 
 /**
- * Bridges Clerk into the two things that need it:
+ * Bridges Clerk into the three things that need it:
  *  - the Supabase singleton's `accessToken` callback
+ *  - the parity writer's account, so a queued reading position is only ever
+ *    sent under the account that recorded it
  *  - the persisted Query cache key, namespaced by user id
  *
  * Must render INSIDE ClerkProvider (it calls useAuth).
@@ -24,7 +27,14 @@ export function AuthedQueryProvider({ children }: { children: ReactNode }) {
   // token — and RLS answers that with an empty list, not an error, which
   // then gets cached as "no books".
   setClerkTokenGetter(getToken);
-  useEffect(() => () => setClerkTokenGetter(null), []);
+  setParityUser(userId ?? null);
+  useEffect(
+    () => () => {
+      setClerkTokenGetter(null);
+      setParityUser(null);
+    },
+    [],
+  );
 
   // Re-created per user so one account never restores another's rows.
   const persistOptions = useMemo(

@@ -1,33 +1,34 @@
 import { create } from "zustand";
 
-// SERVER COPY — added by the parity prompt.
+// The session copy of read/listen parity — AGENTS.md § Read/listen parity.
 //
-// `reading_positions` exists (AGENTS.md Data Contract, created 2026-09-23),
-// but nothing writes it yet: its writer belongs to the parity prompt. Until
-// then this store is the ONLY copy of a user's position — there is no server
-// row to reconcile against and no last-write-wins comparison to make. It is
-// written so that a server sync can be layered on without changing this
-// public API: a future write here becomes "write local, then debounce a
-// push to Supabase"; a future read gains "resolve against the server
-// timestamp, last-write-wins" (AGENTS.md § State Management Rules, Read/listen
-// parity algorithm, steps 2–4).
+// Session-authoritative (parity step 1): every position lands here first, and
+// the reader restores from here. The server copy lives in `reading_positions`,
+// and `lib/parity/writer.ts` owns both sides of the sync: it records positions
+// into this slice, pushes them, and adopts a newer server row by the rule in
+// `lib/parity/reconcile.ts`. Nothing else calls `setPosition`.
 //
 // Deliberately NOT persisted to AsyncStorage (prompt 07 step 8): a stale
-// on-device position that later loses to the server on last-write-wins is
-// worse than no local position at all, so it must not survive an app
-// restart until there is a server copy to reconcile against.
+// on-device position that later loses last-write-wins is worse than none. A
+// new app session restores from the server row instead.
+//
+// No device-clock timestamp is kept, so none can be compared: the only
+// ordering is the server's `updated_at` (parity step 3).
 
 export type ParitySourceMode = "text" | "audio";
 
 export interface ChapterParityPosition {
   chapterId: string;
-  /** Character offset into `chapters.script_text`. */
-  textOffset: number;
-  /** Playback position in milliseconds. */
-  audioMs: number;
+  /** Character offset into `chapters.script_text`; null when unknown, never 0. */
+  textOffset: number | null;
+  /** Playback position in milliseconds; null when unknown, never 0. */
+  audioMs: number | null;
   /** Which mode last wrote this position — lets a mode switch map from the authoritative side. */
   lastWrittenBy: ParitySourceMode;
-  updatedAt: number;
+  /** The server `updated_at` of the row last written or adopted; null if never synced. */
+  syncedAt: string | null;
+  /** True while this holds a change the server has not confirmed. */
+  dirty: boolean;
 }
 
 interface ParityState {

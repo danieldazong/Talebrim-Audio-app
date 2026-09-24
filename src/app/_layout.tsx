@@ -12,6 +12,7 @@ import { AuthGate } from "@/components/auth-gate";
 import { AuthedQueryProvider } from "@/components/providers";
 import { useAppFonts } from "@/hooks/use-app-fonts";
 import { useCatalogSync } from "@/hooks/use-catalog-sync";
+import { useParitySync } from "@/hooks/use-parity-sync";
 import { colors, fonts } from "@/theme";
 import { useOnboardingStore } from "@/store/onboarding-store";
 // Imported here (root layout), not just from `(auth)/_layout.tsx`, so its
@@ -75,6 +76,9 @@ function RootNavigator() {
   // Dashboard edits reach every screen live. Signed-in only: the Realtime
   // topic is private.
   useCatalogSync(Boolean(isSignedIn));
+  // Reading positions reach the server when the app leaves the foreground,
+  // and a newer one from another device is picked up when it returns.
+  useParitySync();
 
   return (
     <Stack screenOptions={screenOptions}>
