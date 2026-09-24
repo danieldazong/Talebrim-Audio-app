@@ -61,6 +61,20 @@ export const queryKeys = {
     firstAudio: (bookId: string) =>
       [...queryKeys.chapters.listByBook(bookId), "firstAudio"] as const,
     /**
+     * M5's previous and next chapters around `number`. Nested so any change
+     * to the book's chapters refreshes them.
+     */
+    neighbours: (bookId: string, number: number) =>
+      [...queryKeys.chapters.listByBook(bookId), "neighbours", number] as const,
+    /** The book's highest chapter number — the "of M" in M5's position label. */
+    lastNumber: (bookId: string) =>
+      [...queryKeys.chapters.listByBook(bookId), "lastNumber"] as const,
+    /** One `chapters_catalog` row, by chapter id — M5's metadata. */
+    detail: (chapterId: string) =>
+      [...queryKeys.chapters.detailAll(), chapterId] as const,
+    /** Every chapter's metadata row — what a too-large-to-list broadcast invalidates. */
+    detailAll: () => [...queryKeys.chapters.all(), "detail"] as const,
+    /**
      * `chapters.script_text` for exactly one chapter. Kept out of
      * `listByBook` deliberately — chapter text is large and serials run
      * 85–200 chapters, so it must never ride along with a list fetch.

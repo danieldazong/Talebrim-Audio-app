@@ -14,7 +14,8 @@ export const TOOLBAR_BOTTOM_GAP = 20;
 
 export type ReaderPosition = {
   chapterNumber: number;
-  chapterCount: number;
+  /** The book's highest chapter number, not its chapter count: numbers can have gaps. */
+  lastChapterNumber: number;
   /** Progress through this chapter, 0–100. */
   percent: number;
 };
@@ -87,14 +88,14 @@ export function ReaderToolbar({
         <View className="flex-1 items-center px-2">
           {position ? (
             <Text
-              accessibilityLabel={`Chapter ${position.chapterNumber} of ${position.chapterCount}, ${position.percent} percent read`}
+              accessibilityLabel={`Chapter ${position.chapterNumber} of ${position.lastChapterNumber}, ${position.percent} percent read`}
               className="font-ui-medium text-muted text-xs"
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
               maxFontSizeMultiplier={1.3}
             >
-              {`${position.chapterNumber} of ${position.chapterCount} · ${position.percent}%`}
+              {`${position.chapterNumber} of ${position.lastChapterNumber} · ${position.percent}%`}
             </Text>
           ) : null}
         </View>

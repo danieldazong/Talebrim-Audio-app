@@ -1,7 +1,7 @@
 import { useKeepAwake } from "expo-keep-awake";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import Animated, { useAnimatedRef } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,28 +23,25 @@ import {
 } from "@/components/reader/reader-toolbar";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { Screen } from "@/components/ui";
-import { mockChapter } from "@/data/mock-chapter";
+import { useChapterReader, type ChapterReaderView, type ReadyChapter } from "@/hooks/use-chapter-reader";
 import { useReaderChrome } from "@/hooks/use-reader-chrome";
 import { useReadingPosition } from "@/hooks/use-reading-position";
-import { parseChapterText } from "@/lib/chapter-text";
 import { isUuid } from "@/lib/ids";
 import { useReaderStore, type ReaderTheme } from "@/store/reader-store";
 import type { ReaderFont } from "@/theme";
-import type { ReaderStatus } from "@/types/states";
 
-// M5 Reader — AGENTS.md M5, prompt 14.
+// M5 Reader — AGENTS.md M5, prompts 14 and 15.
 //
 // A pushed stack route outside (tabs), receiving only the chapter id. No tab
 // bar and no mini player, by construction: both live in the tab shell, which
 // this route never mounts inside, during the push transition or after it.
-//
-// MOCK — prompt 15 fetches real script_text. Until then every valid id shows
-// `data/mock-chapter.ts`, and its `status` picks the state on screen.
-
-const mockBlocks = parseChapterText(mockChapter.scriptText);
+// Its data and state come from `hooks/use-chapter-reader.ts`.
 
 /** Clear space between the end of the chapter and the toolbar's top edge. */
 const TOOLBAR_CLEARANCE = 16;
+
+/** How far through the chapter, by the position label, before the next chapter's text is prefetched. */
+const PREFETCH_NEXT_AT_PERCENT = 80;
 
 function goBack() {
   if (router.canGoBack()) router.back();
@@ -56,26 +53,59 @@ function goBack() {
 // than no handoff.
 function listen() {}
 
-// Wired in prompt 15
-function goToNextChapter() {}
+// Replaced rather than pushed, so a long reading session does not build a
+// deep back stack. A locked chapter opens in its locked state.
+function openChapter(chapterId: string) {
+  router.replace({ pathname: "/reader/[chapterId]", params: { chapterId } });
+}
 
-// Wired in prompt 15
-function goToPreviousChapter() {}
-
-// Wired in prompt 15
-function retry() {}
+function noop() {}
 
 export default function ReaderRoute() {
   const { chapterId } = useLocalSearchParams<{ chapterId: string }>();
 
   // A stale or hand-typed link is simply not available: there is nothing to
   // fetch and nothing a retry could fix.
-  if (!isUuid(chapterId)) return <Reader chapterId={null} />;
-  return <Reader key={chapterId} chapterId={chapterId} />;
+  if (!isUuid(chapterId)) {
+    return (
+      <Reader
+        view={{ status: "unavailable" }}
+        bookTitle={null}
+        chapterNumber={null}
+        onRetry={noop}
+        onNearEnd={noop}
+      />
+    );
+  }
+  return <ChapterReader key={chapterId} chapterId={chapterId} />;
 }
 
-function Reader({ chapterId }: { chapterId: string | null }) {
-  const status: ReaderStatus = chapterId === null ? "unavailable" : mockChapter.status;
+function ChapterReader({ chapterId }: { chapterId: string }) {
+  const { view, bookTitle, chapterNumber, retry, prefetchNext } = useChapterReader(chapterId);
+
+  return (
+    <Reader
+      view={view}
+      bookTitle={bookTitle}
+      chapterNumber={chapterNumber}
+      onRetry={retry}
+      onNearEnd={prefetchNext}
+    />
+  );
+}
+
+type ReaderProps = {
+  view: ChapterReaderView;
+  /** The top bar's lines: shown whenever they are known, in any state. */
+  bookTitle: string | null;
+  chapterNumber: number | null;
+  onRetry: () => void;
+  /** Called once the reader is most of the way through the chapter. */
+  onNearEnd: () => void;
+};
+
+function Reader({ view, bookTitle, chapterNumber, onRetry, onNearEnd }: ReaderProps) {
+  const { status } = view;
 
   const theme = useReaderStore((state) => state.theme);
   const fontSize = useReaderStore((state) => state.fontSize);
@@ -91,9 +121,6 @@ function Reader({ chapterId }: { chapterId: string | null }) {
   const palette = READER_PALETTES[theme];
   const toolbarBottom = insets.bottom + TOOLBAR_BOTTOM_GAP;
 
-  // The chapter's row exists in these states, so its titles are known.
-  const hasChapter = status === "ready" || status === "no-text" || status === "locked";
-
   const cycleTheme = () => setTheme(NEXT_THEME[theme]);
   const openSettings = () => setSettingsOpen(true);
 
@@ -105,15 +132,15 @@ function Reader({ chapterId }: { chapterId: string | null }) {
 
       <ReaderTopBar
         palette={palette}
-        bookTitle={hasChapter ? mockChapter.bookTitle : null}
-        chapterNumber={hasChapter ? mockChapter.chapterNumber : null}
+        bookTitle={bookTitle}
+        chapterNumber={chapterNumber}
         onBack={goBack}
         onOpenSettings={openSettings}
       />
 
-      {status === "ready" && chapterId !== null ? (
+      {view.status === "ready" ? (
         <ReadingView
-          chapterId={chapterId}
+          chapter={view.chapter}
           theme={theme}
           palette={palette}
           font={atkinsonEnabled ? "atkinson" : "literata"}
@@ -122,20 +149,21 @@ function Reader({ chapterId }: { chapterId: string | null }) {
           toolbarBottom={toolbarBottom}
           onCycleTheme={cycleTheme}
           onOpenSettings={openSettings}
+          onNearEnd={onNearEnd}
         />
-      ) : status === "loading" ? (
+      ) : view.status === "loading" ? (
         <ReaderSkeleton palette={palette} fontSize={fontSize} lineSpacing={lineSpacing} />
-      ) : status === "ready" ? null : (
+      ) : (
         <View
           className="flex-1"
           // Centred in the space the toolbar leaves, where there is one.
           style={{ paddingBottom: status === "no-text" ? toolbarBottom + TOOLBAR_HEIGHT : insets.bottom }}
         >
           <ReaderStateMessage
-            status={status}
+            status={view.status}
             palette={palette}
-            chapterNumber={hasChapter ? mockChapter.chapterNumber : null}
-            onRetry={retry}
+            chapterNumber={chapterNumber}
+            onRetry={onRetry}
             onBack={goBack}
           />
         </View>
@@ -169,7 +197,7 @@ function Reader({ chapterId }: { chapterId: string | null }) {
 }
 
 type ReadingViewProps = {
-  chapterId: string;
+  chapter: ReadyChapter;
   theme: ReaderTheme;
   palette: ReaderPalette;
   font: ReaderFont;
@@ -178,11 +206,12 @@ type ReadingViewProps = {
   toolbarBottom: number;
   onCycleTheme: () => void;
   onOpenSettings: () => void;
+  onNearEnd: () => void;
 };
 
 /** The ready state: the chapter, the auto-hiding toolbar and the progress bar. */
 function ReadingView({
-  chapterId,
+  chapter,
   theme,
   palette,
   font,
@@ -191,14 +220,16 @@ function ReadingView({
   toolbarBottom,
   onCycleTheme,
   onOpenSettings,
+  onNearEnd,
 }: ReadingViewProps) {
   // Scoped to reading: released when this unmounts, never app-wide.
   useKeepAwake();
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const { id, number, title, blocks, lastChapterNumber, previousId, nextId } = chapter;
   const position = useReadingPosition({
-    chapterId,
-    blocks: mockBlocks,
+    chapterId: id,
+    blocks,
     scrollRef,
     fontSize,
     lineSpacing,
@@ -215,7 +246,11 @@ function ReadingView({
   // the end-of-chapter controls are never covered.
   const bottomPadding = toolbarBottom + TOOLBAR_HEIGHT + TOOLBAR_CLEARANCE;
 
-  const { chapterNumber, chapterCount } = mockChapter;
+  // By the settled position, so a fling past 80% prefetches once it stops.
+  const nearEnd = position.percent >= PREFETCH_NEXT_AT_PERCENT;
+  useEffect(() => {
+    if (nearEnd) onNearEnd();
+  }, [nearEnd, onNearEnd]);
 
   return (
     <>
@@ -229,9 +264,9 @@ function ReadingView({
         showsVerticalScrollIndicator={false}
       >
         <ChapterBody
-          blocks={mockBlocks}
-          chapterNumber={chapterNumber}
-          chapterTitle={mockChapter.chapterTitle}
+          blocks={blocks}
+          chapterNumber={number}
+          chapterTitle={title}
           palette={palette}
           faces={READER_FACES[font]}
           fontSize={fontSize}
@@ -239,14 +274,14 @@ function ReadingView({
           onBodyLayout={position.onBodyLayout}
           onBlockLayout={position.onBlockLayout}
           onTap={chrome.toggleToolbar}
-          onNext={chapterNumber < chapterCount ? goToNextChapter : null}
-          onPrevious={chapterNumber > 1 ? goToPreviousChapter : null}
+          onNext={nextId === null ? null : () => openChapter(nextId)}
+          onPrevious={previousId === null ? null : () => openChapter(previousId)}
         />
       </Animated.ScrollView>
 
       <ReaderToolbar
         theme={theme}
-        position={{ chapterNumber, chapterCount, percent: position.percent }}
+        position={{ chapterNumber: number, lastChapterNumber, percent: position.percent }}
         bottomOffset={toolbarBottom}
         animatedStyle={chrome.toolbarStyle}
         onLayout={chrome.onToolbarLayout}

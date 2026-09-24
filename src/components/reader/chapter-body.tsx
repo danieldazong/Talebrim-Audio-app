@@ -38,9 +38,9 @@ type ChapterBodyProps = {
   onBlockLayout: (index: number, event: LayoutChangeEvent) => void;
   /** A tap anywhere on the page, which shows or hides the toolbar. */
   onTap: () => void;
-  /** `null` hides the control: no next chapter after the last one. */
+  /** `null` hides the control: no next chapter, or the neighbours aren't known. */
   onNext: (() => void) | null;
-  /** `null` hides the control: no previous chapter before chapter 1. */
+  /** `null` hides the control: no previous chapter, or the neighbours aren't known. */
   onPrevious: (() => void) | null;
 };
 
@@ -121,11 +121,9 @@ export const ChapterBody = memo(function ChapterBody({
       {onNext || onPrevious ? (
         <View className="mt-12 items-center">
           {onNext ? (
-            // Wired in prompt 15
             <ReaderPill label="Next chapter" palette={palette} onPress={onNext} className="h-12 self-stretch" />
           ) : null}
           {onPrevious ? (
-            // Wired in prompt 15
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Previous chapter"

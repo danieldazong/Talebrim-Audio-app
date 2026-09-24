@@ -15,8 +15,8 @@ export type ChapterState =
   | { kind: "reading" };
 
 /**
- * What M5 Reader shows (prompt 14 step 18). Exactly one at a time; prompt 15
- * derives it from the chapter queries.
+ * What M5 Reader shows (prompt 14 step 18). Exactly one at a time;
+ * `hooks/use-chapter-reader.ts` derives it from the chapter queries.
  */
 export type ReaderStatus =
   | "ready"
@@ -99,4 +99,38 @@ export function resolveChapterState(
   }
 
   return { kind: "unlocked" };
+}
+
+/** A chapter row that passed its id and number null checks. */
+export type LockableChapter = {
+  id: string;
+  number: number;
+  /** Nullable because `chapters_catalog` types every column so. */
+  access: Enums<"chapter_access"> | null;
+};
+
+export type ChapterLockInputs = {
+  /** Live `free_chapters_at_start` from `reader_settings()`. Never hardcoded. */
+  freeChaptersAtStart: number;
+  /** Chapter ids from the reader's `unlocks` rows. */
+  unlockedChapterIds: ReadonlySet<string>;
+};
+
+/**
+ * `resolveChapterState()` for a `chapters_catalog` row. A null `access` is
+ * the view's nullable typing, never a free chapter, so it is locked. M4 and
+ * M5 both call this, so that rule lives in one place.
+ */
+export function chapterStateFor(
+  chapter: LockableChapter,
+  inputs: ChapterLockInputs,
+): ChapterState {
+  if (chapter.access === null) return { kind: "locked" };
+
+  return resolveChapterState({
+    access: chapter.access,
+    chapterNumber: chapter.number,
+    freeChaptersAtStart: inputs.freeChaptersAtStart,
+    isUnlockedByUser: inputs.unlockedChapterIds.has(chapter.id),
+  });
 }

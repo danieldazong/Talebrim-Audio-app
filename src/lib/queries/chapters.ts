@@ -4,6 +4,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { supabase } from "@/lib/supabase";
 import type {
   ChapterCatalogRow,
+  ChapterDetailRow,
   ChapterPreviewRow,
   ChapterTargetRow,
 } from "@/types/catalog";
@@ -76,28 +77,122 @@ export const firstAudioChapterOptions = (bookId: string) =>
     },
   });
 
+
 /**
- * Prose for exactly one chapter. Deliberately its own query, keyed per
- * chapter id, never folded into the list query above — `script_text` is
- * large and serials run 85–200 chapters (AGENTS.md step 8).
+ * One chapter's metadata for M5 — its number, title, lock inputs and whether
+ * it has text. `null` means not available to this reader: missing,
+ * unpublished, or hidden by RLS (`.maybeSingle()`, as `bookDetailOptions()`
+ * explains). Callers must not pass a malformed id (`isUuid()`).
  *
- * FLAGGED DEVIATION from prompt 03 step 4 ("reader-facing reads go only to
- * books_catalog and chapters_catalog"): `chapters_catalog` omits
- * `script_text` by construction (AGENTS.md Data Contract), and no
- * reader-facing view carries prose. Step 8 requires this query to exist, so
- * this is the one place in the data layer that reads the base `chapters`
- * table instead of a catalog view — a single row by id, not a list scan,
- * still enforced by RLS. Resolving the gap properly (a `chapters_prose` or
- * similar view) is future migration work, not something this prompt can do
- * (it forbids writing SQL) — reported as a blocker in the final summary.
+ * Invalidated per chapter by catalog sync, so a title edited in the
+ * dashboard reaches an open reader.
+ */
+export const chapterDetailOptions = (chapterId: string) =>
+  queryOptions({
+    queryKey: queryKeys.chapters.detail(chapterId),
+    queryFn: async (): Promise<ChapterDetailRow | null> => {
+      const { data, error } = await supabase
+        .from("chapters_catalog")
+        .select("id, book_id, number, title, access, has_text, has_audio")
+        .eq("id", chapterId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+export type ChapterNeighbours = {
+  previous: ChapterTargetRow | null;
+  next: ChapterTargetRow | null;
+};
+
+/**
+ * The chapters either side of `number` in one book — M5's end-of-chapter
+ * navigation and next-chapter prefetch. Numbers can have gaps, so these are
+ * the nearest numbers below and above, never n ± 1. Two one-row requests in
+ * parallel rather than M9's full list.
+ */
+export const chapterNeighboursOptions = (bookId: string, number: number) =>
+  queryOptions({
+    queryKey: queryKeys.chapters.neighbours(bookId, number),
+    queryFn: async (): Promise<ChapterNeighbours> => {
+      const [previous, next] = await Promise.all([
+        supabase
+          .from("chapters_catalog")
+          .select("id, number, access")
+          .eq("book_id", bookId)
+          .lt("number", number)
+          .order("number", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("chapters_catalog")
+          .select("id, number, access")
+          .eq("book_id", bookId)
+          .gt("number", number)
+          .order("number", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (previous.error) throw previous.error;
+      if (next.error) throw next.error;
+      return { previous: previous.data, next: next.data };
+    },
+  });
+
+/**
+ * The book's highest chapter number — the "of M" in M5's position label.
+ * Not `chapter_count`: with gaps (chapters 1, 2 and 5), the count would make
+ * chapter 5 read "5 of 3". Book-level, so cached once for every chapter.
+ */
+export const lastChapterNumberOptions = (bookId: string) =>
+  queryOptions({
+    queryKey: queryKeys.chapters.lastNumber(bookId),
+    queryFn: async (): Promise<number | null> => {
+      const { data, error } = await supabase
+        .from("chapters_catalog")
+        .select("number")
+        .eq("book_id", bookId)
+        // Descending puts nulls first in Postgres; the view types `number` as nullable.
+        .order("number", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.number ?? null;
+    },
+  });
+
+/**
+ * Prose for exactly one chapter — M5 Reader (prompts 14–15). Its own query,
+ * keyed per chapter id, and never folded into a list: `script_text` is large
+ * and a serial runs 85–200 chapters.
+ *
+ * The one sanctioned direct read of `chapters` (AGENTS.md Data Contract):
+ * `chapters_catalog` omits `script_text` by design, and no reader-facing
+ * view carries prose. A single row by id, still under RLS. Callers enable it
+ * only after `chapterDetailOptions()` has returned the same chapter, which
+ * proves it is published, and only when the chapter does not resolve to
+ * locked.
  *
  * `script_text` is expected to contain exactly three Markdown marks —
- * `**bold**`, `_italic_`, `## heading` — and nothing else; the reader
- * (prompt 16) relies on that and must not assume full Markdown.
+ * `**bold**`, `_italic_`, `## heading`. `lib/chapter-text.ts` parses those
+ * and renders anything else literally; it never assumes full Markdown.
  *
- * Live: `hooks/use-catalog-sync.ts` invalidates this when the dashboard
- * saves the script, so an open reader receives new text mid-chapter. M5
- * must decide how to apply it without jumping the reader's position.
+ * Live edits: catalog sync invalidates this when the dashboard saves the
+ * script, and an open reader refetches it. The reader keeps the first text
+ * it received for as long as it stays mounted and ignores later data, so the
+ * text never moves under the reader; the refreshed text shows on the next
+ * open. The chapter's title (`chapterDetailOptions()`) still updates live.
+ *
+ * 24-hour `staleTime`: re-opening a chapter read today paints from cache
+ * with no request. Safe because catalog sync invalidates the text the moment
+ * the dashboard saves it. `gcTime` and the persister's `maxAge` stay at the
+ * app's 24 hours (`lib/query-client.ts`): the persisted cache is one
+ * AsyncStorage value for every query, so longer-lived text would grow it for
+ * the whole app. Long-term offline text belongs to the downloads prompt.
  */
 export const chapterTextOptions = (chapterId: string) =>
   queryOptions({
@@ -107,9 +202,10 @@ export const chapterTextOptions = (chapterId: string) =>
         .from("chapters")
         .select("script_text")
         .eq("id", chapterId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data.script_text;
+      return data?.script_text ?? null;
     },
+    staleTime: 24 * 60 * 60 * 1000,
   });

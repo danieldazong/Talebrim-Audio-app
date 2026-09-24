@@ -68,10 +68,10 @@ export async function invalidateCatalog(
       keys.push(queryKeys.book.detail(bookId), queryKeys.chapters.listByBook(bookId));
     }
     if (change.chapterIds === null) {
-      keys.push(queryKeys.chapters.textAll());
+      keys.push(queryKeys.chapters.textAll(), queryKeys.chapters.detailAll());
     } else {
       for (const chapterId of change.chapterIds) {
-        keys.push(queryKeys.chapters.text(chapterId));
+        keys.push(queryKeys.chapters.text(chapterId), queryKeys.chapters.detail(chapterId));
       }
     }
   }

@@ -93,5 +93,14 @@ export type ChapterPreviewRow = Pick<
   "id" | "number" | "title" | "access" | "has_audio" | "audio_duration_seconds"
 >;
 
-/** Enough of a chapter to run the lock check and navigate — M4's Listen target. */
+/**
+ * Enough of a chapter to run the lock check and navigate — M4's Listen
+ * target and M5's previous and next chapters.
+ */
 export type ChapterTargetRow = Pick<ChapterCatalogRow, "id" | "number" | "access">;
+
+/** The column subset M5 reads for the open chapter — `chapterDetailOptions()` selects exactly these. */
+export type ChapterDetailRow = Pick<
+  ChapterCatalogRow,
+  "id" | "book_id" | "number" | "title" | "access" | "has_text" | "has_audio"
+>;

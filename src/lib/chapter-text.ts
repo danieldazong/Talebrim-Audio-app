@@ -154,3 +154,21 @@ export function blockIndexAtOffset(blocks: readonly ReaderBlock[], offset: numbe
   }
   return found;
 }
+
+/**
+ * Marks outside the three the dashboard stores, checked against this fixed
+ * list and nothing more. For the reader's development log only: it strips
+ * nothing and changes no parsing rule. Lines are checked as the parser sees
+ * them, after their indent.
+ */
+const UNSUPPORTED_MARKS: readonly { name: string; pattern: RegExp }[] = [
+  { name: "a line starting with # that is not ## ", pattern: /^[ \t]*#(?!# )/m },
+  { name: "a [text](url) link", pattern: /\[[^\]\n]*\]\([^)\n]*\)/ },
+  { name: "a backtick", pattern: /`/ },
+  { name: "a line starting with > , - or * ", pattern: /^[ \t]*(?:> |- |\* )/m },
+];
+
+/** The names of the unsupported marks `source` contains, or none. */
+export function unsupportedMarks(source: string): string[] {
+  return UNSUPPORTED_MARKS.filter(({ pattern }) => pattern.test(source)).map(({ name }) => name);
+}

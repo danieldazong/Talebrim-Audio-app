@@ -5,8 +5,7 @@ import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
 import { chapterPreviewOptions, firstAudioChapterOptions } from "@/lib/queries/chapters";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
-import type { ChapterTargetRow } from "@/types/catalog";
-import { resolveChapterState, type ChapterState } from "@/types/states";
+import { chapterStateFor, type ChapterLockInputs, type ChapterState } from "@/types/states";
 
 /** A preview row that passed the null checks, with its lock state resolved. */
 export type PreviewChapter = {
@@ -33,29 +32,9 @@ export type ChaptersSection =
   | { status: "error" }
   | { status: "ready"; rows: PreviewChapter[] };
 
-type LockInputs = {
-  /** Live `free_chapters_at_start` from `reader_settings()`. Never hardcoded. */
-  freeChaptersAtStart: number;
-  unlockedChapterIds: Set<string>;
-};
-
 /** Failed and not retrying — while a retry runs, it counts as loading again. */
 function hasFailed(query: { isError: boolean; isFetching: boolean }): boolean {
   return query.isError && !query.isFetching;
-}
-
-type LockableChapter = { id: string; number: number; access: ChapterTargetRow["access"] };
-
-function stateFor(chapter: LockableChapter, inputs: LockInputs): ChapterState {
-  // Null access is the view's nullable typing, never a free chapter.
-  if (chapter.access === null) return { kind: "locked" };
-
-  return resolveChapterState({
-    access: chapter.access,
-    chapterNumber: chapter.number,
-    freeChaptersAtStart: inputs.freeChaptersAtStart,
-    isUnlockedByUser: inputs.unlockedChapterIds.has(chapter.id),
-  });
 }
 
 /**
@@ -80,7 +59,7 @@ export function useBookDetail(bookId: string) {
   // and nothing writes them until the paywall's server function exists.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
 
-  const lockInputs: LockInputs | null =
+  const lockInputs: ChapterLockInputs | null =
     settings.data && unlocks.data
       ? {
           freeChaptersAtStart: settings.data.free_chapters_at_start,
@@ -103,7 +82,7 @@ export function useBookDetail(bookId: string) {
             title: row.title,
             hasAudio: row.has_audio === true,
             audioDurationSeconds: row.audio_duration_seconds,
-            state: stateFor({ id, number, access: row.access }, lockInputs),
+            state: chapterStateFor({ id, number, access: row.access }, lockInputs),
           },
         ];
       }),
@@ -144,7 +123,7 @@ export function useBookDetail(bookId: string) {
       kind: "ready",
       chapterId: id,
       number,
-      locked: stateFor({ id, number, access: target.access }, lockInputs).kind === "locked",
+      locked: chapterStateFor({ id, number, access: target.access }, lockInputs).kind === "locked",
     };
   }
 
