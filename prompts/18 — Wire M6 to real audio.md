@@ -94,5 +94,3 @@ and test results for: lock-screen control while backgrounded, Bluetooth
 pause/resume, an expired URL re-minting mid-session, sleep timer cancellation
 leaving no leaked timer, autoplay stopping at a locked chapter, and playback
 continuing when M6 is dismissed.
-
-Next prompt: `20-parity-handoff.md`.
