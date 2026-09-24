@@ -27,6 +27,19 @@ export type ReaderStatus =
   | "no-text"
   | "locked";
 
+/**
+ * What M6 Now Playing shows (prompt 17 step 11). Exactly one at a time;
+ * `hooks/use-now-playing.ts` derives it from the chapter queries.
+ */
+export type PlayerStatus =
+  | "ready"
+  | "loading"
+  | "failed"
+  | "offline"
+  | "unavailable"
+  | "no-audio"
+  | "locked";
+
 export interface ResolveChapterStateInput {
   /** `chapters.access` / `chapters_catalog.access` for this chapter. */
   access: Enums<"chapter_access">;
@@ -133,4 +146,22 @@ export function chapterStateFor(
     freeChaptersAtStart: inputs.freeChaptersAtStart,
     isUnlockedByUser: inputs.unlockedChapterIds.has(chapter.id),
   });
+}
+
+const NO_UNLOCKS: ReadonlySet<string> = new Set();
+
+/**
+ * A chapter's lock state, or null while that can't be told yet. Unlocks only
+ * ever open a locked chapter, so one that is free by access or by position
+ * never waits for them. M5 and M6 both call this.
+ */
+export function lockStateFor(
+  chapter: LockableChapter,
+  freeChaptersAtStart: number,
+  unlockedChapterIds: ReadonlySet<string> | undefined,
+): ChapterState | null {
+  const withoutUnlocks = chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds: NO_UNLOCKS });
+  if (withoutUnlocks.kind !== "locked") return withoutUnlocks;
+  if (unlockedChapterIds === undefined) return null;
+  return chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds });
 }

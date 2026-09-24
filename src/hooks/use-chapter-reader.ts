@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/expo";
-import { useQuery, useQueryClient, type FetchStatus } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { parseChapterText, unsupportedMarks, type ReaderBlock } from "@/lib/chapter-text";
@@ -16,14 +16,10 @@ import {
 } from "@/lib/queries/chapters";
 import { readingPositionByChapterOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
+import { waitFor, type NeededQuery } from "@/lib/query-status";
 import { useParityStore } from "@/store/parity-store";
 import type { ChapterDetailRow, ChapterTargetRow } from "@/types/catalog";
-import {
-  chapterStateFor,
-  type ChapterState,
-  type LockableChapter,
-  type ReaderStatus,
-} from "@/types/states";
+import { lockStateFor, type LockableChapter, type ReaderStatus } from "@/types/states";
 
 /** The ready state's chapter. */
 export type ReadyChapter = {
@@ -56,18 +52,7 @@ type OpenChapter = LockableChapter & {
   durationSeconds: number | null;
 };
 
-/** What the hook reads from a query it is waiting on. */
-type NeededQuery = {
-  data: unknown;
-  isError: boolean;
-  isFetching: boolean;
-  fetchStatus: FetchStatus;
-  refetch: () => Promise<unknown>;
-};
-
 type Resolved = { view: ChapterReaderView; waitingOn: NeededQuery[] };
-
-const NO_UNLOCKS: ReadonlySet<string> = new Set();
 
 /** Chapters already reported by the development log, once per id per session. */
 const reportedChapterIds = new Set<string>();
@@ -88,32 +73,6 @@ function toOpenChapter(row: ChapterDetailRow | null): OpenChapter | null {
 function toNeighbour(row: ChapterTargetRow | null | undefined): LockableChapter | null {
   if (!row || row.id === null || row.number === null) return null;
   return { id: row.id, number: row.number, access: row.access };
-}
-
-/**
- * A chapter's lock state, or null while that can't be told yet. Unlocks only
- * ever open a locked chapter, so one that is free by access or by position
- * never waits for them.
- */
-function lockStateFor(
-  chapter: LockableChapter,
-  freeChaptersAtStart: number,
-  unlockedChapterIds: ReadonlySet<string> | undefined,
-): ChapterState | null {
-  const withoutUnlocks = chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds: NO_UNLOCKS });
-  if (withoutUnlocks.kind !== "locked") return withoutUnlocks;
-  if (unlockedChapterIds === undefined) return null;
-  return chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds });
-}
-
-/** Waiting on whichever of `queries` has no data yet: offline beats failed beats loading. */
-function waitFor(queries: NeededQuery[]): Resolved {
-  const waitingOn = queries.filter((query) => query.data === undefined);
-  let status: "offline" | "failed" | "loading" = "loading";
-  if (waitingOn.some((query) => query.fetchStatus === "paused")) status = "offline";
-  // Failed and not retrying — while a retry runs, it counts as loading again.
-  else if (waitingOn.some((query) => query.isError && !query.isFetching)) status = "failed";
-  return { view: { status }, waitingOn };
 }
 
 function settled(status: "unavailable" | "locked" | "no-text"): Resolved {

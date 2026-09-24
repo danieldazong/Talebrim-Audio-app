@@ -1,7 +1,7 @@
 import { Image, type ImageSource } from "expo-image";
 import { View, type ImageSourcePropType } from "react-native";
 
-import { colors, radius } from "@/theme";
+import { colors, layout, radius } from "@/theme";
 
 type CoverProps = {
   /** Resolved local/remote image source, or `null` for a missing/unmapped cover. */
@@ -12,13 +12,19 @@ type CoverProps = {
    * Sizing only — `expo-image`'s `Image` does not accept `className` in this
    * NativeWind version, so width goes through a plain prop here, matching
    * the inline-style pattern already used for covers in `MiniPlayer`. Height
-   * is always derived from the 2:3 aspect ratio, never passed separately.
+   * is always derived from the aspect ratio, never passed separately.
    */
   width?: number;
+  /**
+   * 2:3 unless a frame says otherwise (M6's square cover). Any other ratio
+   * crops from the bottom, never both edges, so the title lettering at the
+   * top of the art survives (AGENTS.md § Image Rule).
+   */
+  aspectRatio?: number;
 };
 
 /**
- * 2:3 cover art, 12dp radius — AGENTS.md § Layout / § Image Rule.
+ * Cover art, 2:3 by default, 12dp radius — AGENTS.md § Layout / § Image Rule.
  *
  * `source: null` renders a flat `surface`-coloured box instead of an image —
  * no icon, no generated art (AGENTS.md § Image Generation Rules) — until
@@ -29,8 +35,8 @@ type CoverProps = {
  * (expo/expo#22516); this component intentionally omits `transition` so
  * `recyclingKey` alone can be relied on for carousel recycling.
  */
-export function Cover({ source, recyclingKey, width }: CoverProps) {
-  const shape = { aspectRatio: 2 / 3, borderRadius: radius.cover, width };
+export function Cover({ source, recyclingKey, width, aspectRatio = layout.coverAspectRatio }: CoverProps) {
+  const shape = { aspectRatio, borderRadius: radius.cover, width };
 
   if (source === null) {
     return <View style={[shape, { backgroundColor: colors.surface }]} />;
@@ -42,6 +48,7 @@ export function Cover({ source, recyclingKey, width }: CoverProps) {
       recyclingKey={recyclingKey}
       style={[shape, { backgroundColor: colors.surface }]}
       contentFit="cover"
+      contentPosition={aspectRatio === layout.coverAspectRatio ? "center" : "top"}
     />
   );
 }

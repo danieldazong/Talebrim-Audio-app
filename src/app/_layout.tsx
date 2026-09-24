@@ -6,6 +6,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthGate } from "@/components/auth-gate";
@@ -96,7 +97,8 @@ function RootNavigator() {
             present with neither by never mounting inside (tabs). */}
         <Stack.Screen name="book/[id]" />
         <Stack.Screen name="reader/[chapterId]" options={{ animation: "fade" }} />
-        <Stack.Screen name="player/[chapterId]" options={{ animation: "fade" }} />
+        {/* From the bottom, to match M6's down-chevron dismiss. */}
+        <Stack.Screen name="player/[chapterId]" options={{ animation: "slide_from_bottom" }} />
         <Stack.Screen name="chapters/[bookId]" />
         <Stack.Screen name="search" />
       </Stack.Protected>
@@ -133,21 +135,25 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    // SecureStore-backed cache from Clerk — never AsyncStorage for a session
-    // token, and never a hand-rolled cache. AGENTS.md § Clerk Rules.
-    <ClerkProvider
-      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-      tokenCache={tokenCache}
-    >
-      <AuthedQueryProvider>
-        <SafeAreaProvider>
-          {/* Dark app: light status-bar content. AGENTS.md § UI Quality Bar. */}
-          <StatusBar style="light" />
-          <AuthGate>
-            <RootNavigator />
-          </AuthGate>
-        </SafeAreaProvider>
-      </AuthedQueryProvider>
-    </ClerkProvider>
+    // Gesture-handler needs one root view above every gesture; M6's scrubber
+    // is the first. A plain flex-1 view otherwise.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* SecureStore-backed cache from Clerk — never AsyncStorage for a
+          session token, and never a hand-rolled cache. AGENTS.md § Clerk Rules. */}
+      <ClerkProvider
+        publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+        tokenCache={tokenCache}
+      >
+        <AuthedQueryProvider>
+          <SafeAreaProvider>
+            {/* Dark app: light status-bar content. AGENTS.md § UI Quality Bar. */}
+            <StatusBar style="light" />
+            <AuthGate>
+              <RootNavigator />
+            </AuthGate>
+          </SafeAreaProvider>
+        </AuthedQueryProvider>
+      </ClerkProvider>
+    </GestureHandlerRootView>
   );
 }
