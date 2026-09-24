@@ -94,9 +94,12 @@ Use the following stack:
 - RevenueCat for subscriptions and entitlements
 - `react-native-google-mobile-ads` for rewarded ads
 - Server-side route handlers or Supabase Edge Functions for secrets and privileged operations
-- `expo-keep-awake` — M5 only (approved 2026-09-23; prompt 14 installs it)
+- `expo-keep-awake` — M5 only (approved 2026-09-23; installed by prompt 14)
 - `@react-native-community/netinfo` — wired once into TanStack Query's
-  `onlineManager` (approved 2026-09-23; prompt 15 installs it)
+  `onlineManager` in `lib/query-client.ts` (approved 2026-09-23; installed by
+  prompt 15)
+- `jest-expo` with `jest` — dev-only, unit tests under `__tests__/` (approved
+  2026-09-24; installed by prompt 16)
 
 Do not introduce new major libraries unless there is a strong reason.
 
@@ -535,7 +538,7 @@ instead of handing a stale object to a component.
 | `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — the only durable home for genres until Phase 2's profile table |
 | `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
 | `playback`   | current chapter, playing state, speed, sleep timer                  | no — session only |
-| `parity`     | the in-session authoritative reading position, keyed by chapter     | no — see Read/listen parity below; marked `// SERVER COPY — added by the parity prompt` |
+| `parity`     | the in-session authoritative reading position, keyed by chapter, with the server `updated_at` it last saw and a dirty flag | no — see Read/listen parity below; only `lib/parity/writer.ts` writes it |
 | `search`     | M8's `recentSearches` (most recent first, at most 8) — added in prompt 11 | yes — per account, so sign-out clears it; never written to the database, and no search-history table exists or should |
 
 `hasCompletedOnboarding` also drives the routing gate: `app/_layout.tsx` uses
@@ -564,6 +567,7 @@ Use this for external service helpers and pure functions.
 lib/
   supabase.ts
   clerk.ts
+  parity/       the one reading_positions writer, and its pure rules
   trackPlayer.ts
   revenuecat.ts
   format.ts
@@ -588,13 +592,17 @@ Use local component state for temporary UI state.
 
 ### Read/listen parity — required algorithm
 
-> **The table exists; the writer does not yet.** `reading_positions` was
-> created on 2026-09-23 (Data Contract), and `readingPositionByChapterOptions()`
-> reads it. Steps 1 and 5 work today against Zustand alone. Steps 2–4, the
-> debounced writer and last-write-wins, belong to the parity prompt. That
-> prompt must also make every update set `updated_at` on the server: nothing
-> bumps it on update yet (no trigger was allowed), so a writer shipped without
-> that would leave last-write-wins comparing stale timestamps.
+> **Built by prompt 16 (2026-09-24), in `lib/parity/`.** `writer.ts` is the
+> only code that writes `reading_positions` or the `parity` slice.
+> `reconcile.ts` is the last-write-wins rule; `convert.ts` maps text ↔ audio.
+> M5 records through it, and M6 must too. How each step is resolved is
+> recorded under Decisions — 2026-09-24.
+>
+> **Last-write-wins needs the server to set `updated_at` on every write.** That
+> trigger is dashboard migration `20260924190305`. It is written but NOT
+> APPLIED yet. Until it is, the first write's time never moves, so a position
+> from another device is never adopted. Push it before relying on
+> cross-device parity.
 
 1. Write the position to Zustand immediately; local is the source of truth for the current session.
 2. Debounce the write to Supabase — on pause, on chapter change, on app background, and on an interval.
@@ -803,6 +811,69 @@ code. The prompts carry the detail; this is the record.
 - **Libraries approved:** `expo-keep-awake` and
   `@react-native-community/netinfo` (Tech Stack).
 
+## Decisions — 2026-09-24
+
+Made while building prompt 15 and reviewing prompt 16 against it.
+
+- **One lock rule.** `chapterStateFor()` in `types/states.ts` wraps
+  `resolveChapterState()` for a `chapters_catalog` row and treats a null
+  `access` as locked. M4 and M5 both call it; nothing else decides a lock.
+- **M5 as wired (prompt 15).** Text is fetched only for a published chapter
+  that does not resolve to locked. The first text a reader receives stays
+  until the screen unmounts. Next and Previous `router.replace` to the nearest
+  chapter numbers either side, never n ± 1. The label's "of M" is the book's
+  highest chapter number. The next chapter's text is prefetched at 80%, never
+  for a locked chapter. Known gap: a dashboard edit made while a chapter is
+  closed shows one open late, because the open paints the cached copy first.
+- **Prompt cross-references.** Prompts 16–27 (written 2026-09-23 and 24) cite
+  each other one number too high: they call the parity writer "prompt 17", M6
+  "18–19" and the handoff "20". The file names are right. Fix each prompt's
+  references when it is reviewed.
+- **Parity writer (prompt 16).** How the five-step algorithm is resolved:
+  - The server owns `updated_at`, through one additive trigger on
+    `reading_positions` (`before insert or update`, reusing the dashboard's
+    `set_updated_at()`), pushed from the dashboard repo.
+  - One writer module, `lib/parity/`. Its queue and timers are module state, so
+    an unmount can never cancel a write. It is not a `useMutation`: a failed
+    write keeps the position instead of rolling it back.
+  - Each write sends `chapter_id`, `book_id`, `last_mode` and only its own
+    side. The upsert leaves the other side as it was, so reading never clobbers
+    a listening position.
+  - Last write wins by the server's clock. A session position carries the
+    server `updated_at` it last saw, plus a dirty flag. A dirty position is
+    flushed and wins. A clean one gives way to a newer server row. Device
+    clocks are never compared.
+  - Sign-out flushes first, then drops anything queued under the old account.
+    The table's `user_id` defaults to whoever's token is on the request, so a
+    late write would land in the next account.
+  - Text ↔ audio maps proportionally within a chapter, from the text length
+    and `audio_duration_seconds`. It falls back to the chapter's start when
+    there is no duration. The data has no alignment, so it reports which of the
+    two it did, and the handoff says so to the user. Start-of-chapter alone
+    would restart every handoff, defeating parity.
+  - M4's Read resumes the book's most recent position through
+    `resumeTargetOptions()`, the query Library reuses.
+- **M6 Now Playing (prompt 17).** Decided while reviewing prompt 17 against
+  `material/8.png`:
+  - Built on real chapter and book data, with only the playback mocked. The
+    no-audio, locked and not-available states need real rows, and prompt 18
+    wires audio, not metadata.
+  - The hamburger has no defined function, so it is omitted, with a spacer
+    keeping the header centred. The narration credit has no column, so it is
+    omitted too. The red glow around the cover is dropped (no glows).
+  - The cover's thin ember rim stays: AGENTS.md M6 specifies it. It is a
+    decorative edge, so the play button remains the screen's one ember action.
+  - "AUDIO SYNC ACTIVE" and "Shared Bookmark" render as static copy in the
+    shell. Prompt 18 makes them truthful or hides them.
+  - M6 slides up from the bottom, to match its down-chevron dismiss.
+  - The scrubber is custom (gesture-handler and Reanimated), because no slider
+    library draws the frame's 4dp track on Android.
+  - The mocked shell never sets `currentChapterId` or `isPlaying`, or the mini
+    player would show a track that isn't playing.
+  - Speeds 0.75–2.0 and sleep timers of 5–60 minutes are standard player
+    options, not taken from the frame. Revisit them if the product wants
+    others.
+
 ---
 
 ## Build order — what to build, and what is blocked
@@ -846,15 +917,30 @@ which is the point of doing this before Phase 2.
 that remains the only durable home for genre choices until a profile table
 exists in Phase 2.
 
-**Status, 2026-09-23.** Built: M1 sign-in and M2 genre picker (prompts
+**Status, 2026-09-24.** Built: M1 sign-in and M2 genre picker (prompts
 04–07), the navigation shell (08), M3 Discover on `books_catalog` (09–10), M8
 Search on `books_catalog` (11), live catalog updates from the dashboard (see
 Data Contract), the Phase 2 reader tables with their read-only fetchers
-(13), M4 Story Detail (12), and the M5 Reader on mock text (14). **Next:
-prompt 15 wires M5 to real chapter text.** Open before M5 ships: the age
-gate (§ Content Rules) — every live book is `mature_17`, and nothing gates
-it yet. It needs its own prompt, and a decision on whether M1's
-18+ legal line is enough.
+(13), M4 Story Detail (12), and the M5 Reader (14) on real chapter text (15).
+The parity writer (16) is built. Its `updated_at` trigger (dashboard
+migration `20260924190305`) is written but not yet applied. **Next: prompt 17,
+M6 Now Playing.** M9 is still a placeholder route, and its prompt (20) is
+empty. Open before M5 ships:
+- The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
+  gates it yet. It needs its own prompt, and a decision on whether M1's 18+
+  legal line is enough.
+- M5's no-text state for a chapter with neither text nor audio (live: Man of
+  Ashes 001 chapters 11 and 12). Its caption says "You can listen to it
+  instead".
+
+Decide before prompt 18 (M6 real audio):
+- **The audio bucket (Phase 0, decision 2).** This file still records it as not
+  made, and recommends public. Prompt 18 as written assumes PRIVATE, with an
+  Edge Function signing each URL after checking entitlement. The two cannot
+  both stand. Settle it, then fix whichever is wrong.
+- **A development build.** `react-native-track-player` does not run in Expo
+  Go, and this project has no dev client yet (`expo-dev-client` is not
+  installed). Prompt 18 stops at step 1 without one.
 
 ### Phase 2 — the three reader tables (done 2026-09-23)
 
@@ -899,7 +985,7 @@ that day. See Data Contract for what exists.
 Read/listen parity becomes implementable at this point and not before: steps
 2–4 of its algorithm write to `reading_positions`.
 
-### Before production — three things to plan for now
+### Before production — four things to plan for now
 
 **Locked chapter text is not protected server-side.** RLS lets any signed-in
 reader select `chapters.script_text` for any published chapter, locked or not
@@ -917,10 +1003,20 @@ fix**. No schema work makes this feel like a modern app. Budget the upgrade,
 and lean on TanStack Query's persisted cache so a warm screen never waits on
 the network.
 
-**Seed more content.** One published story, 13 chapters, one with audio. A
-Discover carousel, a 100-row virtualised chapter list and a search results
-screen cannot be evaluated against that. Load it through the admin dashboard —
-that path exists and exercising it is the point.
+**Seed more content.** Three published books, 31 chapters, four with audio
+(2026-09-24). A Discover carousel, a 100-row virtualised chapter list and a
+search results screen cannot be evaluated against that. Load it through the
+admin dashboard — that path exists and exercising it is the point.
+
+**Chapter text rides in the one persisted cache value.** The whole TanStack
+cache persists as a single AsyncStorage value, and every chapter read in the
+last 24 hours is in it. Live chapters reach ~315,000 characters (Man of Ashes
+001 chapters 8–10 and 13). On Android a value past ~2 MB can fail to read back,
+and then the cache fails to restore for every screen. Before launch, keep
+chapter text out of the persisted cache (the persister's
+`shouldDehydrateQuery`) once the downloads prompt gives text its own storage,
+or cap it. The reader also lays a whole chapter out in one `ScrollView`, which
+has not been tried at that length.
 
 ---
 
@@ -1072,8 +1168,10 @@ history (see Phase 2).
   `activity_log.actor_id`) and defaults to the caller's own `sub`.
 - `reading_positions` holds `audio_ms`, `text_offset` (a **character**
   offset) and `last_mode` (`text` | `audio`). A check constraint requires the
-  side named in `last_mode` to hold a value. `updated_at` defaults to `now()`
-  on insert, but **nothing bumps it on update yet** (see parity above).
+  side named in `last_mode` to hold a value. `updated_at` is the parity
+  clock. Trigger `reading_positions_set_updated_at` (migration
+  `20260924190305`) sets it on every insert and update, overwriting whatever
+  a client sends. **Not applied yet** (see parity above).
   `book_id` is denormalised so Library needs no join.
 - `unlocks.source` is `ad` | `purchase`. A subscription never writes here:
   access comes from the RevenueCat entitlement at read time.
@@ -1314,6 +1412,7 @@ Run:
 ```bash
 npm run lint
 npm run typecheck
+npm test
 ```
 
 Fix errors. A change that does not typecheck is not done.
