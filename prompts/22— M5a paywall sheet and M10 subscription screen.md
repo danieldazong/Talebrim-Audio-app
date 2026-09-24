@@ -1,4 +1,16 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
+
+> Revision note, 2026-09-24 (prompt 18 review). Subscriptions must also
+> reach the `audio` storage policy that the deferred setup adds: its `security
+> definer` function leaves a `-- TODO(paywall)` branch for an entitlement
+> mirror (AGENTS.md § Billing Rules allows one for RLS). Settle how
+> RevenueCat state reaches Postgres at this prompt's review. See AGENTS.md
+> § Decisions — 2026-09-24, "Audio".
+>
+> BEFORE THIS PROMPT: AGENTS.md § Deferred setup must be done. RevenueCat and
+> Google Play purchases do not run in Expo Go, and Play products need the
+> Android package name. STOP until it is.
+
 Design material: @prompt_material/12-paywall.png — ensure everything is as is
 shown. Both the UI and the real service land here, because a paywall built
 against mocked prices is a paywall that ships with the wrong prices.

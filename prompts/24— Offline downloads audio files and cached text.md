@@ -1,4 +1,10 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
+
+> Revision note, 2026-09-24 (prompt 18 review). There is no Edge Function:
+> a download signs with `chapterAudioSourceOptions()` (prompt 18), under
+> the storage policy that checks entitlement. Rewrite step 3 at this
+> prompt's review. See AGENTS.md § Decisions — 2026-09-24, "Audio".
+
 AUDIO DOWNLOAD AND TEXT CACHING ARE TWO SEPARATE MECHANISMS. Do not build one
 abstraction over both — audio is a file on disk, text is a persisted query
 entry, and conflating them produces a "downloaded" state that is true for one

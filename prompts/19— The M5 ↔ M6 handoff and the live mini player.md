@@ -1,4 +1,12 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
+
+> Revision note, 2026-09-24 (prompt 18 review). Before this prompt's own
+> review: the live mini player (step 10) and the Android notification
+> permission (step 13) moved into prompt 18. Audio is `expo-audio`, not
+> `react-native-track-player`, so step 7's seek advice must be rewritten.
+> This prompt still cites the others one number too high. See AGENTS.md
+> § Decisions — 2026-09-24, "Audio".
+
 This connects two halves that were deliberately built independently: the reader
 from prompts 15–16, the player from prompts 18–19, and the parity writer from
 prompt 17. Update BOTH ends in this one prompt so they cannot drift. Do not

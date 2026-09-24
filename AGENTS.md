@@ -90,7 +90,8 @@ Use the following stack:
 - TanStack Query
 - Clerk for authentication (`@clerk/expo`)
 - Supabase for database and media storage (`@supabase/supabase-js`)
-- `react-native-track-player` for audio playback
+- `expo-audio` for audio playback — replaces `react-native-track-player`
+  (decided 2026-09-24; installed by prompt 18)
 - RevenueCat for subscriptions and entitlements
 - `react-native-google-mobile-ads` for rewarded ads
 - Server-side route handlers or Supabase Edge Functions for secrets and privileged operations
@@ -100,6 +101,9 @@ Use the following stack:
   prompt 15)
 - `jest-expo` with `jest` — dev-only, unit tests under `__tests__/` (approved
   2026-09-24; installed by prompt 16)
+- `expo-dev-client` — the development build, through EAS, Android first
+  (approved 2026-09-24; installed by the deferred setup before prompt 22, see
+  Build order)
 
 Do not introduce new major libraries unless there is a strong reason.
 
@@ -537,7 +541,7 @@ instead of handing a stale object to a component.
 | ------------ | ------------------------------------------------------------------- | ----------------------------------------------- |
 | `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — the only durable home for genres until Phase 2's profile table |
 | `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
-| `playback`   | current chapter, playing state, speed, sleep timer                  | no — session only |
+| `playback`   | current chapter, playing state, speed, sleep timer. M6's shell writes only `speed`: nothing sets `currentChapterId` or `isPlaying` until prompt 18, because the mini player shows whenever `currentChapterId` is set | no — session only |
 | `parity`     | the in-session authoritative reading position, keyed by chapter, with the server `updated_at` it last saw and a dirty flag | no — see Read/listen parity below; only `lib/parity/writer.ts` writes it |
 | `search`     | M8's `recentSearches` (most recent first, at most 8) — added in prompt 11 | yes — per account, so sign-out clears it; never written to the database, and no search-history table exists or should |
 
@@ -568,7 +572,8 @@ lib/
   supabase.ts
   clerk.ts
   parity/       the one reading_positions writer, and its pure rules
-  trackPlayer.ts
+  query-status.ts  how a screen's status reads the queries it waits on (M5, M6)
+  audio/        the one app-wide player (expo-audio), from prompt 18
   revenuecat.ts
   format.ts
   cn.ts
@@ -598,11 +603,10 @@ Use local component state for temporary UI state.
 > M5 records through it, and M6 must too. How each step is resolved is
 > recorded under Decisions — 2026-09-24.
 >
-> **Last-write-wins needs the server to set `updated_at` on every write.** That
-> trigger is dashboard migration `20260924190305`. It is written but NOT
-> APPLIED yet. Until it is, the first write's time never moves, so a position
-> from another device is never adopted. Push it before relying on
-> cross-device parity.
+> **The server sets `updated_at` on every write**, which last-write-wins
+> depends on: dashboard migration `20260924190305`, applied 2026-09-24. Its
+> verify checks (`reader_tables_rls.sql`, 47 in all) prove a client-sent time
+> is overwritten on insert and update.
 
 1. Write the position to Zustand immediately; local is the source of truth for the current session.
 2. Debounce the write to Supabase — on pause, on chapter change, on app background, and on an interval.
@@ -813,7 +817,7 @@ code. The prompts carry the detail; this is the record.
 
 ## Decisions — 2026-09-24
 
-Made while building prompt 15 and reviewing prompt 16 against it.
+Made while building prompts 15–17 and reviewing each prompt before it.
 
 - **One lock rule.** `chapterStateFor()` in `types/states.ts` wraps
   `resolveChapterState()` for a `chapters_catalog` row and treats a null
@@ -873,6 +877,73 @@ Made while building prompt 15 and reviewing prompt 16 against it.
   - Speeds 0.75–2.0 and sleep timers of 5–60 minutes are standard player
     options, not taken from the frame. Revisit them if the product wants
     others.
+- **M6 as built (prompt 17).** `app/player/[chapterId].tsx`, with its parts in
+  `components/player/`:
+  - `hooks/use-now-playing.ts` resolves the state in M5's order: offline →
+    failed → loading → not available → locked → no audio → ready. M5 and M6
+    now share `waitFor()` (`lib/query-status.ts`) and `lockStateFor()`
+    (`types/states.ts`). A null `has_audio` counts as no audio.
+  - The playback is `hooks/use-shell-playback.ts`, a reducer marked `SHELL`.
+    Prompt 18 replaces it. Elapsed ticks at the chosen speed and stops at the
+    end. The sleep timer counts down on the wall clock and pauses the shell at
+    zero. Only `setSpeed` reaches the `playback` slice.
+  - `Cover` takes an optional `aspectRatio` (default 2:3). Any other ratio
+    crops from the top. M6's square cover is 72% of the width where that fits.
+    It shrinks on a short screen or at a large text size, so the controls
+    never scroll out of reach.
+  - A duration that is null or 0 is unknown. The scrubber then draws no fill
+    and no thumb, and dragging is off. Its right-hand label reads "Duration
+    unknown". Times print through `formatDuration()` ("4:15", not the frame's
+    "04:15"). Screen readers hear `formatDurationSpoken()`.
+  - `GestureHandlerRootView` wraps the whole app in `app/_layout.tsx`. Every
+    gesture-handler gesture needs one above it, and M6's scrubber was the
+    first.
+  - "Read instead" in the ready state is a `TODO(handoff)` no-op, and so is
+    M5's Listen. Prompt 19 wires both together through `lib/parity`. The
+    no-audio state's "Read instead" does open the reader, with
+    `router.replace`: there is no audio position to carry.
+  - Android back pops the player. With nothing behind it (a deep link), it goes
+    to `/` instead of leaving the app.
+  - Retry and Go back use `Button`'s `outlined` variant. `secondary`'s
+    `raised` fill disappears on the gradient.
+- **Audio (prompt 18 review).** Approved by the owner on 2026-09-24:
+  - **The `audio` bucket stays private** (Phase 0, decision 2). The app signs
+    its own URLs with `createSignedUrl` under the reader's Clerk token.
+  - **The dashboard's `audio_read` policy is replaced by one that checks
+    entitlement on the server.** It allows `is_admin()`, or a `security
+    definer` function that passes a published chapter's current `audio_path`
+    when the chapter is free by access or position, or unlocked by the
+    caller. This is the second sanctioned change to a dashboard-owned object,
+    after the catalog broadcast triggers. It also carries out the dashboard
+    AGENTS.md's own intent for `audio/`. The subscription branch waits for the
+    entitlement mirror (the paywall prompt).
+  - **No Edge Function.** Prompt 18 had planned one. It would have added no
+    protection while `audio_read` let any reader sign any file, and it needed
+    a service-role key and hand-verified Clerk tokens.
+  - `chapters.audio_path` becomes the second sanctioned direct read of
+    `chapters`, on the text read's terms.
+  - **`expo-audio` replaces `react-native-track-player`.** Track-player has
+    had no release since August 2025 (4.1.2; v5 never left alpha), and this
+    app runs React Native 0.86 on the New Architecture. `expo-audio` ships
+    with SDK 57. Its 57.0.5 types include background playback, lock-screen
+    controls with seek, playback rate, interruption modes and a playlist.
+    The trade-offs are no next/previous-chapter buttons on the lock screen and
+    no Android Auto browsing.
+  - **A development build through EAS, Android first**, with
+    `expo-dev-client`. RevenueCat and rewarded ads need it too. `expo-audio`
+    itself runs in Expo Go, so only the background, lock-screen and
+    Bluetooth checks wait for the build.
+  - **Deferred, the same day, to the setup before prompt 22** (§ Deferred
+    setup): the development build, the owner's account and device
+    preparation, and the audio storage policy, whose proof needs test
+    accounts. Prompt 18 runs in Expo Go. Until the policy lands, audio is no
+    more protected than text, and no real reader uses the app yet.
+  - **Moved from prompt 19 into prompt 18:** the live mini player and the
+    Android notification permission. Dismissing M6 leaves audio playing, and
+    the mini player must not show a placeholder over a real track.
+  - **Still to revise at their own reviews:** prompt 19 (its seek step is
+    written for track-player), prompt 22 (the policy's subscription branch)
+    and prompt 24 (it signs downloads through an Edge Function).
 
 ---
 
@@ -889,20 +960,22 @@ it teaches the data layer cheaply.
 **1 · Confirm the Clerk instance.** Development, to match the dashboard.
 Settle it first or you debug two unknowns at once.
 
-**2 · Decide the audio bucket.** This shapes M6 and the entire download
-feature, so it cannot be deferred past Phase 2.
+**2 · Decide the audio bucket.** **Decided 2026-09-24: private.** The app
+signs its own URLs (prompt 18) under a storage policy that checks entitlement
+on the server (the deferred setup; Decisions — 2026-09-24, "Audio").
 
-|                  | Private (today)                                   | Public                |
-| ---------------- | ------------------------------------------------- | --------------------- |
-| URL              | signed, expiring                                  | immutable, CDN-cached |
-| Before playback  | a round trip to mint one                          | none                  |
-| Offline download | signature outlives nothing — needs its own scheme | works directly        |
-| Egress cost      | ~$0.09/GB uncached                                | ~$0.03/GB cached      |
+|                  | Private (chosen)                                           | Public                                      |
+| ---------------- | ---------------------------------------------------------- | ------------------------------------------- |
+| URL              | signed per chapter, expiring                               | immutable, CDN-cached                       |
+| Before playback  | one request to sign, made when M6 opens                    | none                                        |
+| Offline download | download with a fresh signed URL, then play the local file | works directly                              |
+| Paywall          | enforced by the storage policy                             | none: a leaked link plays forever, no login |
+| Egress cost      | ~$0.09/GB uncached                                         | ~$0.03/GB cached                            |
 
-`AGENTS.md` already states that `locked` is a paywall state **the app enforces
-through entitlements, not a row-level secret** — so making `audio` public is
-consistent with the existing security model rather than a weakening of it. It
-is still a product decision and it is **not yet made**.
+Until 2026-09-24 this file recommended public, because `locked` was enforced
+only in the app anyway. That gave away too much: a public link needs no login
+at all, and the text gap it leaned on is itself to be closed before launch
+(§ Before production).
 
 ### Phase 1 — build against what exists (unblocked today)
 
@@ -922,10 +995,11 @@ exists in Phase 2.
 Search on `books_catalog` (11), live catalog updates from the dashboard (see
 Data Contract), the Phase 2 reader tables with their read-only fetchers
 (13), M4 Story Detail (12), and the M5 Reader (14) on real chapter text (15).
-The parity writer (16) is built. Its `updated_at` trigger (dashboard
-migration `20260924190305`) is written but not yet applied. **Next: prompt 17,
-M6 Now Playing.** M9 is still a placeholder route, and its prompt (20) is
-empty. Open before M5 ships:
+The parity writer (16) is built, and its `updated_at` trigger (dashboard
+migration `20260924190305`) is applied. M6 Now Playing (17) is built on real
+chapter data, with only the playback mocked. **Next: prompt 18, M6 real
+audio**, which waits on the two decisions below. M9 is still a placeholder
+route, and its prompt (20) is empty. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
@@ -933,14 +1007,92 @@ empty. Open before M5 ships:
   Ashes 001 chapters 11 and 12). Its caption says "You can listen to it
   instead".
 
-Decide before prompt 18 (M6 real audio):
-- **The audio bucket (Phase 0, decision 2).** This file still records it as not
-  made, and recommends public. Prompt 18 as written assumes PRIVATE, with an
-  Edge Function signing each URL after checking entitlement. The two cannot
-  both stand. Settle it, then fix whichever is wrong.
-- **A development build.** `react-native-track-player` does not run in Expo
-  Go, and this project has no dev client yet (`expo-dev-client` is not
-  installed). Prompt 18 stops at step 1 without one.
+Decided for prompt 18 on 2026-09-24 (Decisions — 2026-09-24, "Audio"): a
+private bucket, and `expo-audio`. Prompt 18 runs in Expo Go. The development
+build and the audio storage policy wait for the deferred setup below, which is
+due before prompt 22.
+
+### Deferred setup — due before prompt 22
+
+Postponed on 2026-09-24 so building can carry on in Expo Go. It cannot wait
+for the last prompt: RevenueCat (prompt 22) and rewarded ads (prompt 23) do not
+run in Expo Go, and Google Play products need the package name. Prompt 22 stops
+until this is done.
+
+**Owner, before anything else:**
+
+1. **Android package name.** Recommended: `com.talebrim.app`. It is permanent
+   once the app is on Google Play. Lowercase letters, digits and underscores;
+   at least two parts separated by dots, each starting with a letter.
+2. **Expo account and EAS.** Sign up at expo.dev, then run these in this repo:
+   `npm install -g eas-cli`, `eas login`, `eas whoami`, `eas init`. The last
+   one adds a `projectId` to `app.json`, which is expected. If PowerShell
+   blocks scripts, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`,
+   or put `npx eas-cli` in front of each command. On the first build, let EAS
+   generate and keep the Android keystore: every Google Play update must be
+   signed with the same key.
+3. **Clerk redirect.** Development instance → Talebrim → Configure → Native
+   applications → Allowlist for mobile SSO redirect → add
+   `talebrimapp://sso-callback`. That is where Google sign-in returns in the
+   development build; Expo Go uses its own address.
+4. **An Android phone.** Android 13 or newer if possible, allowed to install
+   unknown apps, on the same Wi-Fi as the PC. Bluetooth headphones or a
+   speaker for the Bluetooth checks.
+5. **Test data.** A second reader account on the development instance that is
+   not an admin, with an email you can receive codes on. Also a locked chapter
+   with narration (chapter 4 or later, access locked, audio uploaded through
+   the dashboard), besides a free chapter with audio.
+
+**Then one prompt, to be written before prompt 22:**
+
+6. Install `expo-dev-client`. Add `eas.json` with a `development` profile
+   (`developmentClient: true`, `distribution: "internal"`, an Android APK), and
+   set `android.package`. The owner runs
+   `eas build --profile development --platform android` and installs the build
+   on the phone. From then on, `npx expo start` opens the development build;
+   press `s` to switch to Expo Go.
+7. Sign in with Google on the build, to prove the redirect.
+8. **The audio storage policy**, a migration in the dashboard repo, with
+   § Phase 2's discipline:
+   - Replace `audio_read` with a policy that allows `select` on `audio`
+     objects when `is_admin()` OR a new `security definer` function (`stable`,
+     `set search_path = ''`) says this caller may play this object. The
+     function returns true only when all of these hold:
+     - The object is a chapter's current `audio_path`. The chapter id comes
+       from the path's second segment (`<bookId>/<chapterId>/<file>`) and is
+       looked up by primary key, never by scanning paths. A malformed segment
+       returns false, never an error.
+     - The chapter's book is published.
+     - The chapter is free by `access`, free by position (`number <=
+       free_chapters_at_start` from the live `app_settings` row), or has an
+       `unlocks` row for `auth.jwt() ->> 'sub'`.
+   - Subscribers wait for the entitlement mirror: leave `-- TODO(paywall)`
+     where prompt 22 adds it.
+   - It is the second sanctioned change to a dashboard-owned object, after the
+     catalog broadcast triggers. The `is_admin()` branch keeps the dashboard's
+     playback (`createAudioPlaybackUrl`) and uploads working. Show the owner
+     the migration, and get a yes, before `supabase db push`.
+   - Verify with real HTTP requests, because storage policies are enforced at
+     the Storage API, not in SQL. Follow the dashboard AGENTS.md's method: use
+     a newly minted Clerk token at once (tokens live 60 seconds; an expired
+     one reads as "Bucket not found"), and read the body rather than the
+     status (a denial is a 400 "Object not found"). Prove that a non-admin
+     reader can sign a free chapter's audio and an unlocked one's but not a
+     locked one's, that `anon` can sign nothing, and that the admin can sign
+     all of them. Run the dashboard's three gates and
+     `supabase/verify/reader_tables_rls.sql`. Record the change in both
+     repos' AGENTS.md.
+9. The device checks prompt 18 could not run in Expo Go, on the development
+   build:
+   - background playback past three minutes, and the lock-screen controls,
+     with their skip interval
+   - Bluetooth pause and resume, and headphones unplugged
+   - the Android 13+ notification: whether its controls appear without
+     `POST_NOTIFICATIONS`. If they don't, request it with
+     `requestNotificationPermissionsAsync()` at the first Play, never at
+     launch. On denial, playback still works with fewer controls, and the app
+     never asks twice in a session.
+   - anything prompt 18 added to this list
 
 ### Phase 2 — the three reader tables (done 2026-09-23)
 
@@ -995,7 +1147,10 @@ is not security: anyone replaying their own token can read every chapter.
 Before launch, serve text through a server-side check of unlocks and
 subscription entitlement (a `security definer` function or an Edge Function),
 written as an additive migration in the dashboard repo — the `chapters`
-policies stay the dashboard's.
+policies stay the dashboard's. Audio closes the same gap in the deferred
+setup (§ Deferred setup): its storage policy signs only what the reader may
+play. Both checks need the subscription entitlement mirror once the paywall
+prompt adds subscriptions.
 
 **The instance is `t3.nano`.** `AGENTS.md` measures a **~450ms floor for a
 trivial query** and concludes that **instance size outranks every code-level
@@ -1061,7 +1216,7 @@ issuers**, so a token from either is accepted by RLS.
 
 | Instance    | Issuer                                             | Use                |
 | ----------- | -------------------------------------------------- | ------------------ |
-| Development | `https://cheerful-walleye-3066.clerk.accounts.dev` | local dev, Expo Go |
+| Development | `https://cheerful-walleye-3066.clerk.accounts.dev` | local dev, Expo Go, the development build |
 | Production  | `https://clerk.talebrim.com`                       | release builds     |
 
 ```bash
@@ -1171,7 +1326,7 @@ history (see Phase 2).
   side named in `last_mode` to hold a value. `updated_at` is the parity
   clock. Trigger `reading_positions_set_updated_at` (migration
   `20260924190305`) sets it on every insert and update, overwriting whatever
-  a client sends. **Not applied yet** (see parity above).
+  a client sends. Applied 2026-09-24 (see parity above).
   `book_id` is denormalised so Library needs no join.
 - `unlocks.source` is `ad` | `purchase`. A subscription never writes here:
   access comes from the RevenueCat entitlement at read time.
@@ -1221,25 +1376,22 @@ it does) and any entitlement mirror.
 | Bucket    | Public?         | Consequence for this app                                                         |
 | --------- | --------------- | -------------------------------------------------------------------------------- |
 | `covers`  | **public read** | Build URLs directly from `cover_path` + CDN domain. No signing, cacheable, fast. |
-| `audio`   | **private**     | **Every track needs a signed URL, minted per playback.**                         |
+| `audio`   | **private**     | **Signed per chapter by the app, under a policy that checks entitlement (prompt 18).** |
 | `scripts` | admin only      | Never touched by this app. Prose comes from `chapters.script_text`.              |
 
-**The private audio bucket is the single biggest performance decision left
-open.** Signed URLs expire, so they cannot be cached in the app or handed to
-`react-native-track-player` for an offline download that outlives the
-signature. Two options, and one must be chosen before M6 is built:
+**Decided 2026-09-24: `audio` stays private** (Decisions — 2026-09-24,
+"Audio"). The app signs each chapter's URL itself, through `createSignedUrl`
+under the reader's Clerk token. Storage signs only what the `audio` read policy
+allows. The deferred setup (§ Deferred setup, before prompt 22) replaces the
+dashboard's `audio_read`, which lets any signed-in user read any object, with
+one that allows a published chapter that is free, or unlocked by this reader.
+No Edge Function and no service-role key are involved.
 
-1. **Make `audio` public**, like `covers`. `AGENTS.md` already states that
-   `locked` is a paywall state the app enforces through entitlements, **not a
-   row-level secret** — so this is consistent with the existing security model
-   rather than a weakening of it. Gives immutable, long-cached, CDN-served URLs
-   and the cheapest egress.
-2. **Keep it private** and mint signed URLs through an Edge Function,
-   accepting a round trip before playback and solving offline downloads
-   separately.
-
-Option 1 is the one that matches "modern app" performance. It is a product
-decision, not a technical one, and it is not made yet.
+- A signed URL is a bearer credential, and it expires: never persist one.
+- An offline download is a copy made with a fresh signed URL. The file then
+  plays locally, so the expiry no longer matters to it.
+- `chapters.audio_path` stays readable to any signed-in reader. Once the policy
+  is in, that is harmless: a path the reader may not sign plays nothing.
 
 ### Query patterns this app needs, and the indexes behind them
 
@@ -1277,9 +1429,11 @@ zero**, when nothing has a measured duration.
 with `has_audio` / `has_text` booleans and **no `script_text`**. Fetch prose
 per chapter from `chapters.script_text` when the reader actually opens one.
 That single-row read by id (`chapterTextOptions()` in
-`lib/queries/chapters.ts`) is the **one sanctioned direct read of `chapters`**.
+`lib/queries/chapters.ts`) is a **sanctioned direct read of `chapters`**.
 It runs only after `chapters_catalog` has returned the same chapter — which
 proves it is published — and never for a chapter that resolves to locked.
+Prompt 18 adds the only other one, `audio_path` for signing
+(`chapterAudioSourceOptions()`), on the same terms.
 
 Both views set `security_invoker = on`, so the caller's RLS still applies.
 Drafts are excluded **by construction**: a mobile query that forgets
@@ -1348,11 +1502,12 @@ app. Do not create one.
 
 ## Audio Rules
 
-- `react-native-track-player` with background mode, lock-screen and Bluetooth/car controls, variable speed, sleep timer, and autoplay next chapter.
+- `expo-audio` (decided 2026-09-24), with one app-wide player from `createAudioPlayer()` that outlives M6: background playback, lock-screen and Bluetooth controls through its media session, variable speed, sleep timer, and autoplay next chapter. It shows no next/previous-chapter buttons on the lock screen and offers no Android Auto browsing; both accepted.
+- Its config plugin runs with `recordAudioAndroid: false` and `microphonePermission: false`. This app never records, and Google Play asks every app holding `RECORD_AUDIO` to justify it.
 - Offline audio download is separate from offline text caching — implement both.
 - Auto-bookmark on pause.
 - M5 ↔ M6 handoff preserves position in both directions.
-- Audio URLs from Supabase Storage are immutable and long-cached. Never append cache-busting query strings to media — cached egress bills roughly $0.03/GB against $0.09/GB uncached, so CDN hit rate is a real cost lever.
+- Audio plays from signed URLs (private bucket). Never persist one, and never add a cache-busting parameter of your own to media. Each signing is a new URL, so do not count on CDN hits for audio (cached egress ~$0.03/GB against ~$0.09/GB uncached): a cost accepted with the private bucket. Offline downloads keep repeat plays off the network.
 
 ---
 
