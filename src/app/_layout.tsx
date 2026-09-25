@@ -6,6 +6,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -140,9 +141,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* SecureStore-backed cache from Clerk — never AsyncStorage for a
           session token, and never a hand-rolled cache. AGENTS.md § Clerk Rules. */}
+      {/* `touchSession` off on the web: in a browser, Clerk "touches" the
+          session each time the tab regains focus, and when that request
+          fails (the network dropped while the tab was away) clerk-js leaves
+          the error uncaught, which Expo's development overlay shows as a red
+          "ClerkJS: Network error ... Failed to fetch". Only the web preview
+          sends it: a phone has no browser focus event. */}
       <ClerkProvider
         publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
         tokenCache={tokenCache}
+        touchSession={Platform.OS !== "web"}
       >
         <AuthedQueryProvider>
           <SafeAreaProvider>
