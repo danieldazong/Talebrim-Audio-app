@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { parseChapterText, unsupportedMarks, type ReaderBlock } from "@/lib/chapter-text";
-import { textRestoreOffset } from "@/lib/parity/convert";
+import { textRestoreOffset, type RestorePoint } from "@/lib/parity/convert";
 import { fromServerRow, reconcile } from "@/lib/parity/reconcile";
 import { adoptServerPosition } from "@/lib/parity/writer";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
@@ -35,8 +35,11 @@ export type ReadyChapter = {
   /** Null at either end of the book, and while the neighbours load or after they fail. */
   previousId: string | null;
   nextId: string | null;
-  /** Where the chapter opens: a character offset, or null for the top. */
-  restoreOffset: number | null;
+  /**
+   * Where the chapter opens, as a character offset, and whether it was mapped
+   * from listening (prompt 19 step 8); null opens at the top.
+   */
+  restore: RestorePoint | null;
 };
 
 export type ChapterReaderView =
@@ -48,6 +51,7 @@ type OpenChapter = LockableChapter & {
   bookId: string;
   title: string | null;
   hasText: boolean | null;
+  hasAudio: boolean | null;
   /** The narration's measured length, which parity maps positions against. */
   durationSeconds: number | null;
 };
@@ -66,6 +70,7 @@ function toOpenChapter(row: ChapterDetailRow | null): OpenChapter | null {
     title: row.title,
     access: row.access,
     hasText: row.has_text,
+    hasAudio: row.has_audio,
     durationSeconds: row.audio_duration_seconds,
   };
 }
@@ -224,7 +229,7 @@ export function useChapterReader(chapterId: string) {
           lastChapterNumber: Math.max(lastNumber.data ?? book.data.chapter_count ?? 0, open.number),
           previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
           nextId: next?.id ?? null,
-          restoreOffset: restoreFrom
+          restore: restoreFrom
             ? textRestoreOffset(restoreFrom, {
                 textLength: shownText.value?.length ?? 0,
                 blocks,
@@ -254,6 +259,8 @@ export function useChapterReader(chapterId: string) {
     /** The top bar's lines, shown whenever they are known, in any state. */
     bookTitle: book.data?.title ?? null,
     chapterNumber: open?.number ?? null,
+    /** The chapter has narration to hand off to. A null `has_audio` has none. */
+    hasAudio: open?.hasAudio === true,
     retry,
     prefetchNext,
   };

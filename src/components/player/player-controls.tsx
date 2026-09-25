@@ -1,13 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui";
-import type { ShellPlaybackStatus } from "@/hooks/use-shell-playback";
+import type { PlaybackStatus } from "@/lib/audio/rules";
 import { formatSpeed } from "@/lib/format";
-import { colors } from "@/theme";
+import { colors, layout } from "@/theme";
 
 /** Measured from material/8.png. */
 const PLAY_SIZE = 72;
+
+// Every Pressable here takes its whole style from its `style` function and no
+// `className`. On this NativeWind (react-native-css 3.1.0-rc.0), a className
+// turns `style` into `[classStyle, fn]`, and React Native drops a function
+// inside an array: the pressed, disabled and ember styles never render.
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -29,8 +34,7 @@ function TransportButton({ icon, label, caption, disabled, onPress }: TransportB
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      className="min-h-11 w-11 items-center justify-center"
-      style={({ pressed }) => ({ opacity: disabled ? 0.4 : pressed ? 0.6 : 1 })}
+      style={({ pressed }) => [styles.transport, { opacity: disabled ? 0.4 : pressed ? 0.6 : 1 }]}
     >
       <Ionicons name={icon} size={24} color={colors.muted} />
       {caption ? (
@@ -42,7 +46,7 @@ function TransportButton({ icon, label, caption, disabled, onPress }: TransportB
   );
 }
 
-function playLabel(status: ShellPlaybackStatus): string {
+function playLabel(status: PlaybackStatus): string {
   switch (status) {
     case "paused":
       return "Play";
@@ -54,7 +58,7 @@ function playLabel(status: ShellPlaybackStatus): string {
 }
 
 type PlayerTransportProps = {
-  status: ShellPlaybackStatus;
+  status: PlaybackStatus;
   /** The loading state: the row drawn, nothing pressable. */
   disabled?: boolean;
   onTogglePlay: () => void;
@@ -105,14 +109,11 @@ export function PlayerTransport({
         accessibilityState={{ disabled, busy: status === "buffering" }}
         disabled={disabled}
         onPress={onTogglePlay}
-        className="items-center justify-center rounded-pill"
         // The pressed fill is a Pressable state — AGENTS.md § Style Exception Rules.
-        style={({ pressed }) => ({
-          width: PLAY_SIZE,
-          height: PLAY_SIZE,
-          backgroundColor: pressed ? colors.emberPressed : colors.ember,
-          opacity: disabled ? 0.5 : 1,
-        })}
+        style={({ pressed }) => [
+          styles.play,
+          { backgroundColor: pressed ? colors.emberPressed : colors.ember, opacity: disabled ? 0.5 : 1 },
+        ]}
       >
         {status === "buffering" ? (
           <ActivityIndicator size="small" color={colors.ink} />
@@ -150,7 +151,8 @@ type PlayerSecondaryControlsProps = {
   sleepMinutesLeft: number | null;
   onOpenSpeed: () => void;
   onOpenSleepTimer: () => void;
-  onReadInstead: () => void;
+  /** Null disables it: the chapter has no text to read (prompt 19 step 9). */
+  onReadInstead: (() => void) | null;
   /** Layout classes only. */
   className?: string;
 };
@@ -174,8 +176,7 @@ export function PlayerSecondaryControls({
         accessibilityRole="button"
         accessibilityLabel={`Playback speed, ${formatSpeed(speed)} times`}
         onPress={onOpenSpeed}
-        className="h-11 min-w-11 items-center justify-center px-2"
-        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        style={({ pressed }) => [styles.speed, { opacity: pressed ? 0.6 : 1 }]}
       >
         <Text className="font-ui-semibold text-teal text-base" maxFontSizeMultiplier={1.3}>
           {`${formatSpeed(speed)}x`}
@@ -190,8 +191,7 @@ export function PlayerSecondaryControls({
             : `Sleep timer, ${sleepMinutesLeft} ${sleepMinutesLeft === 1 ? "minute" : "minutes"} left`
         }
         onPress={onOpenSleepTimer}
-        className="h-11 flex-row items-center gap-2 px-2"
-        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        style={({ pressed }) => [styles.sleep, { opacity: pressed ? 0.6 : 1 }]}
       >
         <Ionicons name="moon-outline" size={20} color={colors.teal} />
         <Text className="font-ui-semibold text-teal text-base" maxFontSizeMultiplier={1.3}>
@@ -203,9 +203,41 @@ export function PlayerSecondaryControls({
         label="Read instead"
         variant="audio"
         icon={<Ionicons name="book" size={16} color={colors.teal} />}
-        onPress={onReadInstead}
+        accessibilityLabel={onReadInstead === null ? "Read instead. This chapter has no text yet." : "Read instead"}
+        disabled={onReadInstead === null}
+        onPress={() => onReadInstead?.()}
         className="h-11 px-4"
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  transport: {
+    minHeight: layout.minTouchTarget,
+    width: layout.minTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  play: {
+    width: PLAY_SIZE,
+    height: PLAY_SIZE,
+    borderRadius: PLAY_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  speed: {
+    height: layout.minTouchTarget,
+    minWidth: layout.minTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  sleep: {
+    height: layout.minTouchTarget,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+});

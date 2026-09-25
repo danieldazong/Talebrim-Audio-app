@@ -24,6 +24,11 @@ type ReaderToolbarProps = {
   theme: ReaderTheme;
   /** Shown in the ready state only; null leaves the middle empty. */
   position: ReaderPosition | null;
+  /**
+   * For four seconds after opening at a place mapped from listening: takes
+   * the position label's place (prompt 19 step 8). Ready state only.
+   */
+  notice?: string | null;
   /** Distance from the bottom of the screen: the gap plus the safe-area inset. */
   bottomOffset: number;
   /** The auto-hide slide, from `useReaderChrome`. */
@@ -31,7 +36,8 @@ type ReaderToolbarProps = {
   onLayout?: (event: LayoutChangeEvent) => void;
   onCycleTheme: () => void;
   onOpenSettings: () => void;
-  onListen: () => void;
+  /** Null disables Listen: the chapter has no narration (prompt 19 step 9). */
+  onListen: (() => void) | null;
 };
 
 /**
@@ -47,6 +53,7 @@ type ReaderToolbarProps = {
 export function ReaderToolbar({
   theme,
   position,
+  notice = null,
   bottomOffset,
   animatedStyle,
   onLayout,
@@ -84,18 +91,23 @@ export function ReaderToolbar({
         </Pressable>
 
         {/* UNBACKED — bookmark needs a bookmarks table. The frame's bookmark
-            is not rendered; its slot holds the position label instead. */}
+            is not rendered; its slot holds the position label instead, or the
+            handoff's notice, which may take a second line inside the
+            toolbar's fixed height. */}
         <View className="flex-1 items-center px-2">
           {position ? (
             <Text
-              accessibilityLabel={`Chapter ${position.chapterNumber} of ${position.lastChapterNumber}, ${position.percent} percent read`}
-              className="font-ui-medium text-muted text-xs"
-              numberOfLines={1}
+              accessibilityLabel={
+                notice ??
+                `Chapter ${position.chapterNumber} of ${position.lastChapterNumber}, ${position.percent} percent read`
+              }
+              className="font-ui-medium text-muted text-center text-xs"
+              numberOfLines={notice === null ? 1 : 2}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
               maxFontSizeMultiplier={1.3}
             >
-              {`${position.chapterNumber} of ${position.lastChapterNumber} · ${position.percent}%`}
+              {notice ?? `${position.chapterNumber} of ${position.lastChapterNumber} · ${position.percent}%`}
             </Text>
           ) : null}
         </View>
@@ -104,8 +116,9 @@ export function ReaderToolbar({
           label="Listen"
           variant="audio"
           icon={<Ionicons name="headset" size={16} color={colors.teal} />}
-          accessibilityLabel="Listen to this chapter"
-          onPress={onListen}
+          accessibilityLabel={onListen === null ? "Listen. This chapter has no narration yet." : "Listen to this chapter"}
+          disabled={onListen === null}
+          onPress={() => onListen?.()}
           className="h-11 px-4"
         />
       </View>

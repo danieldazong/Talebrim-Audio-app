@@ -158,9 +158,24 @@ export function useReadingPosition({
     }, SETTLE_MS);
   };
 
+  /**
+   * The handoff (prompt 19 step 3): a place still waiting for the scroll to
+   * settle is recorded now, where it is, since the destination reads the
+   * parity slice before the timer would fire. With nothing pending, the
+   * place is already recorded, or the reader has not moved from where the
+   * chapter opened, which stays the newer side's place.
+   */
+  const recordNow = () => {
+    if (settleTimer.current === null) return;
+    clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+    recordAt(latestY.current);
+  };
+
   return {
     /** Progress through this chapter, 0–100, as of the last settled scroll. */
     percent,
+    recordNow,
     onBodyLayout,
     onBlockLayout,
     onViewportLayout,

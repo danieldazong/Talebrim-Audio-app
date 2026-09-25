@@ -116,7 +116,7 @@ export function useBookDetail(bookId: string) {
   // Read resumes the chapter of the reader's latest position in this book.
   // A failed lookup, no position, or a chapter no longer available opens the
   // first chapter instead: parity never blocks reading.
-  let resumeAt: LockableChapter | null | "pending";
+  let resumeAt: (LockableChapter & { hasAudio: boolean }) | null | "pending";
   if (!userId || resume.isError || resume.data === null) {
     resumeAt = null;
   } else if (resume.data === undefined) {
@@ -126,8 +126,8 @@ export function useBookDetail(bookId: string) {
   } else if (resumeChapter.data === undefined) {
     resumeAt = "pending";
   } else {
-    const { id, number, access } = resumeChapter.data;
-    resumeAt = id === null || number === null ? null : { id, number, access };
+    const { id, number, access, has_audio } = resumeChapter.data;
+    resumeAt = id === null || number === null ? null : { id, number, access, hasAudio: has_audio === true };
   }
 
   let read: ChapterTarget;
@@ -151,10 +151,25 @@ export function useBookDetail(bookId: string) {
       : { kind: "none" };
   }
 
+  // Listen resumes like Read (prompt 19 step 10): Read's chapter when it has
+  // narration and isn't locked, so listening in the car and tapping Listen
+  // at home never restarts chapter 1. Otherwise the first narrated chapter.
   let listen: ChapterTarget;
   const target = firstAudio.data;
+  const resumeListening =
+    resumeAt !== null &&
+    resumeAt !== "pending" &&
+    resumeAt.hasAudio &&
+    lockInputs !== null &&
+    chapterStateFor(resumeAt, lockInputs).kind !== "locked"
+      ? resumeAt
+      : null;
   if (!hasAudio) {
     listen = { kind: "none" };
+  } else if (resumeAt === "pending") {
+    listen = { kind: "pending" };
+  } else if (resumeListening) {
+    listen = { kind: "ready", chapterId: resumeListening.id, number: resumeListening.number, locked: false };
   } else if (target === undefined || lockInputs === null) {
     listen = [firstAudio, settings, unlocks].some(hasFailed) ? { kind: "failed" } : { kind: "pending" };
   } else if (target === null || target.id === null || target.number === null) {

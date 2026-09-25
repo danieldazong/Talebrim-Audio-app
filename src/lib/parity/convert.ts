@@ -26,6 +26,13 @@ export type ChapterTimeline = {
   durationSeconds: number | null;
 };
 
+/**
+ * Where a screen opens, and how the place was found: `mapped` is null when it
+ * is the screen's own mode's place, else the basis of the mapping from the
+ * other mode, which the screen announces (prompt 19 step 8).
+ */
+export type RestorePoint = { value: number; mapped: MappedPosition["basis"] | null };
+
 const CHAPTER_START: MappedPosition = { value: 0, basis: "chapter-start" };
 
 function durationMsOf(durationSeconds: number | null): number | null {
@@ -42,7 +49,10 @@ function isPosition(value: number): boolean {
  * narration, less the lead-in. An offset past the end of the text clamps to
  * the end.
  */
-export function textOffsetToAudioMs(offset: number, timeline: ChapterTimeline): MappedPosition {
+export function textOffsetToAudioMs(
+  offset: number,
+  timeline: Pick<ChapterTimeline, "textLength" | "durationSeconds">,
+): MappedPosition {
   const durationMs = durationMsOf(timeline.durationSeconds);
   if (durationMs === null || timeline.textLength <= 0 || !isPosition(offset)) return CHAPTER_START;
 
@@ -73,11 +83,12 @@ export function audioMsToTextOffset(ms: number, timeline: ChapterTimeline): Mapp
 /**
  * Where the reader opens for a position: from the side that wrote last. Its
  * own text offset when reading wrote last; the audio position mapped when
- * listening did, because that is the newer place.
+ * listening did, because that is the newer place. Null opens at the top.
  */
-export function textRestoreOffset(position: ChapterParityPosition, timeline: ChapterTimeline): number | null {
+export function textRestoreOffset(position: ChapterParityPosition, timeline: ChapterTimeline): RestorePoint | null {
   if (position.lastWrittenBy === "audio" && position.audioMs !== null) {
-    return audioMsToTextOffset(position.audioMs, timeline).value;
+    const { value, basis } = audioMsToTextOffset(position.audioMs, timeline);
+    return { value, mapped: basis };
   }
-  return position.textOffset;
+  return position.textOffset === null ? null : { value: position.textOffset, mapped: null };
 }

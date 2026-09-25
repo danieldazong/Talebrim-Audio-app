@@ -121,4 +121,14 @@ export const queryKeys = {
     /** The reader's My List — `lib/queries/library-items.ts`. */
     byUser: (userId: string) => ["libraryItems", userId] as const,
   },
+
+  audio: {
+    /** Every signed narration URL — never persisted (`shouldPersistQuery()`, lib/query-client.ts). */
+    all: () => ["audioSource"] as const,
+    /**
+     * One chapter's signed narration URL — `lib/queries/audio.ts`. Per
+     * account: the storage policy decides per reader what it will sign.
+     */
+    source: (userId: string, chapterId: string) => [...queryKeys.audio.all(), userId, chapterId] as const,
+  },
 } as const;

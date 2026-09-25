@@ -25,6 +25,10 @@ type PlayerScrubberProps = {
   elapsed: number;
   /** Null when the narration was never measured: no fill, no thumb, no dragging. */
   durationSeconds: number | null;
+  /** This chapter has a saved position, in the session or on the server: "Shared Bookmark" shows. */
+  hasBookmark: boolean;
+  /** For four seconds after opening at a place mapped from reading: takes the bookmark's slot (prompt 19 step 8). */
+  notice: string | null;
   onSeek: (seconds: number) => void;
   /** The same 15-second skips as the transport: the screen reader's decrement and increment. */
   onSkipBack: () => void;
@@ -50,6 +54,8 @@ type PlayerScrubberProps = {
 export function PlayerScrubber({
   elapsed,
   durationSeconds,
+  hasBookmark,
+  notice,
   onSeek,
   onSkipBack,
   onSkipForward,
@@ -168,13 +174,18 @@ export function PlayerScrubber({
         >
           {formatDuration(shown)}
         </Text>
-        {/* STATIC — made truthful by prompt 18. */}
-        <Text
-          className="font-ui-semibold text-teal px-2 text-center text-sm leading-5"
-          maxFontSizeMultiplier={1.3}
-        >
-          Shared Bookmark
-        </Text>
+        {/* Only once there is a position to share (prompt 18 step 11), or the
+            handoff's notice in its place. One line, so the row never grows;
+            the times keep their places either way. */}
+        {notice !== null || hasBookmark ? (
+          <Text
+            className="font-ui-semibold text-teal px-2 text-center text-sm leading-5"
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+          >
+            {notice ?? "Shared Bookmark"}
+          </Text>
+        ) : null}
         <Text
           accessibilityElementsHidden
           importantForAccessibility="no"

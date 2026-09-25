@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors } from "@/theme";
+import { colors, layout } from "@/theme";
 
 export type SheetOption<T> = {
   value: T;
@@ -65,8 +65,9 @@ export function PlayerOptionsSheet<T>({
               accessibilityRole="button"
               accessibilityLabel="Done"
               onPress={onClose}
-              className="-mr-3 h-11 justify-center px-3"
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+              // No className beside a `style` function: NativeWind would
+              // drop the function (see player-controls.tsx).
+              style={({ pressed }) => [styles.done, { opacity: pressed ? 0.6 : 1 }]}
             >
               <Text className="font-ui-semibold text-body text-[15px]" maxFontSizeMultiplier={1.3}>
                 Done
@@ -86,8 +87,7 @@ export function PlayerOptionsSheet<T>({
                   onSelect(option.value);
                   onClose();
                 }}
-                className="min-h-14 flex-row items-center justify-between gap-4"
-                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                style={({ pressed }) => [styles.option, { opacity: pressed ? 0.6 : 1 }]}
               >
                 <Text
                   className={`text-[15px] ${selected ? "font-ui-semibold text-teal" : "font-ui text-body"}`}
@@ -104,3 +104,19 @@ export function PlayerOptionsSheet<T>({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  done: {
+    marginRight: -12,
+    height: layout.minTouchTarget,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  option: {
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+});

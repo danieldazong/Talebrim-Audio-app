@@ -6,6 +6,7 @@ import {
   PERSIST_MAX_AGE_MS,
   createPersister,
   queryClient,
+  shouldPersistQuery,
 } from "@/lib/query-client";
 import { setParityUser } from "@/lib/parity/writer";
 import { setClerkTokenGetter } from "@/lib/supabase";
@@ -42,6 +43,8 @@ export function AuthedQueryProvider({ children }: { children: ReactNode }) {
       persister: createPersister(userId),
       maxAge: PERSIST_MAX_AGE_MS,
       buster: userId ?? "anonymous",
+      // Never a signed narration URL: it is a bearer credential.
+      dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
     }),
     [userId],
   );

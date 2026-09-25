@@ -24,13 +24,15 @@ import {
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { Screen } from "@/components/ui";
 import { useChapterReader, type ChapterReaderView, type ReadyChapter } from "@/hooks/use-chapter-reader";
+import { useHandoffNotice } from "@/hooks/use-handoff-notice";
 import { useReaderChrome } from "@/hooks/use-reader-chrome";
 import { useReadingPosition } from "@/hooks/use-reading-position";
 import { isUuid } from "@/lib/ids";
+import { flush } from "@/lib/parity/writer";
 import { useReaderStore, type ReaderTheme } from "@/store/reader-store";
 import type { ReaderFont } from "@/theme";
 
-// M5 Reader — AGENTS.md M5, prompts 14 and 15.
+// M5 Reader — AGENTS.md M5, prompts 14, 15 and 19.
 //
 // A pushed stack route outside (tabs), receiving only the chapter id. No tab
 // bar and no mini player, by construction: both live in the tab shell, which
@@ -48,10 +50,17 @@ function goBack() {
   else router.replace("/");
 }
 
-// TODO(handoff): push M6 at the equivalent position. Not before the parity
-// prompt writes positions: a handoff that loses the reader's place is worse
-// than no handoff.
-function listen() {}
+/**
+ * The handoff to M6 (prompt 19 steps 2, 3 and 5). The reader's place is
+ * already in the parity slice, which M6 restores from, so the route carries
+ * only the chapter and a `play` flag. The flush starts without waiting on
+ * the network, and the replace keeps back landing where the reader was
+ * opened from, after any number of handoffs.
+ */
+function listen(chapterId: string) {
+  void flush();
+  router.replace({ pathname: "/player/[chapterId]", params: { chapterId, play: "1" } });
+}
 
 // Replaced rather than pushed, so a long reading session does not build a
 // deep back stack. A locked chapter opens in its locked state.
@@ -72,6 +81,7 @@ export default function ReaderRoute() {
         view={{ status: "unavailable" }}
         bookTitle={null}
         chapterNumber={null}
+        onListen={null}
         onRetry={noop}
         onNearEnd={noop}
       />
@@ -81,13 +91,16 @@ export default function ReaderRoute() {
 }
 
 function ChapterReader({ chapterId }: { chapterId: string }) {
-  const { view, bookTitle, chapterNumber, retry, prefetchNext } = useChapterReader(chapterId);
+  const { view, bookTitle, chapterNumber, hasAudio, retry, prefetchNext } = useChapterReader(chapterId);
 
   return (
     <Reader
       view={view}
       bookTitle={bookTitle}
       chapterNumber={chapterNumber}
+      // Without narration, Listen is disabled rather than a round trip to
+      // M6's no-audio state (prompt 19 step 9).
+      onListen={hasAudio ? () => listen(chapterId) : null}
       onRetry={retry}
       onNearEnd={prefetchNext}
     />
@@ -99,12 +112,14 @@ type ReaderProps = {
   /** The top bar's lines: shown whenever they are known, in any state. */
   bookTitle: string | null;
   chapterNumber: number | null;
+  /** The handoff to M6; null disables Listen. */
+  onListen: (() => void) | null;
   onRetry: () => void;
   /** Called once the reader is most of the way through the chapter. */
   onNearEnd: () => void;
 };
 
-function Reader({ view, bookTitle, chapterNumber, onRetry, onNearEnd }: ReaderProps) {
+function Reader({ view, bookTitle, chapterNumber, onListen, onRetry, onNearEnd }: ReaderProps) {
   const { status } = view;
 
   const theme = useReaderStore((state) => state.theme);
@@ -149,6 +164,7 @@ function Reader({ view, bookTitle, chapterNumber, onRetry, onNearEnd }: ReaderPr
           toolbarBottom={toolbarBottom}
           onCycleTheme={cycleTheme}
           onOpenSettings={openSettings}
+          onListen={onListen}
           onNearEnd={onNearEnd}
         />
       ) : view.status === "loading" ? (
@@ -163,6 +179,7 @@ function Reader({ view, bookTitle, chapterNumber, onRetry, onNearEnd }: ReaderPr
             status={view.status}
             palette={palette}
             chapterNumber={chapterNumber}
+            canListen={onListen !== null}
             onRetry={onRetry}
             onBack={goBack}
           />
@@ -176,7 +193,7 @@ function Reader({ view, bookTitle, chapterNumber, onRetry, onNearEnd }: ReaderPr
           bottomOffset={toolbarBottom}
           onCycleTheme={cycleTheme}
           onOpenSettings={openSettings}
-          onListen={listen}
+          onListen={onListen}
         />
       ) : null}
 
@@ -206,6 +223,7 @@ type ReadingViewProps = {
   toolbarBottom: number;
   onCycleTheme: () => void;
   onOpenSettings: () => void;
+  onListen: (() => void) | null;
   onNearEnd: () => void;
 };
 
@@ -220,18 +238,19 @@ function ReadingView({
   toolbarBottom,
   onCycleTheme,
   onOpenSettings,
+  onListen,
   onNearEnd,
 }: ReadingViewProps) {
   // Scoped to reading: released when this unmounts, never app-wide.
   useKeepAwake();
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, restoreOffset } = chapter;
+  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, restore } = chapter;
   const position = useReadingPosition({
     chapterId: id,
     bookId,
     blocks,
-    restoreOffset,
+    restoreOffset: restore?.value ?? null,
     scrollRef,
     fontSize,
     lineSpacing,
@@ -243,6 +262,19 @@ function ReadingView({
     onDragStart: position.onDragStart,
     onScrollActivity: position.onScrollActivity,
   });
+  // Opened at a place mapped from listening: said for four seconds in the
+  // position label's slot (prompt 19 step 8).
+  const notice = useHandoffNotice(restore?.mapped ?? null, "Near where you were listening");
+
+  // The place the reader scrolled to, recorded at the tap: a settle still
+  // pending would record after M6 has already read the slice.
+  const listen =
+    onListen === null
+      ? null
+      : () => {
+          position.recordNow();
+          onListen();
+        };
 
   // Clears the toolbar, its gap and the bottom inset, so the last line and
   // the end-of-chapter controls are never covered.
@@ -284,6 +316,7 @@ function ReadingView({
       <ReaderToolbar
         theme={theme}
         position={{ chapterNumber: number, lastChapterNumber, percent: position.percent }}
+        notice={notice}
         bottomOffset={toolbarBottom}
         animatedStyle={chrome.toolbarStyle}
         onLayout={chrome.onToolbarLayout}

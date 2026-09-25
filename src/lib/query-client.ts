@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { QueryClient, onlineManager } from "@tanstack/react-query";
+import { QueryClient, defaultShouldDehydrateQuery, onlineManager, type Query } from "@tanstack/react-query";
+
+import { queryKeys } from "@/lib/query-keys";
 
 // App-wide, once: with no connection, queries pause instead of burning their
 // retries, and resume on reconnect. A paused query with no data is how M5
@@ -59,3 +61,14 @@ export function createPersister(userId: string | null | undefined) {
 
 /** How long a persisted cache stays restorable. */
 export const PERSIST_MAX_AGE_MS = GC_TIME_MS;
+
+const AUDIO_SOURCE_ROOT = queryKeys.audio.all()[0];
+
+/**
+ * What the persister writes to disk: the default (successful queries), less
+ * every signed narration URL. A signed URL is a bearer credential, so it
+ * lives in memory only (AGENTS.md § Storage buckets).
+ */
+export function shouldPersistQuery(query: Query): boolean {
+  return defaultShouldDehydrateQuery(query) && query.queryKey[0] !== AUDIO_SOURCE_ROOT;
+}

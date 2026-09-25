@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { releaseAudio } from "@/lib/audio/player";
 import { clearParityQueue } from "@/lib/parity/writer";
 import { QUERY_CACHE_PREFIX, queryClient } from "@/lib/query-client";
 import {
@@ -18,6 +19,10 @@ import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
  * second implementation.
  *
  * Cleared (user-scoped):
+ *  - the audio player (`releaseAudio()`), first: paused, off the lock
+ *    screen, its sleep timer and `currentChapterId` cleared, then released,
+ *    so the next account never hears or sees this one's chapter.
+ *    `useSignOut` already paused it and flushed its position
  *  - the persisted TanStack Query cache, every user's bucket
  *    (`QUERY_CACHE_PREFIX.*` in AsyncStorage, plus the in-memory client)
  *  - the persisted `onboarding` Zustand slice — `hasCompletedOnboarding` and
@@ -41,7 +46,9 @@ import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
 export async function clearUserScopedState(): Promise<void> {
   // In-memory first, and unconditionally: a storage failure below must
   // never leave the previous account's rows or onboarding state live in
-  // memory, even if the disk write can't be cleared.
+  // memory, even if the disk write can't be cleared. The player goes before
+  // the parity queue, so nothing it reports afterwards can queue a write.
+  releaseAudio();
   queryClient.clear();
   clearParityQueue();
   useParityStore.getState().clear();

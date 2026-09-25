@@ -62,7 +62,11 @@ type Message = {
   caption: string | null;
 };
 
-function messageFor(status: Exclude<ReaderStatus, "ready" | "loading">, chapterNumber: number | null): Message {
+function messageFor(
+  status: Exclude<ReaderStatus, "ready" | "loading">,
+  chapterNumber: number | null,
+  canListen: boolean,
+): Message {
   switch (status) {
     case "failed":
       return {
@@ -87,7 +91,8 @@ function messageFor(status: Exclude<ReaderStatus, "ready" | "loading">, chapterN
       return {
         icon: "headset-outline",
         message: "This chapter has no text yet.",
-        caption: "You can listen to it instead.",
+        // Only where Listen has somewhere to go (prompt 19 step 9).
+        caption: canListen ? "You can listen to it instead." : null,
       };
     case "locked":
       return {
@@ -102,6 +107,8 @@ type ReaderStateMessageProps = {
   status: Exclude<ReaderStatus, "ready" | "loading">;
   palette: ReaderPalette;
   chapterNumber: number | null;
+  /** The chapter has narration: the no-text state points to Listen. */
+  canListen: boolean;
   onRetry: () => void;
   onBack: () => void;
 };
@@ -112,8 +119,15 @@ type ReaderStateMessageProps = {
  * their own, no text uses the toolbar's Listen, and locked is where the
  * paywall will open.
  */
-export function ReaderStateMessage({ status, palette, chapterNumber, onRetry, onBack }: ReaderStateMessageProps) {
-  const { icon, message, caption } = messageFor(status, chapterNumber);
+export function ReaderStateMessage({
+  status,
+  palette,
+  chapterNumber,
+  canListen,
+  onRetry,
+  onBack,
+}: ReaderStateMessageProps) {
+  const { icon, message, caption } = messageFor(status, chapterNumber, canListen);
 
   return (
     <View className="flex-1 items-center justify-center gap-3 px-8" accessibilityLiveRegion="polite">

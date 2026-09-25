@@ -81,21 +81,24 @@ describe("audioMsToTextOffset", () => {
 });
 
 describe("textRestoreOffset", () => {
-  it("opens at the text offset when reading wrote last", () => {
-    expect(textRestoreOffset(position({ textOffset: 123, audioMs: 90_000, lastWrittenBy: "text" }), timeline)).toBe(123);
+  it("opens at the text offset when reading wrote last, unmapped", () => {
+    expect(textRestoreOffset(position({ textOffset: 123, audioMs: 90_000, lastWrittenBy: "text" }), timeline)).toEqual({
+      value: 123,
+      mapped: null,
+    });
   });
 
   it("maps the audio side when listening wrote last, ignoring an older text offset", () => {
     const restored = textRestoreOffset(position({ textOffset: 5, audioMs: 60_000, lastWrittenBy: "audio" }), timeline);
-    expect(restored).toBe(starts[2]);
+    expect(restored).toEqual({ value: starts[2], mapped: "estimate" });
   });
 
-  it("opens at the chapter start when listening wrote last and there is no duration", () => {
+  it("opens at the chapter start when listening wrote last and there is no duration, and says so", () => {
     const restored = textRestoreOffset(
       position({ audioMs: 60_000, lastWrittenBy: "audio" }),
       { ...timeline, durationSeconds: null },
     );
-    expect(restored).toBe(0);
+    expect(restored).toEqual({ value: 0, mapped: "chapter-start" });
   });
 
   it("has nothing to restore from an unknown text side", () => {

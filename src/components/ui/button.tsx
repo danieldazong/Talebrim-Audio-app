@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -51,6 +52,10 @@ type ButtonProps = {
  *
  * While `loading`, the spinner takes the leading icon slot and the label stays
  * visible, so the pill keeps a stable width instead of resizing mid-submit.
+ *
+ * Pressed is tracked in state and `style` is a plain object: beside a
+ * className, this NativeWind drops a `style` function, so the pressed and
+ * disabled opacity never rendered (AGENTS.md § Style Exception Rules).
  */
 export function Button({
   label,
@@ -59,9 +64,12 @@ export function Button({
   loading = false,
   disabled,
   className = "",
+  onPressIn,
+  onPressOut,
   ...pressable
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const [pressed, setPressed] = useState(false);
 
   return (
     <Pressable
@@ -70,7 +78,15 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       className={`btn ${VARIANT_CLASS[variant]} ${className}`}
-      style={({ pressed }) => ({ opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1 })}
+      style={{ opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1 }}
+      onPressIn={(event) => {
+        setPressed(true);
+        onPressIn?.(event);
+      }}
+      onPressOut={(event) => {
+        setPressed(false);
+        onPressOut?.(event);
+      }}
       {...pressable}
     >
       {loading ? (

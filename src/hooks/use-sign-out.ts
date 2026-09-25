@@ -1,6 +1,7 @@
 import { useClerk } from "@clerk/expo";
 import { useCallback } from "react";
 
+import { stopForSignOut } from "@/lib/audio/player";
 import { flushWithin } from "@/lib/parity/writer";
 import { clearUserScopedState } from "@/lib/session";
 
@@ -18,6 +19,8 @@ export function useSignOut() {
   const { signOut } = useClerk();
 
   return useCallback(async () => {
+    // Pause, and record where the listener was, so the flush below sends it.
+    stopForSignOut();
     // Send the reader's place while this account's token still works. Bounded,
     // so sign-out never hangs on the network; whatever is left is dropped by
     // `clearUserScopedState()`, never sent under the next account.
