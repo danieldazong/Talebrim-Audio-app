@@ -17,6 +17,10 @@ const COVER_RADIUS = 8;
  * same status M6 reads (`hooks/use-mini-player.ts`). Renders nothing (zero
  * height) until something has played, and after sign-out. No progress line:
  * its frame draws none.
+ *
+ * The open target and the play button are siblings, never one inside the
+ * other. On the web a button can't contain a button, and on a phone a screen
+ * reader reads a button as one element, which hid the play button inside it.
  */
 export function MiniPlayer() {
   const { track, status, togglePlay, open } = useMiniPlayer();
@@ -27,44 +31,47 @@ export function MiniPlayer() {
   const playing = status !== "paused";
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Open Now Playing"
-      accessibilityHint={`${track.title}${track.author ? `, by ${track.author}` : ""}`}
-      onPress={open}
-      className="mx-4 h-14 flex-row items-center gap-3 rounded-card bg-raised px-3"
-    >
-      {track.coverUrl === null ? (
-        <View
-          style={{ width: COVER_SIZE, height: COVER_SIZE, borderRadius: COVER_RADIUS, backgroundColor: colors.surface }}
-        />
-      ) : (
-        <Image
-          source={{ uri: track.coverUrl }}
-          style={{ width: COVER_SIZE, height: COVER_SIZE, borderRadius: COVER_RADIUS, backgroundColor: colors.surface }}
-          contentFit="cover"
-          contentPosition="top"
-        />
-      )}
+    <View className="mx-4 h-14 flex-row items-center rounded-card bg-raised pr-3">
+      {/* Everything left of the play button opens M6, padding included. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open Now Playing"
+        accessibilityHint={`${track.title}${track.author ? `, by ${track.author}` : ""}`}
+        onPress={open}
+        className="h-full flex-1 flex-row items-center gap-3 px-3"
+      >
+        {track.coverUrl === null ? (
+          <View
+            style={{ width: COVER_SIZE, height: COVER_SIZE, borderRadius: COVER_RADIUS, backgroundColor: colors.surface }}
+          />
+        ) : (
+          <Image
+            source={{ uri: track.coverUrl }}
+            style={{ width: COVER_SIZE, height: COVER_SIZE, borderRadius: COVER_RADIUS, backgroundColor: colors.surface }}
+            contentFit="cover"
+            contentPosition="top"
+          />
+        )}
 
-      <View className="flex-1">
-        <Text
-          className="font-ui-semibold text-body text-sm"
-          numberOfLines={1}
-          maxFontSizeMultiplier={1.3}
-        >
-          {track.title}
-        </Text>
-        {track.author ? (
+        <View className="flex-1">
           <Text
-            className="font-ui text-muted text-xs"
+            className="font-ui-semibold text-body text-sm"
             numberOfLines={1}
             maxFontSizeMultiplier={1.3}
           >
-            {track.author}
+            {track.title}
           </Text>
-        ) : null}
-      </View>
+          {track.author ? (
+            <Text
+              className="font-ui text-muted text-xs"
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
+            >
+              {track.author}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
 
       <Pressable
         accessibilityRole="button"
@@ -80,6 +87,6 @@ export function MiniPlayer() {
           color={colors.body}
         />
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
