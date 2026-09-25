@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
-import { FlatList, useWindowDimensions } from "react-native";
+import { FlatList, useWindowDimensions, View } from "react-native";
 
 import { BookNotFound } from "@/components/book/book-states";
 import {
@@ -12,7 +12,12 @@ import { ChapterListMessage, ChapterRowsSkeleton } from "@/components/chapters/c
 import { ChapterRow, chapterListRowHeight } from "@/components/chapters/chapter-row";
 import { Screen } from "@/components/ui";
 import { useChapterList } from "@/hooks/use-chapter-list";
-import { sortChapterRows, type ChapterListRow, type ChapterSortOrder } from "@/lib/chapter-list";
+import {
+  openingRowIndex,
+  sortChapterRows,
+  type ChapterListRow,
+  type ChapterSortOrder,
+} from "@/lib/chapter-list";
 import { isUuid } from "@/lib/ids";
 
 // M9 Full Chapter List — AGENTS.md M9, prompt 20, material/5.png.
@@ -67,7 +72,9 @@ function ChapterList({ bookId }: { bookId: string }) {
   // Screen state, never persisted. Oldest first: reading order, as the frame selects.
   const [order, setOrder] = useState<ChapterSortOrder>("oldest");
   const listRef = useRef<FlatList<ChapterListRow>>(null);
-  const { height: windowHeight, fontScale } = useWindowDimensions();
+  // The list's own height, measured before it mounts: where it opens depends on how much fits.
+  const [listHeight, setListHeight] = useState<number | null>(null);
+  const { fontScale } = useWindowDimensions();
   const rowHeight = chapterListRowHeight(fontScale);
 
   function changeOrder(next: ChapterSortOrder) {
@@ -110,27 +117,33 @@ function ChapterList({ bookId }: { bookId: string }) {
       />
       <ChapterSortBar order={order} onChange={changeOrder} />
 
-      <FlatList
-        ref={listRef}
-        data={rows}
-        keyExtractor={(row) => row.id}
-        renderItem={({ item, index }) => (
-          <ChapterRow
-            row={item}
-            height={rowHeight}
-            isLast={index === rows.length - 1}
-            onOpen={openRow}
-            onListen={listenToRow}
+      <View className="flex-1" onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}>
+        {listHeight === null ? null : (
+          <FlatList
+            ref={listRef}
+            data={rows}
+            keyExtractor={(row) => row.id}
+            renderItem={({ item, index }) => (
+              <ChapterRow
+                row={item}
+                height={rowHeight}
+                isLast={index === rows.length - 1}
+                onOpen={openRow}
+                onListen={listenToRow}
+              />
+            )}
+            // Every row is one height (`chapterListRowHeight()`), so the list
+            // never measures one to place another.
+            getItemLayout={(_, index) => ({ length: rowHeight, offset: rowHeight * index, index })}
+            // Read once, at mount: the Reading Now row at the top, or as near
+            // as the list can scroll. A short list opens at the top, with no
+            // blank gap above its rows.
+            initialScrollIndex={openingRowIndex(readingIndex, rows.length, rowHeight, listHeight)}
+            initialNumToRender={Math.ceil(listHeight / rowHeight)}
+            windowSize={7}
           />
         )}
-        // Every row is one height (`chapterListRowHeight()`), so the list
-        // never measures one to place another.
-        getItemLayout={(_, index) => ({ length: rowHeight, offset: rowHeight * index, index })}
-        // Read once, at mount: opens at the Reading Now row, or the top.
-        initialScrollIndex={readingIndex > 0 ? readingIndex : undefined}
-        initialNumToRender={Math.ceil(windowHeight / rowHeight)}
-        windowSize={7}
-      />
+      </View>
     </Screen>
   );
 }

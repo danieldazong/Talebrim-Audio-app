@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { buildChapterRows, sortChapterRows, unlockedCount } from "@/lib/chapter-list";
+import { buildChapterRows, openingRowIndex, sortChapterRows, unlockedCount } from "@/lib/chapter-list";
 import type { ChapterListItemRow } from "@/types/catalog";
 import type { ChapterLockInputs } from "@/types/states";
 
@@ -171,5 +171,30 @@ describe("sortChapterRows", () => {
     expect(newest).toEqual([...oldest].reverse());
     // The rows themselves are never reordered in place.
     expect(rows.map((row) => row.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+});
+
+describe("openingRowIndex", () => {
+  // 64dp rows in a 600dp list: about 9 rows fit.
+  const ROW = 64;
+  const VIEWPORT = 600;
+
+  it("opens at the top with no Reading Now row, or when it is the first", () => {
+    expect(openingRowIndex(-1, 40, ROW, VIEWPORT)).toBeUndefined();
+    expect(openingRowIndex(0, 40, ROW, VIEWPORT)).toBeUndefined();
+  });
+
+  it("opens a list that fits on the screen at the top, never below a blank gap", () => {
+    // 5 chapters, reading chapter 3: 320dp of rows in 600dp.
+    expect(openingRowIndex(2, 5, ROW, VIEWPORT)).toBeUndefined();
+  });
+
+  it("puts the Reading Now row at the top when the list can scroll that far", () => {
+    expect(openingRowIndex(20, 40, ROW, VIEWPORT)).toBe(20);
+  });
+
+  it("stops at the last row that can reach the top, near the end of the list", () => {
+    // 13 rows are 832dp; the list scrolls 232dp at most, which puts row 3 at the top.
+    expect(openingRowIndex(11, 13, ROW, VIEWPORT)).toBe(3);
   });
 });

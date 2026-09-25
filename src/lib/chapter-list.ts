@@ -117,3 +117,23 @@ export function unlockedCount(rows: readonly ChapterListRow[]): number {
 export function sortChapterRows(rows: readonly ChapterListRow[], order: ChapterSortOrder): ChapterListRow[] {
   return order === "oldest" ? [...rows] : [...rows].reverse();
 }
+
+/**
+ * Where M9 opens: scrolled so the Reading Now row is at the top, or as near
+ * as the list can scroll. A list starts drawing at `initialScrollIndex` even
+ * when it cannot scroll that far, leaving the rows above as a blank gap that
+ * never fills, so the index is clamped to the last row that can reach the
+ * top. A list that fits on the screen opens at the top. Undefined means the
+ * top. Every row is `rowHeight` tall and the list has no padding, so the
+ * content is exactly `rowCount * rowHeight`.
+ */
+export function openingRowIndex(
+  readingIndex: number,
+  rowCount: number,
+  rowHeight: number,
+  viewportHeight: number,
+): number | undefined {
+  const lastTopIndex = Math.floor((rowCount * rowHeight - viewportHeight) / rowHeight);
+  const index = Math.min(readingIndex, lastTopIndex);
+  return index > 0 ? index : undefined;
+}
