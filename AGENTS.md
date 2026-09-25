@@ -397,6 +397,19 @@ Use `StyleSheet` or inline styles for these components/scenarios instead of Nati
 | **expo-linear-gradient** (the three approved gradients only) | Colors are a prop, not a style                                    | Color array prop                      |
 | **react-native-svg props**                  | No className support                                                               | `StyleSheet` or props                 |
 
+**Never give a Pressable both `className` and a `style` function.** On this
+NativeWind (react-native-css 3.1.0-rc.0), a className turns `style` into
+`[classStyle, fn]`. React Native only calls `style` when it is itself a
+function, and flattening drops a function inside an array. So the pressed,
+disabled or colour styles in it never render, and nothing warns. Found
+2026-09-24: M6's play button lost its 72dp ember circle on device. A Pressable
+with a pressed or disabled style takes its whole style from the function,
+through `StyleSheet` (see `components/player/player-controls.tsx`). A plain
+`style` object beside a className is fine. M6 is fixed, and so is `Button`
+(prompt 19): it tracks pressed with `onPressIn`/`onPressOut` and passes a plain
+style object. Prompt 26 fixes the other Pressables that still combine the two
+(`grep -rn "style={({ pressed })" src`).
+
 ### When to Use StyleSheet
 
 - The prop is React Native-specific (not web-equivalent)
@@ -541,7 +554,7 @@ instead of handing a stale object to a component.
 | ------------ | ------------------------------------------------------------------- | ----------------------------------------------- |
 | `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — the only durable home for genres until Phase 2's profile table |
 | `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
-| `playback`   | current chapter, playing state, speed, sleep timer. M6's shell writes only `speed`: nothing sets `currentChapterId` or `isPlaying` until prompt 18, because the mini player shows whenever `currentChapterId` is set | no — session only |
+| `playback`   | `currentChapterId` (mirrors the player's loaded chapter), `speed`, and the sleep timer's end time and chosen length. Only `lib/audio` writes it. Playing and the position are read from the player, never copied here (prompt 18) | no — session only |
 | `parity`     | the in-session authoritative reading position, keyed by chapter, with the server `updated_at` it last saw and a dirty flag | no — see Read/listen parity below; only `lib/parity/writer.ts` writes it |
 | `search`     | M8's `recentSearches` (most recent first, at most 8) — added in prompt 11 | yes — per account, so sign-out clears it; never written to the database, and no search-history table exists or should |
 
@@ -600,8 +613,10 @@ Use local component state for temporary UI state.
 > **Built by prompt 16 (2026-09-24), in `lib/parity/`.** `writer.ts` is the
 > only code that writes `reading_positions` or the `parity` slice.
 > `reconcile.ts` is the last-write-wins rule; `convert.ts` maps text ↔ audio.
-> M5 records through it, and M6 must too. How each step is resolved is
-> recorded under Decisions — 2026-09-24.
+> M5 and the player (`lib/audio/player.ts`) record through it, and the M5 ↔
+> M6 handoff (prompt 19) restores from it. How each step is resolved is
+> recorded under Decisions — 2026-09-24; the handoff, under Decisions —
+> 2026-09-25.
 >
 > **The server sets `updated_at` on every write**, which last-write-wins
 > depends on: dashboard migration `20260924190305`, applied 2026-09-24. Its
@@ -898,9 +913,9 @@ Made while building prompts 15–17 and reviewing each prompt before it.
   - `GestureHandlerRootView` wraps the whole app in `app/_layout.tsx`. Every
     gesture-handler gesture needs one above it, and M6's scrubber was the
     first.
-  - "Read instead" in the ready state is a `TODO(handoff)` no-op, and so is
-    M5's Listen. Prompt 19 wires both together through `lib/parity`. The
-    no-audio state's "Read instead" does open the reader, with
+  - "Read instead" in the ready state was a `TODO(handoff)` no-op, and so was
+    M5's Listen. Prompt 19 wired both (Decisions — 2026-09-25, "Handoff as
+    built"). The no-audio state's "Read instead" opens the reader, with
     `router.replace`: there is no audio position to carry.
   - Android back pops the player. With nothing behind it (a deep link), it goes
     to `/` instead of leaving the app.
@@ -941,9 +956,134 @@ Made while building prompts 15–17 and reviewing each prompt before it.
   - **Moved from prompt 19 into prompt 18:** the live mini player and the
     Android notification permission. Dismissing M6 leaves audio playing, and
     the mini player must not show a placeholder over a real track.
-  - **Still to revise at their own reviews:** prompt 19 (its seek step is
-    written for track-player), prompt 22 (the policy's subscription branch)
-    and prompt 24 (it signs downloads through an Edge Function).
+  - **Still to revise at their own reviews:** prompt 22 (the policy's
+    subscription branch) and prompt 24 (it signs downloads through an Edge
+    Function). Prompt 19 was revised on 2026-09-25.
+- **Audio as built (prompt 18).** `lib/audio/`:
+  - `player.ts` holds the one `createAudioPlayer()`, made at the first play
+    and released at sign-out. Its one `playbackStatusUpdate` listener records
+    the loaded chapter through `lib/parity`, flushes on every pause,
+    re-mints an expired URL, autoplays and checks the sleep timer. `rules.ts`
+    holds the pure parts, and `resolve.ts` resolves a chapter without a
+    screen (autoplay, previous and next).
+  - Screens read the player through that listener, with
+    `useSyncExternalStore` (`hooks/use-audio.ts`), not `useAudioPlayerStatus`.
+    That hook needs a player before anything has played, and the prompt
+    creates it at the first play. M6 and the mini player read one snapshot.
+  - The signed URL is `chapterAudioSourceOptions()` (`lib/queries/audio.ts`):
+    6 hours, fresh for 5, never persisted (`shouldPersistQuery()`). A
+    refusal ("Object not found") re-checks the lock rule once, then shows
+    Locked or Not available.
+  - M6 changes nothing until its own Play. Previous and next on the loaded
+    chapter change the track. A neighbour that can't play (locked, no
+    narration) pauses the current one: it is not left playing under the
+    neighbour's locked screen.
+  - A failed re-mint leaves the chapter loaded in a `failed` phase. M6 shows
+    Failed with Retry, and the mini player's play button retries.
+  - Sign-out: `useSignOut` calls `stopForSignOut()` (pause, record) before its
+    flush; `clearUserScopedState()` then calls `releaseAudio()`.
+  - The lock screen skips 10 seconds, not 15. `expo-audio` fixes the interval
+    natively on both platforms, and no option sets it.
+  - On Android a load sends the seek and `play()` together with `replace()`,
+    then checks the position once loaded. ExoPlayer holds a seek sent while
+    loading. Waiting for the load first (prompt 18 step 5) buffered the
+    chapter's opening, then seeked away and buffered again: a second Storage
+    round trip before any sound. iOS keeps load, seek, check, play. A
+    `__DEV__` log, `[audio] chapter started`, reports each start's timings.
+  - The narration is WAV: about 48 KB for every second of audio (29 MB for
+    10 minutes). Playback needs 2.5 s of audio (about 120 KB) buffered before
+    it starts, so the file size, not the code, now sets most of the start
+    delay on a slow network. Compressed audio (AAC or MP3, around 64 kbps
+    mono) would be about 6x smaller. That is the dashboard's upload pipeline
+    to change, not this app.
+  - Expo Go gets no lock screen. Its own manifest has no
+    `AudioControlsService` (the config plugin reaches only our own builds), so
+    binding it failed with a red error on every load. `player.ts` skips
+    `setActiveForLockScreen` when `isRunningInExpoGo()`. Background playback
+    in Expo Go may therefore stop after about three minutes on Android.
+
+## Decisions — 2026-09-25
+
+Made while reviewing prompt 19, the M5 ↔ M6 handoff, against the code as
+built by prompts 14–18. Built as decided, and passed the owner's Expo Go
+checks on 2026-09-25; how it was built is the last entry.
+
+- **The destination maps the place.** M5 already restores an audio position
+  into the text (`textRestoreOffset()`). M6 gains the reverse in
+  `audioRestoreMs()`, so every way into M6 honours a newer reading position,
+  not only the handoff. That needs the chapter's text length, so M6 reads
+  `chapterTextOptions()` on its sanctioned-read terms, and only when reading
+  wrote last. `lib/audio/resolve.ts` uses the cached text only.
+- **The handoff never waits on the network.** It records synchronously,
+  starts the flush and navigates; the destination reads the session copy.
+  The earlier draft's "flush and let it settle" contradicted parity step 5.
+- **Listen starts playing.** M5 replaces itself with M6 and passes a `play`
+  flag in the route (not a position). M6 starts the chapter once when it is
+  ready, as its own Play would, then clears the flag.
+- **Read instead pauses** the loaded chapter, because two surfaces recording
+  one chapter fight over `last_mode`. On a chapter that isn't loaded it only
+  navigates. Entering the reader any other way never stops playback.
+- **The estimate is announced in existing slots**, for 4 seconds: M6's
+  "Shared Bookmark" slot and M5's position label. "Near where you were
+  reading" or "Near where you were listening", or "From the start of the
+  chapter" when there was no duration to map with. No new element, no toast.
+- **No round trip to an empty state.** M5's Listen is disabled without
+  narration, and M6's Read instead without text. M5's no-text caption "You
+  can listen to it instead." shows only when there is narration. `Button`'s
+  disabled state is fixed first, because on device it looked enabled.
+- **M4's Listen resumes** the chapter M4's Read resumes, when it has
+  narration and isn't locked; otherwise the first narrated chapter.
+- **Handoff as built (prompt 19).** Tested by the owner on a phone in Expo Go
+  on 2026-09-25: both directions, offline, back after several handoffs, a
+  force-quit, and two chapters at once.
+  - M5's `listen()` (`app/reader/[chapterId].tsx`) and M6's `readInstead()`
+    and `openReader()` (`app/player/[chapterId].tsx`) are the two directions.
+    Both use `router.replace`, and the route carries only the chapter id plus
+    M5's `play: "1"`.
+  - Both restore functions return a `RestorePoint` (`lib/parity/convert.ts`):
+    `{ value, mapped }`. `mapped` is null when the place is the screen's own
+    mode's, and otherwise `"estimate"` or `"chapter-start"`, which picks the
+    notice. `audioRestoreMs(position, { durationSeconds, textLength })`
+    replaced the audio-only version.
+  - Fallbacks when reading wrote last:
+    - No duration: the chapter start, with its notice.
+    - No text length: the audio side, with no notice. With no audio side
+      either, the chapter start, with its notice.
+    - A mapped place within 5 seconds of the end: the chapter start, with its
+      notice, as a finished chapter replays.
+  - M6 waits for the text only for a chapter that isn't loaded. One try,
+    latched like the position, so a later refetch never brings back the
+    skeleton.
+  - The loaded chapter doesn't wait. It reads the parity slice live: a
+    reading place written since the pause (`lastWrittenBy === "text"`) shows
+    on the scrubber while paused, and Play starts there (`playLoadedFrom()`).
+    A seek or skip moves on from it and records.
+  - **The player's listener records only while playing, at the pause, or
+    when a paused position moves 1 second or more** (a lock-screen skip).
+    `seekPlayback()` records the app's own seeks. A paused player still
+    reports now and then (buffering, state changes). Recording that same
+    place again took `last_mode` back from the reader after Read instead.
+    `lib/audio/__tests__/player.test.ts` fails without this rule.
+  - M5's `recordNow()` (`hooks/use-reading-position.ts`) records only a place
+    still waiting for the scroll to settle. With nothing pending, the place is
+    already recorded, or the reader hasn't moved from where it opened.
+  - M5's restore records its place: the restore's `scrollTo` fires `onScroll`,
+    which runs the settle timer. The exception is a restore to the first
+    paragraph, where nothing scrolls, so nothing records until the reader
+    scrolls or taps Listen.
+  - M6's autoplay runs once, in the ready state and only from paused. It is
+    guarded by a ref and cleared with `router.setParams`. A chapter already
+    playing or loading carries on.
+  - The notices come from `hooks/use-handoff-notice.ts`. Each is taken at the
+    first render, shown for 4 seconds, and announced with
+    `announceForAccessibility`. Its timer goes with the unmount.
+  - M5's notice may wrap to two lines inside the toolbar's fixed 56dp, so the
+    label is `text-center`: "Near where you were listening" doesn't fit on one
+    line at the default size. M6's slot stays one line, but at 1.3× text its
+    time labels get tight.
+  - Teardown on unmount: the notice timer, the autoplay state and M6's
+    chapter-advance subscription. The player, its listener, the sleep timer,
+    the lock screen and the parity writer's queue keep running.
 
 ---
 
@@ -990,22 +1130,21 @@ which is the point of doing this before Phase 2.
 that remains the only durable home for genre choices until a profile table
 exists in Phase 2.
 
-**Status, 2026-09-24.** Built: M1 sign-in and M2 genre picker (prompts
+**Status, 2026-09-25.** Built: M1 sign-in and M2 genre picker (prompts
 04–07), the navigation shell (08), M3 Discover on `books_catalog` (09–10), M8
 Search on `books_catalog` (11), live catalog updates from the dashboard (see
 Data Contract), the Phase 2 reader tables with their read-only fetchers
 (13), M4 Story Detail (12), and the M5 Reader (14) on real chapter text (15).
 The parity writer (16) is built, and its `updated_at` trigger (dashboard
-migration `20260924190305`) is applied. M6 Now Playing (17) is built on real
-chapter data, with only the playback mocked. **Next: prompt 18, M6 real
-audio**, which waits on the two decisions below. M9 is still a placeholder
-route, and its prompt (20) is empty. Open before M5 ships:
+migration `20260924190305`) is applied. M6 Now Playing (17) is wired to real
+audio with the live mini player (18). Its device checks wait for the deferred
+setup. The M5 ↔ M6 handoff (19) is built and passed the owner's Expo Go
+checks on 2026-09-25. **Next: prompt 20, M9 Full Chapter List.** Its file is
+still empty and has to be written before it can be reviewed, and M9 is still
+a placeholder route. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
-- M5's no-text state for a chapter with neither text nor audio (live: Man of
-  Ashes 001 chapters 11 and 12). Its caption says "You can listen to it
-  instead".
 
 Decided for prompt 18 on 2026-09-24 (Decisions — 2026-09-24, "Audio"): a
 private bucket, and `expo-audio`. Prompt 18 runs in Expo Go. The development
@@ -1092,7 +1231,20 @@ until this is done.
      `requestNotificationPermissionsAsync()` at the first Play, never at
      launch. On denial, playback still works with fewer controls, and the app
      never asks twice in a session.
-   - anything prompt 18 added to this list
+   - headphones unplugged and Bluetooth disconnecting on Android. `expo-audio`
+     57.0.5 has no `ACTION_AUDIO_BECOMING_NOISY` handling (iOS pauses on its
+     own), so playback likely carries on through the speaker. If it does, the
+     owner chooses between a small local module and a patch to `expo-audio`;
+     both need the development build.
+   - the lock screen's 10-second skips (see Decisions — 2026-09-24, "Audio
+     as built"): accept them, or decide otherwise
+   - a phone call pauses and then resumes; another app taking audio focus
+     pauses without resuming
+   - with the screen off: the sleep timer pausing on time, autoplay into the
+     next chapter, and a re-mint after the URL expires (`DEV_FORCE_EXPIRY`
+     in `lib/queries/audio.ts` signs for 60 seconds)
+   - connectivity lost mid-stream: it pauses when the buffer runs out, and
+     resumes where it stopped on reconnect
 
 ### Phase 2 — the three reader tables (done 2026-09-23)
 
