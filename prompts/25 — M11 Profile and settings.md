@@ -1,4 +1,12 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
+
+> Revision note, 2026-09-25 (prompt 24 revision). M11's frame is
+> `material/10.png` (`13-profile.png` does not exist). Its "Downloads &
+> offline storage" row opens the Downloads screen built by prompt 24
+> (`app/downloads.tsx`), not a Library segment, and it replaces the
+> placeholder's temporary link. Step 6's "clear cache" no longer holds
+> chapter text: prompt 24 took text out of the persisted cache. See AGENTS.md
+> § Decisions — 2026-09-25, "Downloads".
 Design material: @prompt_material/13-profile.png — ensure everything is as is
 shown. This is the last screen; it is also where several legal and store
 requirements land, so read steps 8 and 9 before starting.

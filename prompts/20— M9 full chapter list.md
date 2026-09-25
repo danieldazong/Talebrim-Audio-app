@@ -207,7 +207,7 @@ report:
 - that a Locked row opens nothing, and how you checked
 - the frame elements you omitted, and why
 - the device checklist below. The owner runs it in Expo Go. The live catalog
-  is three books and 31 chapters (AGENTS.md § Before production), so no
+  is three books and 27 chapters (AGENTS.md § Before production), so no
   200-chapter serial exists: the 200-row scroll test waits for seeded
   content. Say which items you could run yourself.
   1. M4 → See all chapters opens M9. Back returns to M4.

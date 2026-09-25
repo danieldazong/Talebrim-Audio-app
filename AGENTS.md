@@ -104,6 +104,9 @@ Use the following stack:
 - `expo-dev-client` — the development build, through EAS, Android first
   (approved 2026-09-24; installed by the deferred setup before prompt 22, see
   Build order)
+- `expo-file-system` — offline downloads, new API only (`File`, `Directory`,
+  `Paths`), never the legacy one (approved 2026-09-25; installed by prompt 24
+  with `npx expo install`)
 
 Do not introduce new major libraries unless there is a strong reason.
 
@@ -304,7 +307,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M8 · Search & Results** — Back chevron plus search field in the header. Filter chips, active chip blush-filled. Result count line. Rows: cover thumbnail, title, author, metadata, audio badge where applicable. Recent searches when the query is empty. Needs a real empty state and a distinct no-results state.
 
-**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with `Unlock all chapters` and an ember `Go Ad-Free`. Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. `Download all` and the bottom bar wait for the downloads and paywall prompts (Decisions — 2026-09-25, "M9").
+**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with `Unlock all chapters` and an ember `Go Ad-Free`. Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. `Download all` and the bottom bar wait for the downloads and paywall prompts (Decisions — 2026-09-25, "M9"). Built by prompt 20 ("M9 as built").
 
 **M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.**
 
@@ -990,12 +993,11 @@ Made while building prompts 15–17 and reviewing each prompt before it.
     chapter's opening, then seeked away and buffered again: a second Storage
     round trip before any sound. iOS keeps load, seek, check, play. A
     `__DEV__` log, `[audio] chapter started`, reports each start's timings.
-  - The narration is WAV: about 48 KB for every second of audio (29 MB for
-    10 minutes). Playback needs 2.5 s of audio (about 120 KB) buffered before
-    it starts, so the file size, not the code, now sets most of the start
-    delay on a slow network. Compressed audio (AAC or MP3, around 64 kbps
-    mono) would be about 6x smaller. That is the dashboard's upload pipeline
-    to change, not this app.
+  - WAV narration is about 48 KB for every second of audio (29 MB for 10
+    minutes). Playback needs 2.5 s of audio (about 120 KB) buffered before it
+    starts, so on a slow network the file size, not the code, sets most of
+    the start delay. Settled on 2026-09-25: narration is AAC (Decisions —
+    2026-09-25, "Narration format").
   - Expo Go gets no lock screen. Its own manifest has no
     `AudioControlsService` (the config plugin reaches only our own builds), so
     binding it failed with a red error on every load. `player.ts` skips
@@ -1004,9 +1006,10 @@ Made while building prompts 15–17 and reviewing each prompt before it.
 
 ## Decisions — 2026-09-25
 
-Made while reviewing prompt 19, the M5 ↔ M6 handoff, against the code as
-built by prompts 14–18. Built as decided, and passed the owner's Expo Go
-checks on 2026-09-25; how it was built is the last entry.
+Made while reviewing prompts 19 and 20 against the code, plus the owner's
+downloads and narration decisions. The M5 ↔ M6 handoff was built as decided
+and passed the owner's Expo Go checks on 2026-09-25 ("Handoff as built"). M9
+was built as decided the same day ("M9 as built").
 
 - **The destination maps the place.** M5 already restores an audio position
   into the text (`textRestoreOffset()`). M6 gains the reverse in
@@ -1085,8 +1088,8 @@ checks on 2026-09-25; how it was built is the last entry.
     chapter-advance subscription. The player, its listener, the sleep timer,
     the lock screen and the parity writer's queue keep running.
 - **M9 (prompt 20 review).** Made while reviewing prompt 20 against
-  `material/5.png` (M9's frame) and the code as built by prompts 12–19. The
-  owner may flip any of them before it is built.
+  `material/5.png` (M9's frame) and the code as built by prompts 12–19.
+  Built as decided (next entry).
   - **One bounded fetch, not pagination.** The whole list of chapter metadata
     (about 30 KB for 200 chapters) through the existing
     `chapterListByBookOptions()`, with explicit columns. Pages would each
@@ -1119,6 +1122,120 @@ checks on 2026-09-25; how it was built is the last entry.
   - **Adding "% complete" and "min read" later** would take a text-length
     column on `chapters_catalog` (`char_length(script_text)`). That is an
     additive view migration in the dashboard repo, and not planned.
+- **M9 as built (prompt 20).** Built on 2026-09-25. Not yet checked on a
+  phone: the owner's checklist is at the end of prompt 20.
+  - `app/chapters/[bookId].tsx` is the route, with its parts in
+    `components/chapters/`: the header and sort bar, the row, and the other
+    states. `hooks/use-chapter-list.ts` resolves the state: not available
+    as soon as the book comes back empty (as M4's `BookNotFound`; a
+    malformed id never queries), then offline → failed → loading through
+    `waitFor()`, then empty, then ready.
+  - `lib/chapter-list.ts` builds the rows: each row's state, title, detail
+    line, spoken label, right-hand item and what a tap opens, plus the
+    unlocked count and the sort. Its tests are in
+    `lib/__tests__/chapter-list.test.ts`.
+  - `chapterListByBookOptions()` selects seven columns
+    (`ChapterListItemRow` in `types/catalog.ts`), not `*`. Coming from M4,
+    the book, the settings, the unlocks and the resume target are cached
+    under the same keys and fresh for 5 minutes, so M9 usually costs one
+    request: the list. M4's preview sits under a nested key and never stands
+    in for it.
+  - The live `free_chapters_at_start` was 3 on 2026-09-25, read through
+    `reader_settings()`.
+  - The resume target gets one try (`retry: false`) and is latched once
+    answered, as M5 and M6 latch the position. Failed or offline, it only
+    means no Reading row.
+  - A row that opens nothing (Locked, or neither text nor narration) is a
+    disabled button whose label says why. A Locked row draws no headphone,
+    and the tap handlers return before navigating as a second guard.
+  - Rows are 64dp at the default text size. The height comes from
+    `useWindowDimensions().fontScale`, capped at 1.3× (the text's
+    `maxFontSizeMultiplier`), and every row is given it explicitly, so
+    `getItemLayout` is exact. `initialScrollIndex` is read once, at mount.
+  - **The header is `surface`**, as the frame measures (`#1F1530`), not
+    `raised` as prompt 20 step 6 said.
+  - **`SegmentedControl` gained `track`:** `"bg"`, the default, for M5's
+    `raised` sheet, or `"surface"` with a `raised` hairline for a `bg`
+    screen, where a `bg` track would vanish. M5 is unchanged.
+  - The Reading pill is `ember/10`, which matches the frame's `#2E1828`.
+    Ember text on it is 4.95:1. The Reading row behind it is `surface/40`,
+    and its title is `champagne`, as the frame draws it.
+  - A Locked row's title and detail are both `muted`. The frame dims the
+    detail further, to about `muted/60`, which is 3.3:1 on `bg` and fails
+    AA, so it stays `muted`.
+  - The unlocked narrated row and its headphone are sibling buttons, never
+    one inside the other (§ Component Creation Rule).
+  - Known gap: `SegmentedControl`'s segments still pair a `className` with a
+    `style` function, so their pressed dim never renders (§ Style Exception
+    Rules). Prompt 26 fixes it with the others.
+  - The 200-row scroll check waits for seeded content (§ Before
+    production).
+- **Mini player: two sibling buttons.** Changed on 2026-09-25 in
+  `components/player/MiniPlayer.tsx`. The play button used to sit inside the
+  button that opens M6. On the web a button can't contain a button, and on a
+  phone a screen reader reads a button as one element, so the play button
+  was hidden inside it. Now a plain `View` holds two siblings: the open
+  target (the cover, title and author, padding included, "Open Now
+  Playing") and the play/pause button. Nothing else changed: same 56dp bar,
+  same labels, same `useMiniPlayer()`.
+- **Downloads (prompt 24 revision).** Asked for by the owner on 2026-09-25:
+  downloads are offline copies, as YouTube and Udemy make them, not files the
+  reader owns. Prompt 24 carries the detail; review it against the code again
+  after prompts 21–23.
+  - **App-private storage only.** Downloads live in `downloads/` under
+    `Paths.document`, with the chapter id as the file name. No shared
+    storage, no media library, and no storage or media permission.
+  - **Tied to the account.** Sign-out deletes every download, and an index
+    left by another account is deleted on start.
+  - **Access is checked again.** Online, a download the reader has lost
+    access to is deleted. Offline, a download works for 30 days after its
+    last check. The owner settled 30 days on 2026-09-25: Spotify uses the
+    same rule, it covers a long trip, and it still ends a lapsed
+    subscription within a month. It is kept in one constant.
+  - **No backups.** `android.allowBackup: false`.
+  - **No encryption in version one.** Android's sandbox, the account tie and
+    the 30-day rule give most of the protection. Encrypting would need a
+    native player that decrypts as it plays.
+  - **Text is a file too.** A chapter's download is its audio file plus its
+    text file, and chapter text leaves the persisted TanStack cache, which
+    closes the 2 MB risk under § Before production.
+  - **Offline without the cache.** The index keeps the metadata M5 and M6
+    need to open a download on a cold start with no network.
+  - **No resume within a file.** `expo-file-system`'s new API cannot resume,
+    so an interrupted chapter starts over. The queue resumes by chapter.
+  - **Where readers manage them.** M9's "Download all" (with a size
+    confirmation) and a row long-press sheet for one chapter. The owner
+    settled long-press on 2026-09-25 for version one: no frame draws a
+    per-chapter download button, and "Download all" is how serial readers
+    go offline. Get a designed row button if readers ask for single
+    chapters. A Downloads
+    screen, `app/downloads.tsx`, opened from M11's "Downloads & offline
+    storage" row. M3's offline state links to it. M7 has no downloads
+    segment.
+  - **`expo-file-system` approved** by the owner on 2026-09-25 as a direct
+    dependency (§ Tech Stack).
+  - **Compressed narration decided** (next entry): a 40-chapter book falls
+    from about 1.7 GB as WAV to under 300 MB.
+- **Narration format.** Decided by the owner on 2026-09-25, and recorded in
+  the dashboard's AGENTS.md, which owns uploads (Upload Rules, "Narration
+  format").
+  - **The standard:** AAC in `.m4a`, mono, 64 kbps, with the moov atom first
+    ("fast start"), so playback starts before the whole file arrives. That is
+    about 0.5 MB a minute, against about 2.8 MB for WAV. Use 96 kbps if a
+    chapter carries music or effects. `expo-audio` plays it natively on
+    Android and iOS.
+  - **Live on 2026-09-25:** 8 narrated chapters. 6 were already `.m4a` (at
+    about 190 kbps, and short, so they stay). 2 were WAV: Eternal Eclipse ch1
+    (28 MB) and Man of Ashes 001 ch1 (30 MB). The owner is converting those
+    two with ffmpeg and replacing them in the dashboard, which writes new
+    immutable paths. Readers' `audio_ms` positions stay valid, because the
+    timing doesn't change.
+  - **The dashboard stops accepting WAV** through its own Settings screen:
+    the accepted audio formats become `.m4a` and `.mp3`. The owner makes that
+    change, because this app never writes `app_settings`. The live list also
+    held `.aac`, which the dashboard's upload code and the `audio` bucket
+    both reject, so it goes too.
+  - Nothing in this app changes: it plays whatever `audio_path` names.
 
 ---
 
@@ -1174,9 +1291,10 @@ The parity writer (16) is built, and its `updated_at` trigger (dashboard
 migration `20260924190305`) is applied. M6 Now Playing (17) is wired to real
 audio with the live mini player (18). Its device checks wait for the deferred
 setup. The M5 ↔ M6 handoff (19) is built and passed the owner's Expo Go
-checks on 2026-09-25. **Next: prompt 20, M9 Full Chapter List**, written by
-the owner and reviewed on 2026-09-25 (Decisions — 2026-09-25, "M9"). M9 is
-still a placeholder route. Open before M5 ships:
+checks on 2026-09-25. M9 Full Chapter List (20) is built on real data
+(Decisions — 2026-09-25, "M9 as built"). Its device checks wait for the
+owner. **Next: prompt 21, M7 Library**, reviewed against the code before it
+is built. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
@@ -1345,8 +1463,8 @@ fix**. No schema work makes this feel like a modern app. Budget the upgrade,
 and lean on TanStack Query's persisted cache so a warm screen never waits on
 the network.
 
-**Seed more content.** Three published books, 31 chapters, four with audio
-(2026-09-24). A Discover carousel, a 100-row virtualised chapter list and a
+**Seed more content.** Three published books, 27 chapters, eight with audio
+(2026-09-25). A Discover carousel, a 100-row virtualised chapter list and a
 search results screen cannot be evaluated against that. Load it through the
 admin dashboard — that path exists and exercising it is the point.
 
@@ -1354,11 +1472,11 @@ admin dashboard — that path exists and exercising it is the point.
 cache persists as a single AsyncStorage value, and every chapter read in the
 last 24 hours is in it. Live chapters reach ~315,000 characters (Man of Ashes
 001 chapters 8–10 and 13). On Android a value past ~2 MB can fail to read back,
-and then the cache fails to restore for every screen. Before launch, keep
-chapter text out of the persisted cache (the persister's
-`shouldDehydrateQuery`) once the downloads prompt gives text its own storage,
-or cap it. The reader also lays a whole chapter out in one `ScrollView`, which
-has not been tried at that length.
+and then the cache fails to restore for every screen. Prompt 24 closes this:
+downloaded text becomes a file, and `shouldPersistQuery()` drops chapter text
+(Decisions — 2026-09-25, "Downloads"). Until then the risk stands. The reader
+also lays a whole chapter out in one `ScrollView`, which has not been tried at
+that length.
 
 ---
 
@@ -1691,7 +1809,8 @@ app. Do not create one.
 
 - `expo-audio` (decided 2026-09-24), with one app-wide player from `createAudioPlayer()` that outlives M6: background playback, lock-screen and Bluetooth controls through its media session, variable speed, sleep timer, and autoplay next chapter. It shows no next/previous-chapter buttons on the lock screen and offers no Android Auto browsing; both accepted.
 - Its config plugin runs with `recordAudioAndroid: false` and `microphonePermission: false`. This app never records, and Google Play asks every app holding `RECORD_AUDIO` to justify it.
-- Offline audio download is separate from offline text caching — implement both.
+- Narration is AAC in `.m4a`, mono, 64 kbps, with fast start: the dashboard's upload standard (Decisions — 2026-09-25, "Narration format"). This app plays whatever `audio_path` names and never converts audio.
+- Downloads are offline copies, not files the reader owns: app-private storage, tied to the account, checked again online, and valid for 30 days offline. A chapter's audio and its text are two separate files. Implement both (prompt 24; Decisions — 2026-09-25, "Downloads").
 - Auto-bookmark on pause.
 - M5 ↔ M6 handoff preserves position in both directions.
 - Audio plays from signed URLs (private bucket). Never persist one, and never add a cache-busting parameter of your own to media. Each signing is a new URL, so do not count on CDN hits for audio (cached egress ~$0.03/GB against ~$0.09/GB uncached): a cost accepted with the private bucket. Offline downloads keep repeat plays off the network.
@@ -1740,6 +1859,8 @@ Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`,
 Components take data via props and do not fetch. Fetching lives in `hooks/`.
 
 Every interactive component implements its full state set and has an accessibility label.
+
+Never put a button inside another button. A screen reader reads a button as one element and hides any button inside it, and on the web a button can't contain one. Lay them out as siblings in a row, as the mini player and M9's row with its headphone do (Decisions — 2026-09-25). The one exception is a tap area that is not a button: M5's page (`components/reader/chapter-body.tsx`) is an `accessible={false}` Pressable that toggles the toolbar, so the chapter buttons inside it stay reachable.
 
 Name by role, not appearance: `PrimaryButton`, not `OrangeButton`.
 

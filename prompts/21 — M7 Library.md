@@ -1,4 +1,10 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
+
+> Revision note, 2026-09-25 (prompt 24 revision). M7's frame is
+> `material/9.png` (`11-library.png` does not exist). It shows no downloads
+> segment, only Books and Audiobooks, so step 10 builds nothing. Downloads
+> live on their own Downloads screen, from prompt 24. See AGENTS.md
+> § Decisions — 2026-09-25, "Downloads".
 Design material: @prompt_material/11-library.png — ensure everything is as is
 shown. This is the first screen where `library_items` and `reading_positions`
 are read for real, and the first where the app writes on the user's behalf.
