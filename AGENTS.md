@@ -293,7 +293,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid — the dashboard's genre list, mirrored in `data/genres.ts` (see Decisions); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
 
-**M3 · Home / Discover** — Wordmark left; search and notification icons right. Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen`. Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
+**M3 · Home / Discover** — Wordmark left; search and notification icons right. Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
 **M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9. **No bottom nav, no mini player.**
 
@@ -510,7 +510,9 @@ Do not require/import image assets directly inside screens or components unless 
 
 Remote covers come from Supabase Storage / CDN URLs stored in the database. Render them with `expo-image`, always with a placeholder and a 2:3 aspect ratio. Never hotlink third-party image URLs.
 
-Covers are WebP of about 150 KB. The dashboard compresses them in the browser at upload (its AGENTS.md § Upload Rules, "Cover images", 2026-09-25). This app needs no change for them: `expo-image` decodes WebP on Android and iOS, and the URL keeps the stored path's extension. Covers uploaded before then are PNGs of about 1.6 MB until the owner replaces them in the dashboard. Supabase's image transformations, which would resize per screen, are not enabled on this project's plan.
+Covers are WebP of about 150 KB, served with a one-year `Cache-Control`, so Supabase's CDN caches them. The dashboard compresses them in the browser at upload (its AGENTS.md § Upload Rules, "Cover images", 2026-09-25). The three live covers were 1.6 MB PNGs served `no-cache` (the CDN missed every request, and M4's cover visibly drew from the top down) until they were replaced the same day. `expo-image` decodes WebP on Android and iOS, and the URL keeps the stored path's extension. Supabase's image transformations, which would resize per screen, are not enabled on this project's plan.
+
+`Cover` caches in memory as well as on disk (`cachePolicy="memory-disk"`), so a cover seen on Discover shows at once on M4. The one large cover on a screen (M4's, M6's, and M3's hero) loads at `priority="high"`, ahead of the carousel covers.
 
 Where a cover must be cropped to a frame that is not 2:3 — the M3 hero card is the case today — use `contentFit="cover"` with `contentPosition="top"`. Cover art puts the title lettering at the top, and the default centre crop cut it off (fixed 2026-09-23). Crop from the bottom, where the card's fade covers the loss anyway.
 
@@ -591,7 +593,7 @@ lib/
   clerk.ts
   parity/       the one reading_positions writer, and its pure rules
   query-status.ts  how a screen's status reads the queries it waits on (M5, M6)
-  chapter-list.ts, library.ts  M9's and M7's pure parts, each with its tests
+  chapter-list.ts, library.ts, hero.ts  M9's, M7's and M3's hero's pure parts, each with its tests
   audio/        the one app-wide player (expo-audio), from prompt 18
   revenuecat.ts
   format.ts
@@ -1018,7 +1020,11 @@ decided and passed the owner's Expo Go checks on 2026-09-25 ("Handoff as
 built"). M9 was built as decided the same day ("M9 as built"). M7 was
 built as decided too, then changed twice at the owner's request after trying
 it: live time left on the Listening card, and a labelled My List pill ("M7 as
-built").
+built"). After comparing Discover with its frame, the owner asked for teal
+"Audio Parity" and "See all", and a hero that moves: it became a carousel of
+the five newest stories, with Continue above it on the Discover tab ("M3's
+hero carousel and Continue"). The web preview's fixes are recorded there and
+under § Clerk Rules.
 
 - **The destination maps the place.** M5 already restores an audio position
   into the text (`textRestoreOffset()`). M6 gains the reverse in
@@ -1161,6 +1167,13 @@ built").
     `useWindowDimensions().fontScale`, capped at 1.3× (the text's
     `maxFontSizeMultiplier`), and every row is given it explicitly, so
     `getItemLayout` is exact. `initialScrollIndex` is read once, at mount.
+  - **Opening at Reading Now is clamped** (fixed 2026-09-25, found by the
+    owner). A list starts drawing at `initialScrollIndex` even when it can't
+    scroll that far, and the rows above stay a blank gap: a 5-chapter book
+    reading chapter 3 opened with chapters 1–2 missing. The route now
+    measures the list's height before mounting it, and `openingRowIndex()`
+    (`lib/chapter-list.ts`, tested) stops at the last row that can reach the
+    top. A list that fits on the screen opens at the top.
   - **The header is `surface`**, as the frame measures (`#1F1530`), not
     `raised` as prompt 20 step 6 said.
   - **`SegmentedControl` gained `track`:** `"bg"`, the default, for M5's
@@ -1382,6 +1395,101 @@ built").
     held `.aac`, which the dashboard's upload code and the `audio` bucket
     both reject, so it goes too.
   - Nothing in this app changes: it plays whatever `audio_path` names.
+- **M3's hero badge and teal.** Changed at the owner's request on 2026-09-25,
+  after comparing the app with `material/3.png`. The badge now reads "New
+  Serial" (next entry).
+  - **Teal for "Audio Parity" and "See all"**, as the frame draws them. The
+    owner lifted prompt 09's "do not use teal anywhere else on this screen".
+    § Colors already allows it: "Audio Parity" is an audio affordance, and
+    "See all" a secondary accent. The "Audio Parity" row now shows only for a
+    narrated book: teal marks audio, and a text-only book has no audio
+    length, as on M4.
+  - **The badge reads "★ Newest Serial", not "★ #1 Trending Serial".** There
+    is still no metric to rank by (prompts 09 and 10, § Data Contract), so a
+    rank would be a false claim about whichever book is newest. The hero is
+    the first row of a newest-first query (`created_at desc`), so "Newest" is
+    true on every tab. It keeps the frame's star, on one line: the frame's
+    second line is its phrase wrapping inside a too-narrow pill. If the hero
+    is ever chosen another way, its label changes with it.
+- **M3's hero carousel and Continue.** Asked for by the owner on 2026-09-25
+  (the "now" step of the retention recommendations below).
+  - **The hero is a carousel of the tab's 5 newest stories**
+    (`components/discover/hero-carousel.tsx`, rules in `lib/hero.ts`), each
+    page the existing `HeroCard`. It moves on every 7 seconds
+    (`HERO_ADVANCE_MS`: 5 is too short to read a title and decide, 10 feels
+    stuck). No bounce, no parallax.
+  - **The slide is Reanimated, not a scroll view** (changed 2026-09-25 at
+    the owner's request: the paging scroll was too quick). Pages sit on one
+    track that Reanimated slides, so the timing is the same on every
+    platform: a scroll view's own paging animation is short and fixed, and a
+    browser's smooth scroll can't be timed. The timer glides over 700 ms
+    (`HERO_SLIDE_MS`, `Easing.bezier(0.45, 0, 0.15, 1)`: a gentle start and
+    a long soft landing). A swipe follows the finger through gesture-handler
+    and settles in 350 ms (`HERO_SETTLE_MS`, ease-out); a flick moves a page
+    however short, never more than one (`settlePage()`). It loops forward
+    without rewinding: the track holds a copy of the last page before the
+    first and of the first after the last, and jumps from a copy to the page
+    it shows once it lands (`wrapPage()`). The dots grow and brighten with
+    the slide. Screen readers reach only the page on show and step through
+    the stories with the dots, an adjustable control ("Newest stories, 2 of
+    5").
+  - **The reader stays in control** (WCAG 2.2.2, § UI Quality Bar): it
+    pauses under a finger, stops for good once they swipe, and moves only
+    while Discover is on screen and the app in front, never with Reduce
+    Motion or a screen reader on (`useHeroAutoAdvance()`, with
+    `hooks/use-reduce-motion-enabled.ts`). One story: no swiping, no dots.
+    Each genre tab has its own five.
+  - **The badge reads "★ New Serial"**, replacing "Newest Serial": only the
+    first page is the newest, and every page is one of the five newest.
+  - **The five change when a story is published, not on a timer.** Catalog
+    sync already brings a new story within a second, but the set on screen
+    holds while Discover is in view and changes when the tab's own answer
+    arrives or Discover regains focus (`nextHeroSet()`), so a page never
+    changes under a finger. Edits to the stories on screen show at once. A
+    new chapter of an old story is not a new story; a "New chapters" row
+    would need its own column.
+  - **Continue on Discover.** The Discover tab (not the genre tabs) opens
+    with the Continue card, as M7's Books segment builds it, so a returning
+    reader resumes without going to Library. It collapses when there is no
+    position. `useContinue()` (`hooks/use-continue.ts`) now builds the card
+    for both screens, and `openResumeTarget()` is the one place the resume
+    button navigates (and the one `TODO(paywall)`). On Discover its resume
+    button is `secondary` (a `raised` disc, `body` icon): the hero's "Read
+    or Listen" stays the screen's one ember action. Its heading follows the
+    mode: "Continue Listening" or "Continue Reading".
+  - `useIsForeground()` moved out of catalog sync into
+    `hooks/use-is-foreground.ts`, shared with the carousel.
+  - **Web preview (fixed 2026-09-25, found by the owner).** The carousel
+    moved on Android but not in the browser: react-native-web's
+    `isScreenReaderEnabled()` always answers true, because a page cannot
+    tell. `useScreenReaderEnabled()` now returns false on the web outright,
+    not from state, since a hot reload kept a `true` stored earlier. The same
+    wrong answer had held M5's toolbar open in the browser. In development, a
+    `[hero] not moving on its own: …` log names the reason it is holding
+    still.
+  - **Checked by the owner on 2026-09-25:** moving on BlueStacks (Android),
+    and in the web preview after the fixes above and a full reload; the
+    700 ms glide accepted in place of the scroll view's quicker slide. Teal
+    "Audio Parity" and "See all", "★ New Serial", and Continue on Discover
+    show in the owner's screenshots. Not yet checked on a phone.
+- **Retention and revenue, proposed 2026-09-25, awaiting the owner.** Aimed
+  at "come back more often and read more chapters", never at keeping readers
+  longer than they meant: no invented urgency or rankings, no ads that are
+  hard to close. The carousel and Continue on Discover are built (previous
+  entry). The rest needs decisions before prompts 22–23 are reviewed:
+  - **The chapter end is the revenue moment.** "Continue to Chapter N" as
+    one tap, and when that chapter is locked, the paywall there (watch an ad,
+    or go ad-free). Prompts 22–23 to be reviewed with this in mind.
+  - **New-chapter notifications** for books on My List, the bell on
+    Discover's purpose. Needs a notifications library (owner's approval), a
+    server trigger on chapter publish, and the development build.
+  - **Wait-for-free:** one locked chapter per book unlocks free each day, or
+    at once with an ad or the subscription. Unlocks are server-written only
+    (Decisions — 2026-09-23), so it needs a server function, and it changes
+    the paywall's design.
+  - **Analytics:** return rates, chapters per visit, paywall to ad or
+    purchase. Needs a tool the owner approves.
+  - **More stories** through the dashboard: 3 are published.
 
 ---
 
@@ -1441,8 +1549,14 @@ checks on 2026-09-25. M9 Full Chapter List (20) is built on real data
 (Decisions — 2026-09-25, "M9 as built"). Its device checks wait for the
 owner. M7 Library (21) is built on real data, with M4's `+ My List` pill
 (Decisions — 2026-09-25, "M7 as built"). Its device checks wait for the
-owner. **Next: the deferred setup** (§ Deferred setup), which prompt 22 waits
-on. Open before M5 ships:
+owner. M3's hero is a carousel of the 5 newest stories that glides every 7
+seconds, with Continue on the Discover tab; the owner has seen both working
+in the web preview and on BlueStacks (Decisions — 2026-09-25, "M3's hero
+carousel and Continue").
+**Next: the deferred setup** (§ Deferred setup), which prompt 22 waits on,
+and the owner's calls on notifications, wait-for-free and analytics
+(Decisions — 2026-09-25, "Retention and revenue") before prompts 22–23 are
+reviewed. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
@@ -1955,6 +2069,7 @@ app. Do not create one.
 - Publishable key only in the app. Secret keys never ship to the client.
 - Token retrieval always goes through Clerk's `getToken`. Never cache a token in a module-level variable or in AsyncStorage.
 - Sign-out clears persisted Zustand state and any user-scoped TanStack Query cache.
+- `touchSession` is off on the web (`app/_layout.tsx`, 2026-09-25). In a browser, clerk-js "touches" the session each time the tab regains focus and leaves a failed request uncaught, which Expo's development overlay showed as "ClerkJS: Network error … Failed to fetch". A phone has no browser focus event, so the native apps never send it.
 
 ---
 
