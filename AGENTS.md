@@ -295,7 +295,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M3 · Home / Discover** — Wordmark left; search and notification icons right. Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen`. Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
-**M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons. Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9. **No bottom nav, no mini player.**
+**M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9. **No bottom nav, no mini player.**
 
 **M5 · Reader** — Light mode `#FBF7F1` by default (sepia and dark are user choices). Literata 18sp/1.7. Minimal top bar: back, chapter title, `Aa`. Fraunces chapter heading. Floating bottom toolbar on `#2C1E42` with brightness, `Aa`, bookmark, and a teal Listen icon that hands off to M6 at the equivalent position. Ember progress bar with position label. **No bottom nav, no mini player.**
 
@@ -303,7 +303,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M6 · Now Playing** — The app's only full-screen gradient. Dismiss chevron. Large square cover with a thin ember rim. Title, author, chapter. Scrub bar with ember track and thumb, elapsed and remaining labels. Transport row: back-15, previous, 72dp ember play/pause with a `#1A1420` icon, next, forward-15. Secondary teal controls: speed, `Sleep timer`, `Read instead` — hands back to M5 at the equivalent position.
 
-**M7 · My Library** — Fraunces title. Segmented toggle (Books / Audiobooks) on a dark track. `Continue` card: cover, title, progress label, ember progress bar, resume button. `My List` as a 3-column cover grid with an ember progress line under each; audiobook items carry a teal headphone badge. Mini player above bottom nav.
+**M7 · My Library** — Fraunces title. Segmented toggle (Books / Audiobooks) on a dark track. `Continue` card: cover, title, progress label, ember progress bar, resume button. `My List` as a 3-column cover grid with an ember progress line under each; audiobook items carry a teal headphone badge. Mini player above bottom nav. Frame: `material/9.png`. Books are added and removed from M4's `+ My List` pill, which no frame draws (Decisions — 2026-09-25, "M7"). Built by prompt 21 ("M7 as built").
 
 **M8 · Search & Results** — Back chevron plus search field in the header. Filter chips, active chip blush-filled. Result count line. Rows: cover thumbnail, title, author, metadata, audio badge where applicable. Recent searches when the query is empty. Needs a real empty state and a distinct no-results state.
 
@@ -510,6 +510,8 @@ Do not require/import image assets directly inside screens or components unless 
 
 Remote covers come from Supabase Storage / CDN URLs stored in the database. Render them with `expo-image`, always with a placeholder and a 2:3 aspect ratio. Never hotlink third-party image URLs.
 
+Covers are WebP of about 150 KB. The dashboard compresses them in the browser at upload (its AGENTS.md § Upload Rules, "Cover images", 2026-09-25). This app needs no change for them: `expo-image` decodes WebP on Android and iOS, and the URL keeps the stored path's extension. Covers uploaded before then are PNGs of about 1.6 MB until the owner replaces them in the dashboard. Supabase's image transformations, which would resize per screen, are not enabled on this project's plan.
+
 Where a cover must be cropped to a frame that is not 2:3 — the M3 hero card is the case today — use `contentFit="cover"` with `contentPosition="top"`. Cover art puts the title lettering at the top, and the default centre crop cut it off (fixed 2026-09-23). Crop from the bottom, where the card's fade covers the loss anyway.
 
 ---
@@ -589,6 +591,7 @@ lib/
   clerk.ts
   parity/       the one reading_positions writer, and its pure rules
   query-status.ts  how a screen's status reads the queries it waits on (M5, M6)
+  chapter-list.ts, library.ts  M9's and M7's pure parts, each with its tests
   audio/        the one app-wide player (expo-audio), from prompt 18
   revenuecat.ts
   format.ts
@@ -785,8 +788,9 @@ code. The prompts carry the detail; this is the record.
   written are referred to by feature, never by number: `TODO(paywall)`,
   `TODO(parity)`, `TODO(handoff)`.
 - **No UI without data behind it.** A frame element with no backing table or
-  column is omitted and reported, not mocked: M4's resume card, My List,
-  finished-chapter marks, rating and "Ongoing" status; M5's bookmark.
+  column is omitted and reported, not mocked: M4's resume card, My List
+  (since built by prompt 21, on `library_items`), finished-chapter marks,
+  rating and "Ongoing" status; M5's bookmark.
 - **M4 Share** sends the title and author only. There is no public book URL
   and no deep-link scheme yet.
 - **M4 layout.** No blurred backdrop: the frame has none, and the flat-surface
@@ -874,7 +878,9 @@ Made while building prompts 15–17 and reviewing each prompt before it.
     two it did, and the handoff says so to the user. Start-of-chapter alone
     would restart every handoff, defeating parity.
   - M4's Read resumes the book's most recent position through
-    `resumeTargetOptions()`, the query Library reuses.
+    `resumeTargetOptions()`, and M9 reuses it. Library's Continue card spans
+    every book, so it reads `recentPositionsOptions()` instead (Decisions —
+    2026-09-25, "M7").
 - **M6 Now Playing (prompt 17).** Decided while reviewing prompt 17 against
   `material/8.png`:
   - Built on real chapter and book data, with only the playback mocked. The
@@ -1006,10 +1012,13 @@ Made while building prompts 15–17 and reviewing each prompt before it.
 
 ## Decisions — 2026-09-25
 
-Made while reviewing prompts 19 and 20 against the code, plus the owner's
-downloads and narration decisions. The M5 ↔ M6 handoff was built as decided
-and passed the owner's Expo Go checks on 2026-09-25 ("Handoff as built"). M9
-was built as decided the same day ("M9 as built").
+Made while reviewing prompts 19, 20 and 21 against the code, plus the
+owner's downloads and narration decisions. The M5 ↔ M6 handoff was built as
+decided and passed the owner's Expo Go checks on 2026-09-25 ("Handoff as
+built"). M9 was built as decided the same day ("M9 as built"). M7 was
+built as decided too, then changed twice at the owner's request after trying
+it: live time left on the Listening card, and a labelled My List pill ("M7 as
+built").
 
 - **The destination maps the place.** M5 already restores an audio position
   into the text (`textRestoreOffset()`). M6 gains the reverse in
@@ -1178,6 +1187,143 @@ was built as decided the same day ("M9 as built").
   target (the cover, title and author, padding included, "Open Now
   Playing") and the play/pause button. Nothing else changed: same 56dp bar,
   same labels, same `useMiniPlayer()`.
+- **M7 (prompt 21 review).** Made while reviewing prompt 21 against
+  `material/9.png` (M7's frame) and the code as built by prompts 12–20.
+  Built as decided (next entry), except that the round button became a
+  labelled pill.
+  - **M4 gets a My List button.** No frame draws one, and without it nothing
+    can put a book on My List. It was planned as a round outlined button left
+    of Share, showing a plus or a check, in `body` colour; it shipped as the
+    `+ My List` pill ("M7 as built"). M7 has no remove control,
+    because its frame draws none. The alternative, adding a book
+    automatically when a reader first opens it, was not chosen: My List
+    stays the reader's own choice.
+  - **Books is every book on My List; Audiobooks is those with narration**
+    (`audio_count > 0`). The frame's Books segment shows headphone badges,
+    so Books is not "text only". The counts in the labels are real.
+  - **Continue spans every book**, through a new `recentPositionsOptions()`:
+    the newest 100 positions, with the chapter embedded. `resumeTargetOptions()`
+    is per book, so the old line that Library reuses it was wrong. Books
+    shows the newest row under "Continue Reading"; Audiobooks the newest row
+    whose `last_mode` is `audio`, under "Continue Listening". The book need
+    not be on My List.
+  - **The resume button respects `last_mode`.** Audio opens M6 with
+    `play: "1"`, because it is a play button; text opens M5. It falls back to
+    the other mode when the chapter lacks that side. A Locked chapter opens
+    nothing (`TODO(paywall)`). Its icon matches the destination.
+  - **The eyebrow reads "Reading" or "Listening"**, from `last_mode`. The
+    frame's "Reading & Listening" doesn't say what the button will do.
+  - **Progress is "Chapter n of m"**, with the bar at n / `chapter_count`,
+    on the card and on the grid alike. No "% complete": a text offset has no
+    text length to be measured against. A grid book with no row among the
+    newest 100 shows no line.
+  - **"Recently added", not "Recently Updated"**: My List is ordered by
+    `created_at desc` (§ Phase 2), when the book was saved. Static text, not
+    a control.
+  - **One request per list, through embeds.** `library_items` embeds
+    `books_catalog!inner`, and `reading_positions` embeds
+    `chapters_catalog!inner`. PostgREST resolves both, and the generated
+    types carry them. `!inner` drops unpublished books.
+  - **Freshness.** The parity writer marks the recent-positions key stale
+    without fetching, and M7 refetches stale keys on focus. Catalog sync
+    invalidates both library keys on every change.
+  - **The add is an upsert with `ignoreDuplicates`** on
+    `library_items_user_book_key`, so a double tap writes one row. Add and
+    remove are optimistic, scoped per book so they run in order, and paused
+    while offline. A paused change isn't persisted, so closing the app while
+    offline drops it; accepted. A server error rolls back.
+  - **`ProgressBar` joins `components/ui/`**, as § Component Creation Rule
+    anticipates. Onboarding's demo bar stays as it is.
+- **M7 as built (prompt 21).** Built on 2026-09-25. Not yet checked on a
+  phone: the owner's checklist is at the end of prompt 21.
+  - `app/(tabs)/library.tsx` is one `FlatList`: the header, the segments,
+    Continue and the My List heading are its header, the books its items
+    (3 columns), and My List's states its empty component. The parts are in
+    `components/library/`. `hooks/use-library.ts` resolves the screen, and
+    `lib/library.ts` holds the pure parts, tested in
+    `lib/__tests__/library.test.ts`.
+  - **Two lists, one request each.** `libraryItemsByUserOptions()` embeds
+    `books_catalog!inner`. `recentPositionsOptions()` reads the newest 100
+    positions under `readingPosition.recent(userId)`, embedding
+    `chapters_catalog!inner(number, access, has_text, has_audio,
+    audio_duration_seconds)`. Both embeds were checked against the live API
+    on 2026-09-25. The Continue card adds its book (`bookDetailOptions()`),
+    the settings and the unlocks. Coming from M4 those are usually cached,
+    and so is My List, which M4 now reads for its pill. Nothing is queried
+    per grid book.
+  - **Freshness.** After each row it saves, the parity writer marks
+    `recent(userId)` stale with `refetchType: "none"`, so a flush never
+    fetches (tested in `lib/parity/__tests__/writer.test.ts`). On focus, M7
+    calls the writer's `flush()` first, then refetches its two keys if
+    stale. M5 and M6 flush as they unmount, which comes after M7 regains
+    focus; without that flush the card could show the place before the one
+    just left. Catalog sync matches both library keys for every account
+    with `isLibraryQuery()`.
+  - **Where the resume button goes** is `resumeTarget()`: M6 with
+    `play: "1"` for audio, M5 for text, the other mode when the chapter lacks
+    that side, nothing for a Locked chapter (disabled, `TODO(paywall)`). The
+    lock is `lockStateFor()`'s, as on M5 and M6. Every tap pushes, so back
+    returns to Library.
+  - **`hooks/use-my-list.ts` is the only writer of `library_items`.**
+    `addToMyList()` sends `on_conflict=user_id,book_id` with
+    `resolution=ignore-duplicates` (`ON CONFLICT DO NOTHING` on
+    `library_items_user_book_key`), and its body is `book_id` alone, checked
+    by capturing the request. The change is optimistic, scoped
+    `my-list:<bookId>`, and keyed by the list's own key, so only the last
+    change to settle refetches. A server error rolls back and announces
+    "Couldn't update My List".
+  - **Paused mutations are not persisted.** `components/providers.tsx` sets
+    `shouldDehydrateMutation: () => false`. TanStack's default persisted
+    them, but a restored mutation has no `mutationFn`, so it failed silently
+    on the next start.
+  - **Sign-out.** `queryClient.clear()` empties the mutation cache and its
+    per-scope queues, and a paused mutation resumes only through them, so a
+    paused add is never sent under the next account. Tested, with a control
+    run showing the test fails without `clear()`.
+  - **`ProgressBar`** (`components/ui/progress-bar.tsx`) takes `value`,
+    `height` and `track`. The card's bar and the grid line are both 3dp, as
+    measured. The grid line has no track, as the frame draws it. Screen
+    readers skip it; the labels say the progress in words.
+  - **Live time left, added at the owner's request.** The bar stays progress
+    through the book. A Listening card adds the time left in its chapter,
+    "Chapter 1 of 13 · 2:00 left", counted as M6 counts its remaining time.
+    While that chapter is loaded in the player, `useLoadedSecondsLeft()`
+    (`hooks/use-audio.ts`) reads the player: the time counts down each
+    second and holds while paused, and only the card re-renders. Otherwise
+    it comes from the saved `audio_ms` and the chapter's
+    `audio_duration_seconds`. An unknown length shows no time, never
+    "0:00". Screen readers hear whole minutes. A Reading card shows no time:
+    there is no text length.
+  - **Library follows the player.** A listening row, on the card and in the
+    grid, gives way to the chapter loaded in the player within the same book
+    (`followsLoadedChapter()`), so autoplay moves both on without leaving
+    Library. A reading row never does. Turning the card's bar into a chapter
+    timeline was rejected: the card and the grid line would disagree about
+    one book.
+  - **The `+ My List` pill, added at the owner's request.** A bare plus could
+    mean follow, download or anything else. M4's button is a labelled 44dp
+    pill in Share's outline and `body` colour: "+ My List", then
+    "✓ In My List", which is also the confirmation. Its spoken label starts
+    with the words on it ("My List. Add {title} to My List"). Not a
+    bookmark, which in M5 marks a place in a chapter, and not a heart, which
+    reads as "like". Library's empty state says "Tap + My List on a story's
+    page to save it here.", under a plus-in-a-circle icon.
+  - **M4's cover moved down.** `BOOK_CONTENT_TOP` is 66, not
+    `material/6.png`'s 48, so the cover starts 8dp below the floating top
+    bar. At 48 the pill covered the cover's top corner.
+  - **Type sizes.** The frame's Inter text measures 12px (grid titles, the
+    progress label, the caption) and its eyebrow about 9.5px. They are built
+    at 14px and 12px, under § Typography. Fraunces follows the frame: "My
+    Library" 24px, section headings 18px, the card's title 16px. The search
+    button is the frame's 36dp disc, with 4dp of hit slop to reach 44dp. The
+    segments keep their 44dp and `muted/25` fill.
+  - **States.** Loading shows a skeleton segment bar and grid under the real
+    header. Offline or failed with nothing cached, the segments show bare
+    labels above a message (failed has Retry). Continue collapses when it
+    has nothing to show and never blocks My List.
+  - Known gaps: a book last opened beyond the newest 100 positions shows no
+    grid line. Library follows the player only within one book, so a book
+    newly started in the player shows once Library next gains focus.
 - **Downloads (prompt 24 revision).** Asked for by the owner on 2026-09-25:
   downloads are offline copies, as YouTube and Udemy make them, not files the
   reader owns. Prompt 24 carries the detail; review it against the code again
@@ -1293,8 +1439,10 @@ audio with the live mini player (18). Its device checks wait for the deferred
 setup. The M5 ↔ M6 handoff (19) is built and passed the owner's Expo Go
 checks on 2026-09-25. M9 Full Chapter List (20) is built on real data
 (Decisions — 2026-09-25, "M9 as built"). Its device checks wait for the
-owner. **Next: prompt 21, M7 Library**, reviewed against the code before it
-is built. Open before M5 ships:
+owner. M7 Library (21) is built on real data, with M4's `+ My List` pill
+(Decisions — 2026-09-25, "M7 as built"). Its device checks wait for the
+owner. **Next: the deferred setup** (§ Deferred setup), which prompt 22 waits
+on. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
@@ -1620,7 +1768,7 @@ history (see Phase 2).
 
 | Table               | One row per                          | Readers may                               | Read through (`lib/queries/`)        |
 | ------------------- | ------------------------------------ | ----------------------------------------- | ------------------------------------ |
-| `reading_positions` | reader + chapter (unique)            | select, insert, update, delete their own  | `readingPositionByChapterOptions()`  |
+| `reading_positions` | reader + chapter (unique)            | select, insert, update, delete their own  | `readingPositionByChapterOptions()`, `resumeTargetOptions()`, `recentPositionsOptions()` |
 | `unlocks`           | reader + chapter (unique), permanent | **select their own only**                 | `unlocksByUserOptions()`             |
 | `library_items`     | reader + book (unique)               | select, insert, update, delete their own  | `libraryItemsByUserOptions()`        |
 
@@ -1644,6 +1792,9 @@ history (see Phase 2).
 - Every foreign key is **`on delete cascade`**, so a book or chapter the
   dashboard deletes takes readers' rows with it, instead of the delete failing
   on them. Each foreign key is indexed, so the cascade never scans.
+- Writers: `reading_positions` only through `lib/parity/writer.ts`;
+  `library_items` only through M4's `+ My List` pill (`hooks/use-my-list.ts`,
+  with `addToMyList()` and `removeFromMyList()`); `unlocks` never.
 - Verified by `supabase/verify/reader_tables_rls.sql` in the dashboard repo:
   40 impersonation checks covering readers A and B, `anon`, and an admin, all
   passing on the live tables. It rolls back everything it seeds, so re-run it
@@ -1763,7 +1914,9 @@ policy, so no client can send on the topic.
 
 App side: `hooks/use-catalog-sync.ts` (mounted in `app/_layout.tsx`) listens
 while signed in and in the foreground, then invalidates the affected query
-keys (`lib/catalog-sync.ts`). Every join does a catch-up refresh. Do not drop
+keys (`lib/catalog-sync.ts`), always including lists, search and both of
+Library's lists, which `isLibraryQuery()` matches for every account. Every
+join does a catch-up refresh. Do not drop
 the triggers or add columns to the payload; new screens get live data just by
 using the key factory.
 
@@ -1854,7 +2007,7 @@ Refactor only when needed.
 
 Only create reusable components when necessary. Ask if unsure.
 
-Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `Screen`, `SegmentedControl` and the `Body`/`Heading` type helpers. `ProgressBar` and similar do not exist yet — add them there when a screen first needs them.
+Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `ProgressBar` (prompt 21), `Screen`, `SegmentedControl` and the `Body`/`Heading` type helpers. Add others there when a screen first needs them.
 
 Components take data via props and do not fetch. Fetching lives in `hooks/`.
 

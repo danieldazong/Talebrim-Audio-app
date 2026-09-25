@@ -26,7 +26,7 @@ prompts by design; this is where it becomes verifiable.
    AGENTS.md requires 44dp, which is stricter — apply 44dp. Audit every
    interactive element, including the ones most likely to be small: M6's
    transport controls either side of the 72dp play button, M5's floating toolbar
-   icons, M8's clear button, M9's row affordances, M7's remove action, carousel
+   icons, M8's clear button, M9's row affordances, M4's My List button, carousel
    cards, and genre chips. Use `hitSlop` where the visual must stay small. Paste
    the list of elements you enlarged.
 4. LABELS on every interactive element, and they must describe the ACTION AND
