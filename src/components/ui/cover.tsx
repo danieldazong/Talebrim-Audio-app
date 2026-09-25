@@ -21,6 +21,11 @@ type CoverProps = {
    * top of the art survives (AGENTS.md § Image Rule).
    */
   aspectRatio?: number;
+  /**
+   * `"high"` for a screen's one large cover (M4, M6), so it loads ahead of
+   * the carousel covers still downloading behind it. Native only.
+   */
+  priority?: "normal" | "high";
 };
 
 /**
@@ -35,7 +40,13 @@ type CoverProps = {
  * (expo/expo#22516); this component intentionally omits `transition` so
  * `recyclingKey` alone can be relied on for carousel recycling.
  */
-export function Cover({ source, recyclingKey, width, aspectRatio = layout.coverAspectRatio }: CoverProps) {
+export function Cover({
+  source,
+  recyclingKey,
+  width,
+  aspectRatio = layout.coverAspectRatio,
+  priority = "normal",
+}: CoverProps) {
   const shape = { aspectRatio, borderRadius: radius.cover, width };
 
   if (source === null) {
@@ -49,6 +60,10 @@ export function Cover({ source, recyclingKey, width, aspectRatio = layout.coverA
       style={[shape, { backgroundColor: colors.surface }]}
       contentFit="cover"
       contentPosition={aspectRatio === layout.coverAspectRatio ? "center" : "top"}
+      // Memory as well as disk: a cover seen on Discover shows at once on M4,
+      // with no second decode. The default is disk only.
+      cachePolicy="memory-disk"
+      priority={priority}
     />
   );
 }

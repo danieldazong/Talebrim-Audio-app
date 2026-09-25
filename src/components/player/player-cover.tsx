@@ -49,6 +49,7 @@ export function PlayerCover({ coverUrl, loading = false }: PlayerCoverProps) {
             source={coverUrl === null ? null : { uri: coverUrl }}
             width={size - 2 * RIM}
             aspectRatio={1}
+            priority="high"
           />
         </View>
       )}

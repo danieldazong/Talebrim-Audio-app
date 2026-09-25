@@ -41,6 +41,9 @@ export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
           contentFit="cover"
           // Crop from the bottom, not both edges — cover titles sit at the top.
           contentPosition="top"
+          // The first cover on Discover, and the same file M4 shows next.
+          cachePolicy="memory-disk"
+          priority="high"
         >
           <View
             className="flex-row items-center gap-1 self-start rounded-pill bg-bg/70 px-3 py-1.5"

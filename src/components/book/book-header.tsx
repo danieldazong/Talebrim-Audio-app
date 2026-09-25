@@ -173,6 +173,7 @@ export function BookHeader({ book, coverUrl, read, listen, onRead, onListen }: B
           source={coverUrl === null ? null : { uri: coverUrl }}
           recyclingKey={book.id ?? undefined}
           width={BOOK_COVER_WIDTH}
+          priority="high"
         />
       </View>
 
