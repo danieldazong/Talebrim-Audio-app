@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { onlineManager } from "@tanstack/react-query";
+import { QueryObserver, onlineManager } from "@tanstack/react-query";
 
 import {
   DEBOUNCE_MS,
@@ -10,6 +10,8 @@ import {
   recordPosition,
   setParityUser,
 } from "@/lib/parity/writer";
+import { queryClient } from "@/lib/query-client";
+import { queryKeys } from "@/lib/query-keys";
 import { useParityStore } from "@/store/parity-store";
 
 // Supabase stubbed at the one call the writer makes:
@@ -209,4 +211,21 @@ it("writes each chapter to its own row, however they interleave", async () => {
     ]),
   );
   expect(rows).toHaveLength(2);
+});
+
+it("marks Library's newest positions stale after a save, without fetching them", async () => {
+  const queryKey = queryKeys.readingPosition.recent(USER_A);
+  const queryFn = jest.fn(async () => []);
+  // On screen, as M7 is while it sits under M5 in the stack.
+  const unsubscribe = new QueryObserver(queryClient, { queryKey, queryFn, staleTime: Infinity }).subscribe(() => {});
+  await jest.advanceTimersByTimeAsync(0);
+  expect(queryFn).toHaveBeenCalledTimes(1);
+
+  text(10);
+  await flush();
+  await jest.advanceTimersByTimeAsync(1_000);
+
+  expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
+  expect(queryFn).toHaveBeenCalledTimes(1);
+  unsubscribe();
 });

@@ -43,8 +43,13 @@ export function AuthedQueryProvider({ children }: { children: ReactNode }) {
       persister: createPersister(userId),
       maxAge: PERSIST_MAX_AGE_MS,
       buster: userId ?? "anonymous",
-      // Never a signed narration URL: it is a bearer credential.
-      dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
+      dehydrateOptions: {
+        // Never a signed narration URL: it is a bearer credential.
+        shouldDehydrateQuery: shouldPersistQuery,
+        // Never a paused mutation. Restored, it has no `mutationFn` to run, so
+        // a My List change made offline ends with the app (prompt 21 step 8).
+        shouldDehydrateMutation: () => false,
+      },
     }),
     [userId],
   );

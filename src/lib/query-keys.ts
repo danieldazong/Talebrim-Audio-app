@@ -110,6 +110,8 @@ export const queryKeys = {
      */
     resumeByBook: (userId: string, bookId: string) =>
       [...queryKeys.readingPosition.all(userId), "resumeByBook", bookId] as const,
+    /** The newest positions across every book — Library's Continue card and grid lines (`recentPositionsOptions()`). */
+    recent: (userId: string) => [...queryKeys.readingPosition.all(userId), "recent"] as const,
   },
 
   unlocks: {

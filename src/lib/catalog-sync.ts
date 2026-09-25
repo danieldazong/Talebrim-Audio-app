@@ -6,7 +6,7 @@
 // broadcasts `{ book_ids, chapter_ids }` on a private Realtime topic. The
 // message carries ids, never content: it only says what went stale, and the
 // app refetches through its normal RLS-checked queries.
-import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import type { Query, QueryClient, QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "@/lib/query-keys";
 
@@ -47,10 +47,24 @@ export function mergeCatalogChanges(a: CatalogChange, b: CatalogChange): Catalog
   };
 }
 
+const [LIBRARY_ITEMS_ROOT] = queryKeys.libraryItems.byUser("");
+const [POSITION_ROOT, , RECENT_POSITIONS] = queryKeys.readingPosition.recent("");
+
+/**
+ * Library's two lists, for every account: My List and the newest positions.
+ * Both are per user and catalog sync knows no user, so they are matched by
+ * shape rather than listed.
+ */
+export function isLibraryQuery(query: Pick<Query, "queryKey">): boolean {
+  const [root, , kind] = query.queryKey;
+  return root === LIBRARY_ITEMS_ROOT || (root === POSITION_ROOT && kind === RECENT_POSITIONS);
+}
+
 /**
  * Marks everything a change could affect as stale: queries on screen refetch
- * now, the rest when their screen next mounts. Lists and search always go —
- * a title, cover or chapter count can appear in any of them.
+ * now, the rest when their screen next mounts. Lists, search and Library
+ * always go — a title, cover or chapter count can appear in any of them, and
+ * an unpublished book must leave Library.
  *
  * `null` means the scope is unknown (events may have been missed while
  * unsubscribed), so everything catalog-derived is refreshed, settings too.
@@ -76,5 +90,8 @@ export async function invalidateCatalog(
     }
   }
 
-  await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  await Promise.all([
+    ...keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    queryClient.invalidateQueries({ predicate: isLibraryQuery }),
+  ]);
 }

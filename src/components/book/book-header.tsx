@@ -1,32 +1,51 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Fragment } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Badge, Button, Cover } from "@/components/ui";
 import type { ChapterTarget } from "@/hooks/use-book-detail";
 import { formatDurationCompact } from "@/lib/format";
 import { genreLabel, maturityLabel } from "@/lib/labels";
-import { colors } from "@/theme";
+import { colors, layout } from "@/theme";
 import type { BookDetailRow } from "@/types/catalog";
 
 /** 2:3 → 210dp tall, measured from material/6.png. */
 export const BOOK_COVER_WIDTH = 140;
 
-/** Where the cover starts, below the floating top bar (material/6.png). */
-export const BOOK_CONTENT_TOP = 48;
+/**
+ * Where the cover starts: 8dp below the floating top bar (14dp down, 44dp
+ * tall). material/6.png measures 48, which only worked while every button
+ * was round: the My List pill reaches over the cover's top corner.
+ */
+export const BOOK_CONTENT_TOP = 66;
+
+export type MyListToggle = {
+  title: string;
+  isOnList: boolean;
+  onToggle: () => void;
+};
 
 type BookTopBarProps = {
   onBack: () => void;
   /** `null` hides Share — nothing to share until the book has loaded. */
   onShare: (() => void) | null;
+  /** `null` hides My List — until the book and My List are both known (`useMyList()`). */
+  myList: MyListToggle | null;
 };
 
 /**
- * M4's round back and share buttons. They float over the scroll content so
- * Back stays reachable deep in the chapter list; `box-none` lets touches
- * between them reach the content underneath.
+ * M4's round back and share buttons, and the My List pill. They float over
+ * the scroll content so Back stays reachable deep in the chapter list;
+ * `box-none` lets touches between them reach the content underneath.
+ *
+ * No frame draws My List (AGENTS.md § Decisions — 2026-09-25, "M7"). A bare
+ * plus could mean follow, download or anything else, so the pill names the
+ * list Library shows: "+ My List", then "✓ In My List", which is also the
+ * confirmation. Outlined like Share, in `body`: Read is M4's one ember
+ * action, and teal is for audio. No bookmark: M5's bookmark marks a place in
+ * a chapter.
  */
-export function BookTopBar({ onBack, onShare }: BookTopBarProps) {
+export function BookTopBar({ onBack, onShare, myList }: BookTopBarProps) {
   return (
     <View pointerEvents="box-none" className="absolute inset-x-3 top-3.5 flex-row justify-between">
       <Pressable
@@ -39,20 +58,59 @@ export function BookTopBar({ onBack, onShare }: BookTopBarProps) {
         <Ionicons name="chevron-back" size={22} color={colors.body} />
       </Pressable>
 
-      {onShare ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Share this story"
-          onPress={onShare}
-          className="icon-btn icon-btn--round icon-btn--outline"
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-        >
-          <Ionicons name="share-social-outline" size={20} color={colors.body} />
-        </Pressable>
-      ) : null}
+      <View pointerEvents="box-none" className="flex-row gap-2">
+        {myList ? (
+          <Pressable
+            accessibilityRole="button"
+            // Each starts with the words on the pill, so voice control finds it by them.
+            accessibilityLabel={
+              myList.isOnList
+                ? `In My List. Remove ${myList.title} from My List`
+                : `My List. Add ${myList.title} to My List`
+            }
+            accessibilityState={{ selected: myList.isOnList }}
+            onPress={myList.onToggle}
+            // No className beside a `style` function (AGENTS.md § Style Exception Rules).
+            style={({ pressed }) => [styles.myList, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Ionicons name={myList.isOnList ? "checkmark" : "add"} size={18} color={colors.body} />
+            <Text className="font-ui-semibold text-body text-sm" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+              {myList.isOnList ? "In My List" : "My List"}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {onShare ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Share this story"
+            onPress={onShare}
+            className="icon-btn icon-btn--round icon-btn--outline"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <Ionicons name="share-social-outline" size={20} color={colors.body} />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  /** Back and Share's outline (`icon-btn--outline`), as a 44dp pill with a label. */
+  myList: {
+    height: layout.minTouchTarget,
+    borderRadius: layout.minTouchTarget / 2,
+    borderWidth: 1,
+    borderColor: colors.raised,
+    backgroundColor: colors.bg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingLeft: 14,
+    paddingRight: 16,
+  },
+});
 
 /** What a screen reader hears for Read or Listen, including why it won't open. */
 function actionLabel(action: "Read" | "Listen", target: ChapterTarget): string {

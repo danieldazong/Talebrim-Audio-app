@@ -193,6 +193,13 @@ function settle(write: PendingWrite, row: ReadingPosition) {
   // cache: no refetch, and no catalog key is touched.
   queryClient.setQueryData(queryKeys.readingPosition.byChapter(write.userId, write.chapterId), row);
   queryClient.setQueryData(queryKeys.readingPosition.resumeByBook(write.userId, write.bookId), row);
+  // Library's newest positions carry each chapter too, which this row lacks,
+  // so they are only marked stale: a flush never fetches. M7 refetches them
+  // when it next gains focus.
+  void queryClient.invalidateQueries({
+    queryKey: queryKeys.readingPosition.recent(write.userId),
+    refetchType: "none",
+  });
 }
 
 /** A rejection that resending the same row cannot fix: bad data (22) or a broken constraint (23), such as a deleted chapter. */

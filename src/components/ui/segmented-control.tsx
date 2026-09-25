@@ -29,7 +29,7 @@ const TRACK_CLASS = {
 
 /**
  * Pill segmented control — AGENTS.md § Component Creation Rule. M5's reading
- * settings and M9's sort today; M7's Books / Audiobooks next.
+ * settings, M9's sort and M7's Books / Audiobooks.
  *
  * The SELECTED option is the filled one: a `muted/25` pill, clearly lighter
  * than the `bg` track, with a `body` label. Several design frames fill the
