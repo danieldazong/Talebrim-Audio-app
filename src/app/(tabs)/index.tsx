@@ -142,7 +142,7 @@ function DiscoverContent({
         view={continueView}
         heading={continueHeading}
         onOpenBook={onOpenBook}
-        onResume={openResumeTarget}
+        onResume={(target) => openResumeTarget(target, "discover")}
         resumeVariant="secondary"
       />
 

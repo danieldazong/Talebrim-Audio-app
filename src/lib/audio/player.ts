@@ -17,6 +17,7 @@ import { isRunningInExpoGo } from "expo";
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from "expo-audio";
 import { AppState, Platform } from "react-native";
 
+import { track } from "@/lib/analytics";
 import { resolveChapter, resolveNextChapter, type LoadedChapter } from "@/lib/audio/resolve";
 import {
   chooseDuration,
@@ -403,8 +404,12 @@ function onStatus(status: AudioStatus) {
   if (lastPlaying && !status.playing) void flush();
   lastPlaying = status.playing;
 
-  if (status.didJustFinish) void advance(chapter);
-  else prefetchNext(chapter, status);
+  if (status.didJustFinish) {
+    track("chapter_finished", { book_id: chapter.bookId, chapter_id: chapter.chapterId, mode: "audio" });
+    void advance(chapter);
+  } else {
+    prefetchNext(chapter, status);
+  }
 }
 
 /** Mints the next chapter's URL ahead, once, 90% through. Never for a locked chapter. */

@@ -4,6 +4,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 
 import { useLoadedChapter, useLoadedSecondsLeft } from "@/hooks/use-audio";
+import { track } from "@/lib/analytics";
 import { resolveCoverUrl } from "@/lib/covers";
 import {
   chapterProgress,
@@ -175,16 +176,18 @@ export function useContinue(segment: LibrarySegment): {
 }
 
 /**
- * Where the Continue card's resume button goes, from M7 or M3. Pushed, so
- * back returns to the screen it came from.
+ * Where the Continue card's resume button goes, from M7 (`library`) or M3
+ * (`discover`). Pushed, so back returns to the screen it came from.
  */
-export function openResumeTarget(target: ResumeTarget): void {
+export function openResumeTarget(target: ResumeTarget, from: "discover" | "library"): void {
   // TODO(paywall): a Locked chapter opens M5a here. It must never open the
   // reader or the player: that would be a paywall bypass.
   if (target.kind === "player") {
+    track("continue_resumed", { from, mode: "audio" });
     // A play button, as M5's Listen is: M6 starts the chapter once it is ready.
     router.push({ pathname: "/player/[chapterId]", params: { chapterId: target.chapterId, play: "1" } });
   } else if (target.kind === "reader") {
+    track("continue_resumed", { from, mode: "text" });
     router.push({ pathname: "/reader/[chapterId]", params: { chapterId: target.chapterId } });
   }
 }

@@ -14,6 +14,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { HeroCard } from "@/components/discover/hero-card";
+import { track as trackEvent } from "@/lib/analytics";
 import { resolveCoverUrl } from "@/lib/covers";
 import { HERO_ADVANCE_MS, HERO_SETTLE_MS, HERO_SLIDE_MS, settlePage, wrapPage } from "@/lib/hero";
 import { colors } from "@/theme";
@@ -59,6 +60,11 @@ function slideTo(
 
 const SLIDE: WithTimingConfig = { duration: HERO_SLIDE_MS, easing: SLIDE_EASING };
 const SETTLE: WithTimingConfig = { duration: HERO_SETTLE_MS, easing: SETTLE_EASING };
+
+/** From the pan's start, on the JS thread: one event per swipe. */
+function trackSwipe() {
+  trackEvent("hero_swiped", {});
+}
 
 type HeroCarouselProps = {
   /** The tab's newest stories (`useHeroBooks()`), at most five. */
@@ -128,6 +134,7 @@ export function HeroCarousel({ books, publicCdnDomain, onPressBook, autoAdvance 
       cancelAnimation(position);
       dragStart.set(position.get());
       scheduleOnRN(setSwiped, true);
+      scheduleOnRN(trackSwipe);
     })
     .onUpdate((event) => {
       const dragged = dragStart.get() - event.translationX / width;
@@ -144,6 +151,13 @@ export function HeroCarousel({ books, publicCdnDomain, onPressBook, autoAdvance 
   const trackStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: -(position.get() + lead) * width }],
   }));
+
+  // The story's own place among the five, not the settled page, which lags a
+  // tap made mid-slide.
+  function openBook(id: string) {
+    trackEvent("hero_opened", { book_id: id, position: books.findIndex((book) => book.id === id) + 1 });
+    onPressBook(id);
+  }
 
   function onAccessibilityAction(event: AccessibilityActionEvent) {
     const step = event.nativeEvent.actionName === "increment" ? 1 : -1;
@@ -168,7 +182,7 @@ export function HeroCarousel({ books, publicCdnDomain, onPressBook, autoAdvance 
                   <HeroCard
                     book={book}
                     coverUrl={publicCdnDomain === null ? null : resolveCoverUrl(publicCdnDomain, book.cover_path)}
-                    onPress={onPressBook}
+                    onPress={openBook}
                   />
                 </View>
               );

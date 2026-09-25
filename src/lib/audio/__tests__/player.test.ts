@@ -144,6 +144,9 @@ jest.mock("@/lib/supabase", () => ({
   },
 }));
 
+// Analytics is not under test here (`lib/__tests__/analytics.test.ts`).
+jest.mock("@/lib/analytics", () => ({ track: jest.fn() }));
+
 // The real client pulls in NetInfo's native module; these need only a cache.
 jest.mock("@/lib/query-client", () => {
   const { QueryClient } = jest.requireActual("@tanstack/react-query");

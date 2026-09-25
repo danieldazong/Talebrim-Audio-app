@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { resetAnalytics } from "@/lib/analytics";
 import { releaseAudio } from "@/lib/audio/player";
 import { clearParityQueue } from "@/lib/parity/writer";
 import { QUERY_CACHE_PREFIX, queryClient } from "@/lib/query-client";
@@ -36,12 +37,16 @@ import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
  *    across a sign-out/sign-in within the same app session
  *  - the parity writer's queue — `useSignOut` flushed it first; anything
  *    still queued belongs to the old account and must never be sent
+ *  - the analytics identity (`resetAnalytics()`): the next account starts
+ *    with a new anonymous id. Events already queued keep the id they were
+ *    captured under
  *
  * Kept (device-scoped, not user data):
  *  - the persisted `reader` Zustand slice — font size, theme, line spacing,
  *    the Atkinson toggle are reading preferences for whoever holds this
  *    phone, not for one account. AGENTS.md draws this line at "local-only
  *    concerns" vs. per-user server data; reader prefs are the former.
+ *  - the analytics opt-out: signing out must never switch analytics back on
  */
 export async function clearUserScopedState(): Promise<void> {
   // In-memory first, and unconditionally: a storage failure below must
@@ -51,6 +56,7 @@ export async function clearUserScopedState(): Promise<void> {
   releaseAudio();
   queryClient.clear();
   clearParityQueue();
+  resetAnalytics();
   useParityStore.getState().clear();
   usePlaybackStore.getState().reset();
   useSearchStore.getState().clear();

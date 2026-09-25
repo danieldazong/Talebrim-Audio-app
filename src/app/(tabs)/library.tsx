@@ -89,7 +89,7 @@ export default function Library() {
               view={continueView}
               heading={segment === "books" ? "Continue Reading" : "Continue Listening"}
               onOpenBook={openBook}
-              onResume={openResumeTarget}
+              onResume={(target) => openResumeTarget(target, "library")}
               className="mt-4"
             />
             {hasBooks ? <MyListHeading count={ready.books.length} /> : null}

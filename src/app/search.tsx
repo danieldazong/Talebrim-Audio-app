@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Keyboard,
@@ -25,6 +25,7 @@ import {
 } from "@/components/search/search-states";
 import { Chip, Screen } from "@/components/ui";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { track } from "@/lib/analytics";
 import { resolveCoverUrl } from "@/lib/covers";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { searchByTermOptions } from "@/lib/queries/search";
@@ -69,6 +70,22 @@ export default function Search() {
   const search = useQuery(searchByTermOptions(debouncedInput));
   const appSettings = useQuery(appSettingsOptions());
   const publicCdnDomain = appSettings.data?.public_cdn_domain ?? null;
+
+  // Once per term, as its results arrive: the count only, never the term. A
+  // live catalog refetch of the same term is not a new search; the same term
+  // searched again after another (or after clearing) is.
+  const searchedKey = normalizeSearchTerm(debouncedInput);
+  const resultCount = search.data?.rows.length;
+  const lastSearched = useRef<string | null>(null);
+  useEffect(() => {
+    if (resultCount === undefined) {
+      lastSearched.current = null;
+      return;
+    }
+    if (searchedKey === lastSearched.current) return;
+    lastSearched.current = searchedKey;
+    track("search_performed", { result_count: resultCount });
+  }, [searchedKey, resultCount]);
 
   const hasInput = normalizeSearchTerm(input).length > 0;
   // What the query actually ran for. Results and the no-results line

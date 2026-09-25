@@ -20,6 +20,7 @@ import {
 } from "@/hooks/use-now-playing";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import { useHandoffNotice } from "@/hooks/use-handoff-notice";
+import { track, trackHandoffLanded, trackHandoffStart } from "@/lib/analytics";
 import { onChapterAdvance, pausePlayback, setPlaybackSpeed, skipToChapter } from "@/lib/audio/player";
 import { formatSpeed } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
@@ -216,6 +217,22 @@ function PlayingView({ chapter, meta, autoplay, onAutoplay }: PlayingViewProps) 
   // bookmark's slot (prompt 19 step 8).
   const notice = useHandoffNotice(playback.mapped, "Near where you were reading");
 
+  // Analytics, once per open (prompt 21a). The handoff from M5 is sent here,
+  // with the `mapped` the notice shows.
+  const [openedMapped] = useState(playback.mapped);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    track("chapter_opened", {
+      book_id: chapter.bookId,
+      chapter_id: chapter.chapterId,
+      number: chapter.number,
+      mode: "audio",
+    });
+    trackHandoffLanded(chapter.chapterId, "audio", openedMapped);
+  }, [chapter.bookId, chapter.chapterId, chapter.number, openedMapped]);
+
   // M5's Listen: the chapter starts at its restore point, as Play would.
   // Only from paused: a chapter already playing or loading carries on.
   const autoplayed = useRef(false);
@@ -232,6 +249,8 @@ function PlayingView({ chapter, meta, autoplay, onAutoplay }: PlayingViewProps) 
   // navigates: what plays is not this screen's to stop.
   const readInstead = () => {
     if (chapter.isLoaded) pausePlayback();
+    // Sent by M5 as it opens, with how it mapped the place.
+    trackHandoffStart("listen_to_read", chapter.chapterId);
     openReader(chapter.chapterId);
   };
 

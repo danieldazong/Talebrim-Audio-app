@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { type ReactNode, useEffect, useMemo } from "react";
 
+import { identifyReader } from "@/lib/analytics";
 import {
   PERSIST_MAX_AGE_MS,
   createPersister,
@@ -12,10 +13,11 @@ import { setParityUser } from "@/lib/parity/writer";
 import { setClerkTokenGetter } from "@/lib/supabase";
 
 /**
- * Bridges Clerk into the three things that need it:
+ * Bridges Clerk into the four things that need it:
  *  - the Supabase singleton's `accessToken` callback
  *  - the parity writer's account, so a queued reading position is only ever
  *    sent under the account that recorded it
+ *  - the analytics identity, the Clerk user id and nothing else about them
  *  - the persisted Query cache key, namespaced by user id
  *
  * Must render INSIDE ClerkProvider (it calls useAuth).
@@ -36,6 +38,10 @@ export function AuthedQueryProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+  // Sign-out's reset is `clearUserScopedState()`'s, with the other per-account state.
+  useEffect(() => {
+    if (userId) identifyReader(userId);
+  }, [userId]);
 
   // Re-created per user so one account never restores another's rows.
   const persistOptions = useMemo(

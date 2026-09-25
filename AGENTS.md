@@ -1508,7 +1508,48 @@ under § Clerk Rules.
     identity and reset at sign-out, no text, titles or search terms. Its own
     prompt, 21a, runs in Expo Go; prompts 22, 23 and 23a add their events.
     Open for the owner: the EU or US region, the privacy policy and Play's
-    Data safety form, and whether EU readers must opt in first.
+    Data safety form, and whether EU readers must opt in first. No IP
+    address and no location, decided by the owner the same day: the project
+    discards the IP, and every event carries `$geoip_disable`, because
+    PostHog's GeoIP reads the IP before the setting drops it.
+  - **Analytics as built (prompt 21a), two runtime bugs found and fixed on
+    2026-09-25** while checking the first day's events in PostHog:
+    - **The web build's server render was sending its own events.**
+      `app.json` sets `web.output: "static"`, so every web page renders once
+      in Node before the browser gets it, and `lib/analytics.ts`'s
+      module-level client was created there too — with no `window`, no
+      device, and a fresh anonymous id per render. It sent 217 of the first
+      223 Application Opened events, each unattributable to a real session.
+      Fixed: the client is `disabled` whenever `typeof window ===
+      "undefined"`, on top of the existing no-key disable. Native and the
+      browser preview both have `window`; only the Node render doesn't.
+    - **A Fast Refresh created a second client, doubling lifecycle events.**
+      PostHog's RN client adds an `AppState` listener in its constructor and
+      never removes it, so re-running `lib/analytics.ts` (as Fast Refresh
+      does on any edit to the module or its imports) left the old listener
+      running under a new client. Application Backgrounded/Became Active
+      fired twice per transition, and one copy of each event carried no
+      `$screen_name` (rebuilt before the screen tracker's Fast-Refreshed
+      state re-populated). Fixed: the client is kept on `globalThis` and
+      reused, so re-running the module returns the existing instance rather
+      than constructing a second one. A change to the client's own options
+      (host, `captureAppLifecycleEvents`, etc.) now needs a full reload, not
+      just a Fast Refresh, to take effect.
+    - Both fixes are covered in `lib/__tests__/analytics.test.ts`: one test
+      asserts `disabled` with no `window`, one asserts a second module run
+      reuses the same client instance rather than capturing through two.
+    - **Old test data already in PostHog was not code the app runs**, so
+      nothing in the repo could clean it: PostHog has no per-event delete,
+      only per-person (optionally with their events) or per-project. The
+      owner's two test accounts (57 and 139 events, both carrying IP and
+      Lagos location from before the fixes above) need deleting through
+      PostHog's People tab, with their events — Claude Code's auto mode
+      refuses irreversible deletes even with `--confirm` on the MCP tool, so
+      this is a manual, owner-side step, not yet done as of 2026-09-25. The
+      217 anonymous server-render events have no person record, so removing
+      them would need resetting the whole PostHog project (a new project
+      token, and re-doing every onboarding toggle); left in place, tagged
+      `development`, since they never reach a `production` insight.
   - **New-chapter notifications:** its own prompt, 23a, after the deferred
     setup. Asked once, when a reader first adds a book to My List, never at
     launch. Only for books on My List, several chapters bundled into one
@@ -1580,8 +1621,10 @@ seconds, with Continue on the Discover tab; the owner has seen both working
 in the web preview and on BlueStacks (Decisions — 2026-09-25, "M3's hero
 carousel and Continue").
 The owner decided notifications, wait-for-free and analytics on 2026-09-25
-(Decisions — 2026-09-25, "Retention and revenue"). **Next:** prompt 21a
-(analytics), which runs in Expo Go, and the deferred setup (§ Deferred
+(Decisions — 2026-09-25, "Retention and revenue"). Analytics (21a) is built
+and confirmed sending real events, tagged `environment = development`, with
+no IP or location and no duplicate or server-render events (Decisions —
+2026-09-25, "Analytics as built"). **Next:** the deferred setup (§ Deferred
 setup), which prompts 22, 23 and 23a wait on. Each prompt is reviewed
 against the code before it is built. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing

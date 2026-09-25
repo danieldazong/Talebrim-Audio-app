@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AccessibilityInfo } from "react-native";
 
+import { track } from "@/lib/analytics";
 import { withBookAdded, withBookRemoved } from "@/lib/library";
 import {
   addToMyList,
@@ -68,6 +69,10 @@ export function useMyList(bookId: string, book: BookDetailRow | null | undefined
         });
       });
       return { previous };
+    },
+    // Once the server confirms, never at the optimistic change (prompt 21a).
+    onSuccess: (_data, change) => {
+      track(change === "add" ? "my_list_added" : "my_list_removed", { book_id: bookId });
     },
     onError: (_error, _change, context) => {
       if (context) queryClient.setQueryData(queryKey, context.previous);

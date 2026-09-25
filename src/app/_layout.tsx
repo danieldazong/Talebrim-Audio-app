@@ -15,6 +15,7 @@ import { AuthedQueryProvider } from "@/components/providers";
 import { useAppFonts } from "@/hooks/use-app-fonts";
 import { useCatalogSync } from "@/hooks/use-catalog-sync";
 import { useParitySync } from "@/hooks/use-parity-sync";
+import { useScreenTracking } from "@/hooks/use-screen-tracking";
 import { colors, fonts } from "@/theme";
 import { useOnboardingStore } from "@/store/onboarding-store";
 // Imported here (root layout), not just from `(auth)/_layout.tsx`, so its
@@ -81,6 +82,8 @@ function RootNavigator() {
   // Reading positions reach the server when the app leaves the foreground,
   // and a newer one from another device is picked up when it returns.
   useParitySync();
+  // One screen event per route change, named by route, ids only (prompt 21a).
+  useScreenTracking();
 
   return (
     <Stack screenOptions={screenOptions}>

@@ -1,7 +1,7 @@
 import { useKeepAwake } from "expo-keep-awake";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import Animated, { useAnimatedRef } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +27,7 @@ import { useChapterReader, type ChapterReaderView, type ReadyChapter } from "@/h
 import { useHandoffNotice } from "@/hooks/use-handoff-notice";
 import { useReaderChrome } from "@/hooks/use-reader-chrome";
 import { useReadingPosition } from "@/hooks/use-reading-position";
+import { track, trackHandoffLanded, trackHandoffStart } from "@/lib/analytics";
 import { isUuid } from "@/lib/ids";
 import { flush } from "@/lib/parity/writer";
 import { useReaderStore, type ReaderTheme } from "@/store/reader-store";
@@ -45,6 +46,9 @@ const TOOLBAR_CLEARANCE = 16;
 /** How far through the chapter, by the position label, before the next chapter's text is prefetched. */
 const PREFETCH_NEXT_AT_PERCENT = 80;
 
+/** How far through the chapter, by the position label, before it counts as finished (prompt 21a). */
+const FINISHED_AT_PERCENT = 95;
+
 function goBack() {
   if (router.canGoBack()) router.back();
   else router.replace("/");
@@ -59,6 +63,8 @@ function goBack() {
  */
 function listen(chapterId: string) {
   void flush();
+  // Sent by M6 as it opens, with how it mapped the place.
+  trackHandoffStart("read_to_listen", chapterId);
   router.replace({ pathname: "/player/[chapterId]", params: { chapterId, play: "1" } });
 }
 
@@ -285,6 +291,25 @@ function ReadingView({
   useEffect(() => {
     if (nearEnd) onNearEnd();
   }, [nearEnd, onNearEnd]);
+
+  // Analytics, once per open each (prompt 21a). The handoff from M6 is sent
+  // here, with the `mapped` the notice shows.
+  const [openedMapped] = useState(restore?.mapped ?? null);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    track("chapter_opened", { book_id: bookId, chapter_id: id, number, mode: "text" });
+    trackHandoffLanded(id, "text", openedMapped);
+  }, [bookId, id, number, openedMapped]);
+
+  const finished = position.percent >= FINISHED_AT_PERCENT;
+  const finishSent = useRef(false);
+  useEffect(() => {
+    if (!finished || finishSent.current) return;
+    finishSent.current = true;
+    track("chapter_finished", { book_id: bookId, chapter_id: id, mode: "text" });
+  }, [finished, bookId, id]);
 
   return (
     <>
