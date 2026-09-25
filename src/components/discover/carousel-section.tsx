@@ -56,11 +56,10 @@ export function CarouselSection({
             onPress={onPressSeeAll}
             style={{ minHeight: layout.minTouchTarget, justifyContent: "center" }}
           >
-            {/* DEVIATION: the design material renders "See all" in teal, but
-                prompt 09 step 6 reserves teal exclusively for the audio
-                badge on this screen ("do not use teal anywhere else").
-                Following the prompt's stricter text over the image. */}
-            <Text className="font-ui-medium text-muted text-sm" maxFontSizeMultiplier={1.3}>
+            {/* Teal, as the design draws it: a secondary accent (AGENTS.md
+                § Design System). The owner lifted prompt 09's "no teal
+                elsewhere" on 2026-09-25. */}
+            <Text className="font-ui-medium text-teal text-sm" maxFontSizeMultiplier={1.3}>
               See all
             </Text>
           </Pressable>

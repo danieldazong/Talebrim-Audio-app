@@ -20,13 +20,17 @@ type HeroCardProps = {
  * M3 hero card — AGENTS.md prompt 09 step 4. `Read or Listen` is the single
  * ember element on this screen; every other affordance here is text/outline.
  *
- * // NO BACKING METRIC — the design shows a "#1 Trending" rank, but there is
- * no view-counts or reads table to justify one (AGENTS.md Data Contract).
- * The rank number is omitted; "Serial" alone is kept as it's a real content
- * classification (every seed book here IS a serial), not an invented metric.
+ * // NO BACKING METRIC — the design's badge reads "★ #1 Trending Serial", but
+ * there is no view-counts or reads table to rank by (AGENTS.md Data
+ * Contract). The badge keeps the design's star and says what is true
+ * instead: every card in the hero carousel is one of its tab's five newest
+ * stories (`newestHeroIds()`), so "New Serial". If the hero is ever chosen
+ * another way, change the label with it. One line: the frame's second line
+ * is its phrase wrapping inside a too-narrow pill.
  */
 export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
   const genres = book.genres ?? [];
+  const hasAudio = (book.audio_count ?? 0) > 0;
 
   return (
     <View className="mx-4 overflow-hidden rounded-card bg-surface" style={{ borderRadius: radius.card }}>
@@ -49,9 +53,9 @@ export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
             className="flex-row items-center gap-1 self-start rounded-pill bg-bg/70 px-3 py-1.5"
             style={{ margin: 16 }}
           >
-            <Ionicons name="layers-outline" size={14} color={colors.teal} />
-            <Text className="font-ui-medium text-teal text-xs" maxFontSizeMultiplier={1.3}>
-              Serial
+            <Ionicons name="star" size={12} color={colors.teal} />
+            <Text className="font-ui-medium text-teal text-xs" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+              New Serial
             </Text>
           </View>
 
@@ -105,21 +109,23 @@ export function HeroCard({ book, coverUrl, onPress }: HeroCardProps) {
             onPress={() => book.id && onPress(book.id)}
           />
 
-          {/* DEVIATION: the design material renders this row (and its icon)
-              in teal, but prompt 09 step 6 reserves teal exclusively for the
-              audio badge on cover cards ("do not use teal anywhere else on
-              this screen"). Rendered in muted instead; following the
-              prompt's stricter text over the image. */}
-          <View
-            accessible
-            accessibilityLabel={`${formatDurationCompact(book.total_duration_seconds)} of audio parity`}
-            className="flex-row items-center gap-1"
-          >
-            <Ionicons name="time-outline" size={16} color={colors.muted} />
-            <Text className="font-ui-medium text-muted text-sm" maxFontSizeMultiplier={1.3}>
-              {formatDurationCompact(book.total_duration_seconds)} Audio Parity
-            </Text>
-          </View>
+          {/* Teal, as the design draws it: an audio affordance (AGENTS.md
+              § Design System). The owner lifted prompt 09's "no teal
+              elsewhere" on 2026-09-25. Only for a narrated book: teal marks
+              audio, and a text-only book has no audio length to show, as on
+              M4. */}
+          {hasAudio ? (
+            <View
+              accessible
+              accessibilityLabel={`${formatDurationCompact(book.total_duration_seconds)} of audio parity`}
+              className="flex-row items-center gap-1"
+            >
+              <Ionicons name="time-outline" size={16} color={colors.teal} />
+              <Text className="font-ui-medium text-teal text-sm" maxFontSizeMultiplier={1.3}>
+                {formatDurationCompact(book.total_duration_seconds)} Audio Parity
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </View>

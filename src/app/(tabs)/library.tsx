@@ -18,8 +18,9 @@ import {
   MyListMessage,
 } from "@/components/library/library-states";
 import { Screen } from "@/components/ui";
+import { openResumeTarget } from "@/hooks/use-continue";
 import { useLibrary } from "@/hooks/use-library";
-import type { LibrarySegment, ResumeTarget } from "@/lib/library";
+import type { LibrarySegment } from "@/lib/library";
 import { layout } from "@/theme";
 
 // M7 My Library — AGENTS.md M7, prompt 21, material/9.png.
@@ -38,18 +39,6 @@ const MAX_FONT_SCALE = 1.3;
 
 function openBook(id: string) {
   router.push({ pathname: "/book/[id]", params: { id } });
-}
-
-/** Pushed, so back returns here. */
-function resume(target: ResumeTarget) {
-  // TODO(paywall): a Locked chapter opens M5a here. It must never open the
-  // reader or the player: that would be a paywall bypass.
-  if (target.kind === "player") {
-    // A play button, as M5's Listen is: M6 starts the chapter once it is ready.
-    router.push({ pathname: "/player/[chapterId]", params: { chapterId: target.chapterId, play: "1" } });
-  } else if (target.kind === "reader") {
-    router.push({ pathname: "/reader/[chapterId]", params: { chapterId: target.chapterId } });
-  }
 }
 
 export default function Library() {
@@ -96,7 +85,13 @@ export default function Library() {
             ) : (
               <LibrarySegments value={segment} onChange={setSegment} counts={ready?.counts ?? null} />
             )}
-            <ContinueSection view={continueView} segment={segment} onOpenBook={openBook} onResume={resume} />
+            <ContinueSection
+              view={continueView}
+              heading={segment === "books" ? "Continue Reading" : "Continue Listening"}
+              onOpenBook={openBook}
+              onResume={openResumeTarget}
+              className="mt-4"
+            />
             {hasBooks ? <MyListHeading count={ready.books.length} /> : null}
           </View>
         }

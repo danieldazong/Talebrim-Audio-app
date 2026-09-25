@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
+import { useEffect, useRef } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+import { useIsForeground } from "@/hooks/use-is-foreground";
 import {
   CATALOG_CHANGED_EVENT,
   CATALOG_TOPIC,
@@ -27,24 +27,6 @@ const RECONNECT_DELAYS_MS = [1_000, 3_000, 10_000, 30_000];
 
 function log(...args: unknown[]) {
   if (__DEV__) console.log("[catalog-sync]", ...args);
-}
-
-/**
- * True unless the app is backgrounded. iOS's brief `inactive` (Control
- * Centre, the app switcher, an incoming call) counts as foreground so the
- * channel doesn't flap.
- */
-function useIsForeground(): boolean {
-  const [isForeground, setIsForeground] = useState(AppState.currentState !== "background");
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) =>
-      setIsForeground(state !== "background"),
-    );
-    return () => subscription.remove();
-  }, []);
-
-  return isForeground;
 }
 
 /**

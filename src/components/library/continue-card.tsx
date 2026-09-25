@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Cover, ProgressBar } from "@/components/ui";
-import { useProgressLine, type ContinueCard, type ContinueView } from "@/hooks/use-library";
-import type { LibrarySegment, ResumeTarget } from "@/lib/library";
+import { useProgressLine, type ContinueCard, type ContinueView } from "@/hooks/use-continue";
+import type { ResumeTarget } from "@/lib/library";
 import { colors, layout } from "@/theme";
 
 /** Measured from material/9.png: a 62dp 2:3 cover, border included. */
@@ -28,34 +28,52 @@ function resumeIcon(card: ContinueCard): IconName {
   }
 }
 
+/**
+ * The resume button. `primary` is ember: M7's one ember action. `secondary`
+ * is a `raised` disc with a `body` icon, for a screen whose ember action is
+ * something else: M3, where it is the hero's "Read or Listen".
+ */
+type ResumeVariant = "primary" | "secondary";
+
 type ContinueSectionProps = {
   view: ContinueView;
-  segment: LibrarySegment;
+  /** "Continue Reading" or "Continue Listening": each screen says which. */
+  heading: string;
   onOpenBook: (bookId: string) => void;
   onResume: (target: ResumeTarget) => void;
+  resumeVariant?: ResumeVariant;
+  /** Layout classes only (margin). */
+  className?: string;
 };
 
 /**
- * "Continue Reading" (Books) or "Continue Listening" (Audiobooks): the
- * reader's latest place, resumed in the mode they left it. Hidden collapses
- * the section, heading included: no empty card, no placeholder cover.
+ * The reader's latest place, resumed in the mode they left it: M7, and M3's
+ * Discover tab. Hidden collapses the section, heading included: no empty
+ * card, no placeholder cover.
  */
-export function ContinueSection({ view, segment, onOpenBook, onResume }: ContinueSectionProps) {
+export function ContinueSection({
+  view,
+  heading,
+  onOpenBook,
+  onResume,
+  resumeVariant = "primary",
+  className = "",
+}: ContinueSectionProps) {
   if (view.status === "hidden") return null;
 
   return (
-    <View className="mt-4 gap-3 px-4">
+    <View className={`gap-3 px-4 ${className}`}>
       {view.status === "loading" ? (
         <View className="h-6 w-44 rounded-pill bg-surface" />
       ) : (
         <Text accessibilityRole="header" className="text-heading text-lg leading-6" maxFontSizeMultiplier={1.3}>
-          {segment === "books" ? "Continue Reading" : "Continue Listening"}
+          {heading}
         </Text>
       )}
       {view.status === "loading" ? (
         <ContinueCardSkeleton />
       ) : (
-        <ContinueCardView card={view.card} onOpenBook={onOpenBook} onResume={onResume} />
+        <ContinueCardView card={view.card} onOpenBook={onOpenBook} onResume={onResume} resumeVariant={resumeVariant} />
       )}
     </View>
   );
@@ -65,18 +83,20 @@ type ContinueCardViewProps = {
   card: ContinueCard;
   onOpenBook: (bookId: string) => void;
   onResume: (target: ResumeTarget) => void;
+  resumeVariant: ResumeVariant;
 };
 
 /**
  * From material/9.png: cover, teal eyebrow, Fraunces title, progress label,
- * ember bar, and the round ember resume button, M7's one ember action. The
- * bar is progress through the book; while listening, the label adds the time
- * left in the chapter.
+ * ember bar, and the round resume button: ember on M7, its one ember action.
+ * The bar is progress through the book; while listening, the label adds the
+ * time left in the chapter.
  *
  * The cover-and-title area and the resume button are sibling buttons, never
  * one inside the other (AGENTS.md § Component Creation Rule).
  */
-function ContinueCardView({ card, onOpenBook, onResume }: ContinueCardViewProps) {
+function ContinueCardView({ card, onOpenBook, onResume, resumeVariant }: ContinueCardViewProps) {
+  const primary = resumeVariant === "primary";
   const eyebrow = card.mode === "audio" ? "Listening" : "Reading";
   const canResume = card.target.kind === "reader" || card.target.kind === "player";
   // "Chapter 1 of 13 · 2:00 left" while listening; live while this chapter is in the player.
@@ -130,14 +150,17 @@ function ContinueCardView({ card, onOpenBook, onResume }: ContinueCardViewProps)
         // Its whole style from the function, no className (AGENTS.md § Style Exception Rules).
         style={({ pressed }) => [
           styles.resume,
-          {
-            backgroundColor: pressed ? colors.emberPressed : colors.ember,
-            opacity: canResume ? 1 : 0.6,
-          },
+          primary
+            ? { backgroundColor: pressed ? colors.emberPressed : colors.ember, opacity: canResume ? 1 : 0.6 }
+            : { backgroundColor: colors.raised, opacity: !canResume ? 0.6 : pressed ? 0.7 : 1 },
         ]}
       >
         {/* Ember labels and icons are ink, never white (AGENTS.md § Design System). */}
-        <Ionicons name={resumeIcon(card)} size={card.target.kind === "player" ? 20 : 18} color={colors.ink} />
+        <Ionicons
+          name={resumeIcon(card)}
+          size={card.target.kind === "player" ? 20 : 18}
+          color={primary ? colors.ink : colors.body}
+        />
       </Pressable>
     </View>
   );

@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useBottomTabBarHeight } from "expo-router/tabs";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ScrollView } from "react-native";
 
 import { Screen } from "@/components/ui";
@@ -13,9 +13,11 @@ import {
   DiscoverSkeleton,
 } from "@/components/discover/discover-states";
 import { GenreTabStrip, type DiscoverTab } from "@/components/discover/genre-tab-strip";
-import { HeroCard } from "@/components/discover/hero-card";
+import { HeroCarousel } from "@/components/discover/hero-carousel";
+import { ContinueSection } from "@/components/library/continue-card";
 import type { Genre } from "@/data/genres";
-import { resolveCoverUrl } from "@/lib/covers";
+import { openResumeTarget, useContinue, type ContinueView } from "@/hooks/use-continue";
+import { useHeroAutoAdvance, useHeroBooks } from "@/hooks/use-hero-carousel";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { catalogByTabOptions, newAudioReleasesOptions, pickedForYouOptions } from "@/lib/queries/catalog";
 import { useOnboardingStore } from "@/store/onboarding-store";
@@ -53,6 +55,13 @@ export default function Discover() {
   const isPending = tabQuery.isPending;
   const isError = tabQuery.isError;
   const books = tabQuery.data ?? [];
+  // The hero's five, held while Discover is on screen. Null while the list is
+  // still the previous tab's placeholder, so a new tab's set waits for its own.
+  const heroBooks = useHeroBooks(books, tabQuery.isPlaceholderData ? null : tab);
+  const heroAutoAdvance = useHeroAutoAdvance();
+  // Where the reader left off, first on the Discover tab: a returning reader
+  // resumes without going to Library. Genre tabs don't show it.
+  const continueView = useContinue("books").view;
 
   function openBook(id: string) {
     router.push({ pathname: "/book/[id]", params: { id } });
@@ -80,7 +89,9 @@ export default function Discover() {
         <DiscoverEmptyScreen onRetry={retry} />
       ) : (
         <DiscoverContent
-          books={books}
+          heroBooks={heroBooks}
+          heroAutoAdvance={heroAutoAdvance}
+          continueView={tab === "Discover" ? continueView : { status: "hidden" }}
           pickedForYou={pickedForYou}
           newAudioReleases={newAudioReleases}
           publicCdnDomain={appSettings.data?.public_cdn_domain ?? null}
@@ -93,7 +104,10 @@ export default function Discover() {
 }
 
 type DiscoverContentProps = {
-  books: CarouselBookRow[];
+  /** The tab's newest stories for the hero carousel (`useHeroBooks()`). */
+  heroBooks: CarouselBookRow[];
+  heroAutoAdvance: boolean;
+  continueView: ContinueView;
   /** Passed as the live query result, not just `.data` — each carousel needs its own pending/error state, not the parent tab query's (a sibling section still loading must render its own skeleton, not an empty state). */
   pickedForYou: UseQueryResult<CarouselBookRow[]>;
   newAudioReleases: UseQueryResult<CarouselBookRow[]>;
@@ -103,18 +117,17 @@ type DiscoverContentProps = {
 };
 
 function DiscoverContent({
-  books,
+  heroBooks,
+  heroAutoAdvance,
+  continueView,
   pickedForYou,
   newAudioReleases,
   publicCdnDomain,
   onOpenBook,
   bottomPadding,
 }: DiscoverContentProps) {
-  const hero = books[0];
-  const heroCoverUrl = useMemo(
-    () => (hero && publicCdnDomain ? resolveCoverUrl(publicCdnDomain, hero.cover_path) : null),
-    [hero, publicCdnDomain],
-  );
+  const continueHeading =
+    continueView.status === "ready" && continueView.card.mode === "audio" ? "Continue Listening" : "Continue Reading";
 
   return (
     <ScrollView
@@ -123,7 +136,26 @@ function DiscoverContent({
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
     >
-      {hero ? <HeroCard book={hero} coverUrl={heroCoverUrl} onPress={onOpenBook} /> : null}
+      {/* Its resume button is `secondary`: the hero's "Read or Listen" is
+          this screen's one ember action. */}
+      <ContinueSection
+        view={continueView}
+        heading={continueHeading}
+        onOpenBook={onOpenBook}
+        onResume={openResumeTarget}
+        resumeVariant="secondary"
+      />
+
+      {heroBooks.length > 0 ? (
+        // Keyed by its stories, so a new set starts again at the first.
+        <HeroCarousel
+          key={heroBooks.map((book) => book.id).join()}
+          books={heroBooks}
+          publicCdnDomain={publicCdnDomain}
+          onPressBook={onOpenBook}
+          autoAdvance={heroAutoAdvance}
+        />
+      ) : null}
 
       <CarouselSection
         title="Picked for You"
