@@ -304,7 +304,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M8 · Search & Results** — Back chevron plus search field in the header. Filter chips, active chip blush-filled. Result count line. Rows: cover thumbnail, title, author, metadata, audio badge where applicable. Recent searches when the query is empty. Needs a real empty state and a distinct no-results state.
 
-**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with `Unlock all chapters` and an ember `Go Ad-Free`. Must be virtualised — serials run well past 100 chapters.
+**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with `Unlock all chapters` and an ember `Go Ad-Free`. Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. `Download all` and the bottom bar wait for the downloads and paywall prompts (Decisions — 2026-09-25, "M9").
 
 **M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.**
 
@@ -1084,6 +1084,41 @@ checks on 2026-09-25; how it was built is the last entry.
   - Teardown on unmount: the notice timer, the autoplay state and M6's
     chapter-advance subscription. The player, its listener, the sleep timer,
     the lock screen and the parity writer's queue keep running.
+- **M9 (prompt 20 review).** Made while reviewing prompt 20 against
+  `material/5.png` (M9's frame) and the code as built by prompts 12–19. The
+  owner may flip any of them before it is built.
+  - **One bounded fetch, not pagination.** The whole list of chapter metadata
+    (about 30 KB for 200 chapters) through the existing
+    `chapterListByBookOptions()`, with explicit columns. Pages would each
+    cost the ~450 ms floor. The sort, the unlocked count and opening at the
+    Reading Now row all need every row.
+  - **Oldest first by default**, as the frame selects, in reading order.
+    AGENTS.md set no default. Newest first reverses the complete list in
+    memory, with no re-query.
+  - **The header sits above the list**, not in `stickyHeaderIndices`, which
+    avoids the sticky-header touch bug (react-native#51763).
+  - **Reading Now is `resumeTargetOptions()`'s chapter**, the one M4's Read
+    resumes. `chapterStateFor()` gains optional `isCurrentlyReading` and
+    `isDownloaded` flags, so the lock rule stays in one place.
+  - **Taps.** The row opens the reader, or the player when there is only
+    narration. The teal headphone on an unlocked narrated row is a separate
+    Listen target, and it opens M6 with no autoplay. A Locked row opens
+    nothing (`TODO(paywall)`). All push, so back returns to M9.
+  - **Omitted, with nothing behind them yet:** "Download all"
+    (`TODO(downloads)`), the bottom bar's "Unlock all chapters" and ember
+    "Go Ad-Free" (`TODO(paywall)`), "min read" (no word count), and the
+    Reading row's "% complete" (no text length in the list). M9 therefore
+    has no ember button until the paywall prompt. Its ember is the Reading
+    row's left edge and pill, the resume marker, filed under progress.
+    Downloaded stays false until the downloads prompt.
+  - **The row's detail reads like M4's**: "4:15 audio", "Audio · duration
+    unknown", "Text only", or "No text or narration yet".
+  - **M9 opens scrolled to the Reading Now row.** Rows have one height,
+    computed from the font scale, so `getItemLayout` and
+    `initialScrollIndex` hold.
+  - **Adding "% complete" and "min read" later** would take a text-length
+    column on `chapters_catalog` (`char_length(script_text)`). That is an
+    additive view migration in the dashboard repo, and not planned.
 
 ---
 
@@ -1139,9 +1174,9 @@ The parity writer (16) is built, and its `updated_at` trigger (dashboard
 migration `20260924190305`) is applied. M6 Now Playing (17) is wired to real
 audio with the live mini player (18). Its device checks wait for the deferred
 setup. The M5 ↔ M6 handoff (19) is built and passed the owner's Expo Go
-checks on 2026-09-25. **Next: prompt 20, M9 Full Chapter List.** Its file is
-still empty and has to be written before it can be reviewed, and M9 is still
-a placeholder route. Open before M5 ships:
+checks on 2026-09-25. **Next: prompt 20, M9 Full Chapter List**, written by
+the owner and reviewed on 2026-09-25 (Decisions — 2026-09-25, "M9"). M9 is
+still a placeholder route. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.

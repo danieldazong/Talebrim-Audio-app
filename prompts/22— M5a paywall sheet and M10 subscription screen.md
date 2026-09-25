@@ -7,6 +7,14 @@ Read AGENTS.md first and follow it strictly. Do only what is on this page.
 > RevenueCat state reaches Postgres at this prompt's review. See AGENTS.md
 > § Decisions — 2026-09-24, "Audio".
 >
+> Revision note, 2026-09-25 (prompt 20 review). M9 was built without its
+> bottom bar ("Unlock all chapters" and the ember "Go Ad-Free"), because
+> nothing stood behind either. It is left at `// TODO(paywall)`. This prompt
+> adds the bar, from `material/5.png`, as a new M9 element and not only a
+> marker swap. "Unlock all" still needs a product decision. Markers in the
+> code read `TODO(paywall)`, not `TODO(23)`. See AGENTS.md § Decisions —
+> 2026-09-25, "M9".
+>
 > BEFORE THIS PROMPT: AGENTS.md § Deferred setup must be done. RevenueCat and
 > Google Play purchases do not run in Expo Go, and Play products need the
 > Android package name. STOP until it is.

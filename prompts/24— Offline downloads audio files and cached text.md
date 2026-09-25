@@ -4,6 +4,14 @@ Read AGENTS.md first and follow it strictly. Do only what is on this page.
 > a download signs with `chapterAudioSourceOptions()` (prompt 18), under
 > the storage policy that checks entitlement. Rewrite step 3 at this
 > prompt's review. See AGENTS.md § Decisions — 2026-09-24, "Audio".
+>
+> Revision note, 2026-09-25 (prompt 20 review). M9 does not render "Download
+> all": nothing stood behind it, so it is left at `// TODO(downloads)`. Step
+> 11 adds it, from `material/5.png`, rather than wiring an inert button. M9's
+> Downloaded state is computed through `chapterStateFor()`'s
+> `isDownloaded` flag, which is always false until then. Markers in the code
+> read `TODO(downloads)`, not `TODO(25)`. See AGENTS.md § Decisions —
+> 2026-09-25, "M9".
 
 AUDIO DOWNLOAD AND TEXT CACHING ARE TWO SEPARATE MECHANISMS. Do not build one
 abstraction over both — audio is a file on disk, text is a persisted query
