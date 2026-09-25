@@ -4,6 +4,7 @@ M6's design, layout, colours or copy. If a real constraint forces a visual
 change, STOP and ask me before implementing it.
 
 Decided 2026-09-24 (AGENTS.md § Decisions — 2026-09-24, "Audio"):
+
 - The `audio` bucket stays PRIVATE. The app signs its own URLs, and a storage
   policy checks entitlement on the server before it will sign one.
 - Playback uses `expo-audio`, not `react-native-track-player`, which has had no
@@ -13,6 +14,7 @@ Decided 2026-09-24 (AGENTS.md § Decisions — 2026-09-24, "Audio"):
   the audio storage policy. This prompt runs and is tested in Expo Go.
 
 What exists (prompts 16–17). Build on it, not around it:
+
 - M6 at `app/player/[chapterId].tsx`, its parts in `components/player/`, its
   data in `hooks/use-now-playing.ts` (a status union that waits through
   `waitFor()` in `lib/query-status.ts`).
@@ -89,7 +91,7 @@ What exists (prompts 16–17). Build on it, not around it:
      Never use `useAudioPlayer()`, which releases the player on unmount. The
      player outlives M6, which is what keeps the mini player and the lock
      screen working. Call `setAudioModeAsync({ playsInSilentMode: true,
-     shouldPlayInBackground: true, interruptionMode: "doNotMix" })` once,
+shouldPlayInBackground: true, interruptionMode: "doNotMix" })` once,
      before the first play.
    - It knows which chapter is loaded: the id, book id, duration and
      lock-screen metadata. `currentChapterId` in the `playback` slice mirrors
@@ -178,7 +180,7 @@ What exists (prompts 16–17). Build on it, not around it:
       hidden otherwise, and the header's layout stays the same.
     - "Shared Bookmark" shows only when this chapter has a saved position, in
       the session or on the server. It is hidden before the first one.
-    Remove the `STATIC` markers.
+      Remove the `STATIC` markers.
 12. The mini player goes live here, not in prompt 19. Dismissing M6 leaves
     audio playing, and a placeholder track in the mini player would lie.
     - Its data comes through a hook; components don't fetch.
@@ -210,12 +212,14 @@ What exists (prompts 16–17). Build on it, not around it:
       - `release()` the player
 
       The next account never hears or sees the last one's chapter.
-    State what you tore down and what you deliberately left running.
+      State what you tore down and what you deliberately left running.
+
 16. Unit tests under `__tests__/` for the pure parts: the status mapping; the
     restore point (no position, near the end, a text-only row); the sleep
     timer's end check; and the choice of duration.
 
 Do not:
+
 - make the `audio` bucket public, sign through an Edge Function, or put a
   service-role key, a Supabase JWT secret or any secret in the app or an
   `EXPO_PUBLIC_` variable.
@@ -237,6 +241,7 @@ Do not:
 
 Finish by running `npm run typecheck`, `npm run lint` and `npm test`. Then
 report:
+
 - the installed `expo-audio` version and the surface from step 2
 - the TTL from step 4
 - step 1's manifest check
