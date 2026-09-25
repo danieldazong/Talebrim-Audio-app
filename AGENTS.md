@@ -107,6 +107,10 @@ Use the following stack:
 - `expo-file-system` — offline downloads, new API only (`File`, `Directory`,
   `Paths`), never the legacy one (approved 2026-09-25; installed by prompt 24
   with `npx expo install`)
+- `posthog-react-native` — analytics, explicit events only, with the Expo
+  modules it requires (approved 2026-09-25; installed by prompt 21a)
+- `expo-notifications` — new-chapter alerts for books on My List (approved
+  2026-09-25; installed by prompt 23a, which needs the development build)
 
 Do not introduce new major libraries unless there is a strong reason.
 
@@ -788,7 +792,9 @@ code. The prompts carry the detail; this is the record.
   prompts were renumbered down by one, so code comments written before
   2026-09-23 may cite the old number (old 14 = current 13). Prompts not yet
   written are referred to by feature, never by number: `TODO(paywall)`,
-  `TODO(parity)`, `TODO(handoff)`.
+  `TODO(parity)`, `TODO(handoff)`. A prompt added later takes a letter
+  after the number it follows (21a, 23a, added 2026-09-25), so no existing
+  prompt's number ever shifts again.
 - **No UI without data behind it.** A frame element with no backing table or
   column is omitted and reported, not mocked: M4's resume card, My List
   (since built by prompt 21, on `library_items`), finished-chapter marks,
@@ -1472,23 +1478,43 @@ under § Clerk Rules.
     700 ms glide accepted in place of the scroll view's quicker slide. Teal
     "Audio Parity" and "See all", "★ New Serial", and Continue on Discover
     show in the owner's screenshots. Not yet checked on a phone.
-- **Retention and revenue, proposed 2026-09-25, awaiting the owner.** Aimed
-  at "come back more often and read more chapters", never at keeping readers
+- **Retention and revenue, decided by the owner on 2026-09-25.** Aimed at
+  "come back more often and read more chapters", never at keeping readers
   longer than they meant: no invented urgency or rankings, no ads that are
-  hard to close. The carousel and Continue on Discover are built (previous
-  entry). The rest needs decisions before prompts 22–23 are reviewed:
-  - **The chapter end is the revenue moment.** "Continue to Chapter N" as
-    one tap, and when that chapter is locked, the paywall there (watch an ad,
-    or go ad-free). Prompts 22–23 to be reviewed with this in mind.
-  - **New-chapter notifications** for books on My List, the bell on
-    Discover's purpose. Needs a notifications library (owner's approval), a
-    server trigger on chapter publish, and the development build.
-  - **Wait-for-free:** one locked chapter per book unlocks free each day, or
-    at once with an ad or the subscription. Unlocks are server-written only
-    (Decisions — 2026-09-23), so it needs a server function, and it changes
-    the paywall's design.
-  - **Analytics:** return rates, chapters per visit, paywall to ad or
-    purchase. Needs a tool the owner approves.
+  hard to close. The owner said yes to all of it, on the condition that the
+  methods are proven. They are, in serial fiction: Kakao Page built its
+  business on "wait or pay", and Webtoon, Tapas, Pocket FM and Webnovel use
+  versions of it; every serial platform sends new-chapter alerts. Nothing is
+  guaranteed for one app, which is why analytics comes first. The carousel
+  and Continue on Discover are built (previous entry). The rest is written
+  into the prompts, each still to be reviewed against the code before it is
+  built:
+  - **The chapter end is the revenue moment.** When the next chapter is
+    locked, M5's end-of-chapter Next, M6's next and autoplay open M5a
+    naming it, never a dead end. Prompt 22's note.
+  - **M5a offers three ways in:** unlock free, watch an ad, go ad-free. Its
+    one ember action is "Unlock free" while the reader's free unlock for the
+    book is available, otherwise "Watch ad & continue" (§ M5a). Prompt 22
+    lays the sheet out; prompt 23 wires the two unlocks.
+  - **Wait-for-free:** one free unlock per reader per book every 24 hours,
+    by the server's clock, permanent like every unlock, never offered on a
+    chapter the reader can already open. Server-written only: recommended as
+    two `security definer` functions, `claim_wait_unlock(chapter_id)` and
+    `wait_unlock_status(book_id)`, and a `wait` value for `unlocks.source`,
+    in an additive migration from the dashboard repo. Prompt 23's note,
+    which also flags that its step 7 (the app writing ad unlocks) breaks
+    "Unlocks are server-written only".
+  - **Analytics: PostHog**, explicit events only, the Clerk user id as the
+    identity and reset at sign-out, no text, titles or search terms. Its own
+    prompt, 21a, runs in Expo Go; prompts 22, 23 and 23a add their events.
+    Open for the owner: the EU or US region, the privacy policy and Play's
+    Data safety form, and whether EU readers must opt in first.
+  - **New-chapter notifications:** its own prompt, 23a, after the deferred
+    setup. Asked once, when a reader first adds a book to My List, never at
+    launch. Only for books on My List, several chapters bundled into one
+    alert. A tap opens M4. It needs a `push_tokens` table, and a server
+    trigger watching `chapters`, which would be the third sanctioned change
+    to a dashboard-owned table, so the owner's yes comes before it.
   - **More stories** through the dashboard: 3 are published.
 
 ---
@@ -1553,10 +1579,11 @@ owner. M3's hero is a carousel of the 5 newest stories that glides every 7
 seconds, with Continue on the Discover tab; the owner has seen both working
 in the web preview and on BlueStacks (Decisions — 2026-09-25, "M3's hero
 carousel and Continue").
-**Next: the deferred setup** (§ Deferred setup), which prompt 22 waits on,
-and the owner's calls on notifications, wait-for-free and analytics
-(Decisions — 2026-09-25, "Retention and revenue") before prompts 22–23 are
-reviewed. Open before M5 ships:
+The owner decided notifications, wait-for-free and analytics on 2026-09-25
+(Decisions — 2026-09-25, "Retention and revenue"). **Next:** prompt 21a
+(analytics), which runs in Expo Go, and the deferred setup (§ Deferred
+setup), which prompts 22, 23 and 23a wait on. Each prompt is reviewed
+against the code before it is built. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.

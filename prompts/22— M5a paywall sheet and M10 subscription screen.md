@@ -15,6 +15,28 @@ Read AGENTS.md first and follow it strictly. Do only what is on this page.
 > code read `TODO(paywall)`, not `TODO(23)`. See AGENTS.md § Decisions —
 > 2026-09-25, "M9".
 >
+> Owner decisions, 2026-09-25 (AGENTS.md § Decisions — 2026-09-25,
+> "Retention and revenue"). Fold these in at this prompt's review:
+> - **The chapter end is where the paywall appears.** M5's end-of-chapter
+>   Next, M6's next and its autoplay: when the next chapter is locked, they
+>   open M5a naming that chapter, never a dead end or a silent no-op. One tap
+>   from the end of a chapter lands on the choice to unlock it.
+> - **M5a offers three ways in, laid out once, here:** unlock free
+>   (wait-for-free), watch an ad, go ad-free. This prompt builds the sheet
+>   with the subscription working and the other two as slots marked
+>   `TODO(unlocks)`; prompt 23 wires them. The sheet's one ember action is
+>   "Unlock free" while this reader's free unlock for the book is available,
+>   and otherwise "Watch ad & continue" (AGENTS.md M5a). "Go Ad-Free" stays
+>   teal outlined. When the free unlock isn't available, the sheet says when
+>   it will be ("Next free chapter in 18h 20m"), from a time the server
+>   gives, never the device clock alone.
+> - **Analytics (PostHog, prompt 21a) from the first build:** `paywall_shown`
+>   (book, chapter, and where from: reader end, player, M4, M9),
+>   `plan_selected`, `purchase_started`, `purchase_completed`,
+>   `purchase_cancelled`, `purchase_failed` (with step 11's outcome kind),
+>   `restore_tapped`, `restore_completed`. Ids only: no prices (RevenueCat
+>   reports revenue), no email.
+>
 > BEFORE THIS PROMPT: AGENTS.md § Deferred setup must be done. RevenueCat and
 > Google Play purchases do not run in Expo Go, and Play products need the
 > Android package name. STOP until it is.

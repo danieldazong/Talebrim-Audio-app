@@ -1,4 +1,37 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
+
+> Owner decisions, 2026-09-25 (AGENTS.md § Decisions — 2026-09-25,
+> "Retention and revenue"). Fold these in at this prompt's review:
+> - **Wait-for-free is the second unlock path built here, beside the ad.**
+>   One free unlock per reader per book every 24 hours, by the server's
+>   clock. It unlocks the locked chapter the reader tapped, permanently, like
+>   every unlock (AGENTS.md § Decisions — 2026-09-23). It is never offered on
+>   a chapter free by access or position, already unlocked, or covered by a
+>   subscription. It fills prompt 22's "Unlock free" slot.
+> - **The server writes it, never the app.** Readers cannot insert
+>   `unlocks` (AGENTS.md § Decisions — 2026-09-23, "Unlocks are
+>   server-written only"). Recommended, as the audio policy was decided: two
+>   `security definer` functions in an additive migration from the dashboard
+>   repo, with the owner's yes before `supabase db push` and verified like the
+>   reader tables. `claim_wait_unlock(chapter_id)` checks the caller
+>   (`auth.jwt() ->> 'sub'`), that the chapter's book is published, that the
+>   chapter is locked for this reader, and that the reader has no `wait`
+>   unlock in this book in the last 24 hours; then it inserts the row.
+>   `wait_unlock_status(book_id)` returns the seconds until the next free
+>   unlock, 0 when it is available, so the sheet's countdown never trusts the
+>   device clock. `unlocks.source` gains `wait` (its check constraint, on this
+>   app's own table).
+> - **Two conflicts to resolve at this prompt's review.** Step 7 has the app
+>   insert `source = 'ad'` rows, which RLS forbids for the same reason: the ad
+>   unlock must be server-written too, which means AdMob server-side
+>   verification to an Edge Function and reverses step 13's "do not build
+>   SSV". Step 16 makes subscribe the sheet's ember; AGENTS.md M5a makes
+>   "Watch ad & continue" the ember, and with wait-for-free it is "Unlock
+>   free" while that is available (prompt 22's note).
+> - **Analytics (PostHog, prompt 21a):** `unlock_offered` (which options were
+>   available), `wait_unlock_claimed`, `wait_unlock_unavailable` (seconds
+>   left), `ad_requested`, `ad_unavailable`, `ad_rewarded`,
+>   `ad_dismissed_early`, `unlock_recorded`, `unlock_record_failed`.
 This is the second unlock path alongside the subscription from prompt 23. Both
 write into the same `resolveChapterState()`; neither may bypass the other.
 
