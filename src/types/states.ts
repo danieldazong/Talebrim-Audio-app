@@ -129,14 +129,19 @@ export type ChapterLockInputs = {
   unlockedChapterIds: ReadonlySet<string>;
 };
 
+/** M9's per-row flags, passed through to `resolveChapterState()`. */
+export type ChapterRowFlags = Pick<ResolveChapterStateInput, "isCurrentlyReading" | "isDownloaded">;
+
 /**
  * `resolveChapterState()` for a `chapters_catalog` row. A null `access` is
- * the view's nullable typing, never a free chapter, so it is locked. M4 and
- * M5 both call this, so that rule lives in one place.
+ * the view's nullable typing, never a free chapter, so it is locked. M4, M5,
+ * M6 and M9 all call this, so that rule lives in one place. Only M9 passes
+ * `flags`.
  */
 export function chapterStateFor(
   chapter: LockableChapter,
   inputs: ChapterLockInputs,
+  flags: ChapterRowFlags = {},
 ): ChapterState {
   if (chapter.access === null) return { kind: "locked" };
 
@@ -145,6 +150,8 @@ export function chapterStateFor(
     chapterNumber: chapter.number,
     freeChaptersAtStart: inputs.freeChaptersAtStart,
     isUnlockedByUser: inputs.unlockedChapterIds.has(chapter.id),
+    isCurrentlyReading: flags.isCurrentlyReading,
+    isDownloaded: flags.isDownloaded,
   });
 }
 

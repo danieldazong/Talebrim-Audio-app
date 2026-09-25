@@ -3,8 +3,8 @@ import { queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { supabase } from "@/lib/supabase";
 import type {
-  ChapterCatalogRow,
   ChapterDetailRow,
+  ChapterListItemRow,
   ChapterPreviewRow,
   ChapterTargetRow,
 } from "@/types/catalog";
@@ -13,18 +13,23 @@ import type {
 export const PREVIEW_CHAPTER_LIMIT = 5;
 
 /**
- * Chapter metadata for one book (M4 preview, M9 full list). Reads
- * `chapters_catalog` — `has_audio`/`has_text` booleans, no `script_text`.
- * Never `chapters_list` or `chapters_needing_attention` (admin-only) and
- * never `chapters` directly.
+ * Every chapter of one book, oldest first — M9's full list (prompt 20).
+ * Reads `chapters_catalog` — `has_audio`/`has_text` booleans, no
+ * `script_text`. Never `chapters_list` or `chapters_needing_attention`
+ * (admin-only) and never `chapters` directly.
+ *
+ * One bounded request, never paginated: about 30 KB for 200 chapters, where
+ * each page would cost the ~450 ms floor (AGENTS.md § Performance ceiling).
+ * PostgREST caps a response at the project's max rows (1,000 by default);
+ * revisit if a serial nears that.
  */
 export const chapterListByBookOptions = (bookId: string) =>
   queryOptions({
     queryKey: queryKeys.chapters.listByBook(bookId),
-    queryFn: async (): Promise<ChapterCatalogRow[]> => {
+    queryFn: async (): Promise<ChapterListItemRow[]> => {
       const { data, error } = await supabase
         .from("chapters_catalog")
-        .select("*")
+        .select("id, number, title, access, has_text, has_audio, audio_duration_seconds")
         .eq("book_id", bookId)
         .order("number", { ascending: true });
 

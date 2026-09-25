@@ -12,13 +12,24 @@ type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void;
   /** Names the group for screen readers, e.g. "Theme". */
   accessibilityLabel: string;
+  /**
+   * The track. `bg` (default) sits on a `raised` sheet, as in M5's settings.
+   * `surface`, with a `raised` hairline, sits on a `bg` screen, where a `bg`
+   * track would vanish: M9's sort toggle (material/5.png).
+   */
+  track?: "bg" | "surface";
   /** Layout classes only (width, flex). Never restyle. */
   className?: string;
 };
 
+const TRACK_CLASS = {
+  bg: "bg-bg",
+  surface: "border border-raised bg-surface",
+} as const;
+
 /**
  * Pill segmented control — AGENTS.md § Component Creation Rule. M5's reading
- * settings today; M7's Books / Audiobooks next.
+ * settings and M9's sort today; M7's Books / Audiobooks next.
  *
  * The SELECTED option is the filled one: a `muted/25` pill, clearly lighter
  * than the `bg` track, with a `body` label. Several design frames fill the
@@ -33,13 +44,14 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   accessibilityLabel,
+  track = "bg",
   className = "",
 }: SegmentedControlProps<T>) {
   return (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel={accessibilityLabel}
-      className={`h-11 flex-row rounded-pill bg-bg p-1 ${className}`}
+      className={`h-11 flex-row rounded-pill p-1 ${TRACK_CLASS[track]} ${className}`}
     >
       {options.map((option) => {
         const selected = option.value === value;
