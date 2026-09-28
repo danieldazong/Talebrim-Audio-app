@@ -17,8 +17,8 @@ function chapter(number: number, overrides: Partial<ChapterListItemRow> = {}): C
   };
 }
 
-function inputs(freeChaptersAtStart = 3, unlocked: string[] = []): ChapterLockInputs {
-  return { freeChaptersAtStart, unlockedChapterIds: new Set(unlocked) };
+function inputs(freeChaptersAtStart = 3, unlocked: string[] = [], isSubscribed = false): ChapterLockInputs {
+  return { freeChaptersAtStart, unlockedChapterIds: new Set(unlocked), isSubscribed };
 }
 
 /** Chapters 1–8, all `locked` by access, so only the setting and the unlocks free them. */
@@ -90,6 +90,13 @@ describe("buildChapterRows", () => {
     expect(kinds(rows)).toEqual(["unlocked", "unlocked"]);
   });
 
+  it("opens every chapter for a subscriber, and shows Reading Now again", () => {
+    const rows = buildChapterRows(book, inputs(3, [], true), "chapter-6");
+    expect(kinds(rows).filter((kind) => kind === "locked")).toEqual([]);
+    expect(rows[5].state.kind).toBe("reading");
+    expect(unlockedCount(rows)).toBe(8);
+  });
+
   it("writes the detail line for measured, unmeasured, text-only and empty chapters", () => {
     const rows = buildChapterRows(
       [
@@ -130,19 +137,29 @@ describe("buildChapterRows", () => {
     expect(rows[1].accessibilityLabel).toBe("Chapter 18. Text only. Locked.");
   });
 
-  it("opens the reader for text, the player for narration only, and nothing otherwise", () => {
+  it("opens the reader for text, the player for narration only, M5a when locked, and nothing otherwise", () => {
     const rows = buildChapterRows(
       [
         chapter(1, { has_audio: true, audio_duration_seconds: 60 }),
         chapter(2, { has_text: false, has_audio: true }),
         chapter(3, { has_text: false }),
         chapter(4, { has_audio: true }),
+        chapter(5, { has_text: false, has_audio: true }),
+        chapter(6, { has_text: false }),
       ],
       inputs(3),
       null,
     );
 
-    expect(rows.map((row) => row.opens)).toEqual(["reader", "player", null, null]);
+    expect(rows.map((row) => row.opens)).toEqual([
+      { kind: "reader" },
+      { kind: "player" },
+      null,
+      { kind: "paywall", mode: "text" },
+      { kind: "paywall", mode: "audio" },
+      // Locked, with nothing to unlock.
+      null,
+    ]);
     // The locked chapter's narration gets no headphone either.
     expect(rows[3].trailing).toBe("locked");
   });

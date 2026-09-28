@@ -1,0 +1,55 @@
+# EAS Build reads this file instead of .gitignore. Keep .gitignore's rules
+# below, plus the agent tooling folders, which hold Windows symlinks that
+# EAS cannot recreate when it copies the project (EPERM, 2026-09-25).
+.claude/
+.agents/
+.commandcode/
+# Design frames (material/N.png), cited only in comments: 26 MB the build never uses.
+material/
+
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# Supabase CLI local state (project link, service versions)
+supabase/.temp/
+
+example
+
+# generated native folders
+/ios
+/android

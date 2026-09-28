@@ -4,12 +4,17 @@ import { resetAnalytics } from "@/lib/analytics";
 import { releaseAudio } from "@/lib/audio/player";
 import { clearParityQueue } from "@/lib/parity/writer";
 import { QUERY_CACHE_PREFIX, queryClient } from "@/lib/query-client";
+import { logOutBilling } from "@/lib/revenuecat";
 import {
   ONBOARDING_STORAGE_KEY,
   useOnboardingStore,
 } from "@/store/onboarding-store";
 import { useParityStore } from "@/store/parity-store";
 import { usePlaybackStore } from "@/store/playback-store";
+import {
+  NOTIFICATIONS_STORAGE_KEY,
+  useNotificationsStore,
+} from "@/store/notifications-store";
 import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
 
 /**
@@ -40,6 +45,13 @@ import { SEARCH_STORAGE_KEY, useSearchStore } from "@/store/search-store";
  *  - the analytics identity (`resetAnalytics()`): the next account starts
  *    with a new anonymous id. Events already queued keep the id they were
  *    captured under
+ *  - RevenueCat's App User ID (`logOutBilling()`), so the next account on
+ *    this device never inherits this one's subscription. Its entitlement
+ *    query goes with the Query cache; TanStack never persisted it
+ *  - the persisted `notifications` slice — whether this account turned
+ *    new-chapter alerts on and answered the ask. `useSignOut` already
+ *    released the phone's token on the server; the next account is asked
+ *    once, and starts with alerts off
  *
  * Kept (device-scoped, not user data):
  *  - the persisted `reader` Zustand slice — font size, theme, line spacing,
@@ -57,9 +69,11 @@ export async function clearUserScopedState(): Promise<void> {
   queryClient.clear();
   clearParityQueue();
   resetAnalytics();
+  logOutBilling();
   useParityStore.getState().clear();
   usePlaybackStore.getState().reset();
   useSearchStore.getState().clear();
+  useNotificationsStore.getState().clear();
   useOnboardingStore.setState({
     hasCompletedOnboarding: false,
     selectedGenres: [],
@@ -73,7 +87,8 @@ export async function clearUserScopedState(): Promise<void> {
         // Every persisted Query bucket, whichever user id it is namespaced by.
         key.startsWith(QUERY_CACHE_PREFIX) ||
         key === ONBOARDING_STORAGE_KEY ||
-        key === SEARCH_STORAGE_KEY,
+        key === SEARCH_STORAGE_KEY ||
+        key === NOTIFICATIONS_STORAGE_KEY,
     );
 
     if (userScoped.length > 0) {

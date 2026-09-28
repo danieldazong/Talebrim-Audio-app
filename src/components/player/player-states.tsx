@@ -58,13 +58,23 @@ type PlayerStateMessageProps = {
   onRetry: () => void;
   onBack: () => void;
   onRead: () => void;
+  /** Locked: opens M5a for this chapter. */
+  onUnlock: () => void;
 };
 
 /**
  * Failed (Retry), offline (none: queries resume on their own), not available
- * (Go back), no audio (Read instead) and locked (where the paywall will open).
+ * (Go back), no audio (Read instead) and locked (M5a). Locked never opens
+ * M5a by itself: a dismissed sheet must not come straight back.
  */
-export function PlayerStateMessage({ status, chapterNumber, onRetry, onBack, onRead }: PlayerStateMessageProps) {
+export function PlayerStateMessage({
+  status,
+  chapterNumber,
+  onRetry,
+  onBack,
+  onRead,
+  onUnlock,
+}: PlayerStateMessageProps) {
   const { icon, message, caption } = messageFor(status, chapterNumber);
 
   return (
@@ -93,8 +103,9 @@ export function PlayerStateMessage({ status, chapterNumber, onRetry, onBack, onR
           onPress={onRead}
         />
       ) : null}
-      {/* TODO(paywall): the locked state opens the M5a paywall sheet here
-          (AGENTS.md M5a). This screen does not gate or check entitlement. */}
+      {status === "locked" ? (
+        <Button label="Unlock chapter" variant="outlined" className="mt-2" onPress={onUnlock} />
+      ) : null}
     </View>
   );
 }

@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import { useEntitlement } from "@/hooks/use-entitlement";
 import { parseChapterText, unsupportedMarks, type ReaderBlock } from "@/lib/chapter-text";
 import { textRestoreOffset, type RestorePoint } from "@/lib/parity/convert";
 import { fromServerRow, reconcile } from "@/lib/parity/reconcile";
@@ -35,6 +36,12 @@ export type ReadyChapter = {
   /** Null at either end of the book, and while the neighbours load or after they fail. */
   previousId: string | null;
   nextId: string | null;
+  /**
+   * The next chapter is locked for this reader: "Next chapter" opens M5a for
+   * it instead of the reader (prompt 22 step 12). False while its lock can't
+   * be told yet: the reader then opens it in whatever state it resolves to.
+   */
+  nextLocked: boolean;
   /**
    * Where the chapter opens, as a character offset, and whether it was mapped
    * from listening (prompt 19 step 8); null opens at the top.
@@ -107,6 +114,9 @@ export function useChapterReader(chapterId: string) {
   // Signed-in route, so `userId` is set. Runs alongside the rest, but only a
   // chapter that is free neither by access nor by position waits for it.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
+  // The subscription, waited for on the same terms as the unlocks.
+  const entitlement = useEntitlement();
+  const isSubscribed = entitlement.data?.active;
   const lastNumber = useQuery({ ...lastChapterNumberOptions(bookId ?? ""), enabled: bookId !== null });
   const neighbours = useQuery({
     ...chapterNeighboursOptions(bookId ?? "", open?.number ?? 0),
@@ -120,15 +130,15 @@ export function useChapterReader(chapterId: string) {
   );
   const lockState =
     open && freeChaptersAtStart !== undefined
-      ? lockStateFor(open, freeChaptersAtStart, unlockedChapterIds)
+      ? lockStateFor(open, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
       : null;
 
   // The text is fetched only for a published chapter (its catalog row came
   // back) that does not resolve to locked. This keeps the app honest; it is
   // NOT security. RLS still lets any signed-in reader select `script_text`
   // for a locked chapter directly. Closing that is a pre-launch task
-  // (AGENTS.md § Before production).
-  // TODO(paywall): the subscription entitlement is not checked yet.
+  // (AGENTS.md § Before production). A subscription opens the chapter the
+  // moment its entitlement lands, and this query starts by itself.
   const textEnabled =
     open != null && lockState !== null && lockState.kind !== "locked" && open.hasText !== false;
   const text = useQuery({ ...chapterTextOptions(chapterId), enabled: textEnabled });
@@ -190,7 +200,7 @@ export function useChapterReader(chapterId: string) {
   const next = toNeighbour(neighbours.data?.next);
   const nextLockState =
     next && freeChaptersAtStart !== undefined
-      ? lockStateFor(next, freeChaptersAtStart, unlockedChapterIds)
+      ? lockStateFor(next, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
       : null;
   // One chapter ahead, and never a locked one or one whose lock state is
   // still unknown: prefetching a locked chapter is fetching locked text.
@@ -201,7 +211,7 @@ export function useChapterReader(chapterId: string) {
     // Missing, unpublished, hidden by RLS, or unpublished while open.
     if (open === null || book.data === null) return settled("unavailable");
     if (book.data === undefined || freeChaptersAtStart === undefined) return waitFor([book, settings]);
-    if (lockState === null) return waitFor([unlocks]);
+    if (lockState === null) return waitFor([unlocks, entitlement]);
     if (lockState.kind === "locked") return settled("locked");
     if (shownText === null) return open.hasText === false ? settled("no-text") : waitFor([text]);
     // Null, empty or whitespace-only text parses to no blocks.
@@ -229,6 +239,7 @@ export function useChapterReader(chapterId: string) {
           lastChapterNumber: Math.max(lastNumber.data ?? book.data.chapter_count ?? 0, open.number),
           previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
           nextId: next?.id ?? null,
+          nextLocked: nextLockState?.kind === "locked",
           restore: restoreFrom
             ? textRestoreOffset(restoreFrom, {
                 textLength: shownText.value?.length ?? 0,

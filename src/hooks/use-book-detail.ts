@@ -1,6 +1,7 @@
 import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
 
+import { useEntitlement } from "@/hooks/use-entitlement";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
 import {
@@ -53,9 +54,9 @@ function hasFailed(query: { isError: boolean; isFetching: boolean }): boolean {
  * The book, the preview rows, the settings, the unlocks and the reader's
  * latest position in the book run in parallel. The Listen target waits for
  * the book, because it runs only when `audio_count > 0`. Rows and targets
- * resolve only once settings AND unlocks have loaded, so a chapter never
- * renders locked and then opens, and a failed read never falls through to
- * free.
+ * resolve only once the settings, the unlocks AND the entitlement have
+ * loaded, so a chapter never renders locked and then opens, and a failed
+ * read never falls through to free.
  */
 export function useBookDetail(bookId: string) {
   const { userId } = useAuth();
@@ -69,6 +70,8 @@ export function useBookDetail(bookId: string) {
   // Signed-in route, so `userId` is set. RLS returns only this reader's rows,
   // and nothing writes them until the paywall's server function exists.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
+  // The subscription: RevenueCat's own copy on the device, so it is quick.
+  const entitlement = useEntitlement();
   // Where the reader left off in this book, and that chapter's number and
   // access for the lock check. Usually cached: the parity writer puts every
   // row it writes into the resume key.
@@ -80,14 +83,15 @@ export function useBookDetail(bookId: string) {
   });
 
   const lockInputs: ChapterLockInputs | null =
-    settings.data && unlocks.data
+    settings.data && unlocks.data && entitlement.data
       ? {
           freeChaptersAtStart: settings.data.free_chapters_at_start,
           unlockedChapterIds: new Set(unlocks.data.map((unlock) => unlock.chapter_id)),
+          isSubscribed: entitlement.data.active,
         }
       : null;
 
-  const sectionQueries = [preview, settings, unlocks];
+  const sectionQueries = [preview, settings, unlocks, entitlement];
   let chapters: ChaptersSection;
   if (preview.data && lockInputs) {
     chapters = {
@@ -171,7 +175,7 @@ export function useBookDetail(bookId: string) {
   } else if (resumeListening) {
     listen = { kind: "ready", chapterId: resumeListening.id, number: resumeListening.number, locked: false };
   } else if (target === undefined || lockInputs === null) {
-    listen = [firstAudio, settings, unlocks].some(hasFailed) ? { kind: "failed" } : { kind: "pending" };
+    listen = [firstAudio, settings, unlocks, entitlement].some(hasFailed) ? { kind: "failed" } : { kind: "pending" };
   } else if (target === null || target.id === null || target.number === null) {
     listen = { kind: "none" };
   } else {

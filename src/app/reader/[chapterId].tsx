@@ -30,6 +30,7 @@ import { useReadingPosition } from "@/hooks/use-reading-position";
 import { track, trackHandoffLanded, trackHandoffStart } from "@/lib/analytics";
 import { isUuid } from "@/lib/ids";
 import { flush } from "@/lib/parity/writer";
+import { openPaywall } from "@/lib/paywall";
 import { useReaderStore, type ReaderTheme } from "@/store/reader-store";
 import type { ReaderFont } from "@/theme";
 
@@ -74,6 +75,15 @@ function openChapter(chapterId: string) {
   router.replace({ pathname: "/reader/[chapterId]", params: { chapterId } });
 }
 
+/**
+ * "Next chapter" on a locked chapter: M5a names it, over the chapter just
+ * finished, instead of a dead end (prompt 22 step 12). Pushed, so closing
+ * the sheet returns to the end of this one.
+ */
+function openLockedNext(chapterId: string) {
+  openPaywall(chapterId, "text", "reader_end");
+}
+
 function noop() {}
 
 export default function ReaderRoute() {
@@ -88,6 +98,7 @@ export default function ReaderRoute() {
         bookTitle={null}
         chapterNumber={null}
         onListen={null}
+        onUnlock={noop}
         onRetry={noop}
         onNearEnd={noop}
       />
@@ -107,6 +118,9 @@ function ChapterReader({ chapterId }: { chapterId: string }) {
       // Without narration, Listen is disabled rather than a round trip to
       // M6's no-audio state (prompt 19 step 9).
       onListen={hasAudio ? () => listen(chapterId) : null}
+      // Only from the button: a locked screen never opens M5a by itself, so
+      // a dismissed sheet can't come straight back.
+      onUnlock={() => openPaywall(chapterId, "text", "locked_screen")}
       onRetry={retry}
       onNearEnd={prefetchNext}
     />
@@ -120,12 +134,14 @@ type ReaderProps = {
   chapterNumber: number | null;
   /** The handoff to M6; null disables Listen. */
   onListen: (() => void) | null;
+  /** The locked state's button: M5a for this chapter. */
+  onUnlock: () => void;
   onRetry: () => void;
   /** Called once the reader is most of the way through the chapter. */
   onNearEnd: () => void;
 };
 
-function Reader({ view, bookTitle, chapterNumber, onListen, onRetry, onNearEnd }: ReaderProps) {
+function Reader({ view, bookTitle, chapterNumber, onListen, onUnlock, onRetry, onNearEnd }: ReaderProps) {
   const { status } = view;
 
   const theme = useReaderStore((state) => state.theme);
@@ -188,6 +204,7 @@ function Reader({ view, bookTitle, chapterNumber, onListen, onRetry, onNearEnd }
             canListen={onListen !== null}
             onRetry={onRetry}
             onBack={goBack}
+            onUnlock={onUnlock}
           />
         </View>
       )}
@@ -251,7 +268,7 @@ function ReadingView({
   useKeepAwake();
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, restore } = chapter;
+  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, nextLocked, restore } = chapter;
   const position = useReadingPosition({
     chapterId: id,
     bookId,
@@ -333,7 +350,7 @@ function ReadingView({
           onBodyLayout={position.onBodyLayout}
           onBlockLayout={position.onBlockLayout}
           onTap={chrome.toggleToolbar}
-          onNext={nextId === null ? null : () => openChapter(nextId)}
+          onNext={nextId === null ? null : () => (nextLocked ? openLockedNext(nextId) : openChapter(nextId))}
           onPrevious={previousId === null ? null : () => openChapter(previousId)}
         />
       </Animated.ScrollView>

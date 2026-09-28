@@ -5,12 +5,14 @@ import type { AudioStatus } from "expo-audio";
 
 import {
   getAudioSnapshot,
+  onStoppedBeforeLocked,
   pausePlayback,
   playChapter,
   playLoadedFrom,
   releaseAudio,
   type LoadedChapter,
 } from "@/lib/audio/player";
+import { resolveNextChapter } from "@/lib/audio/resolve";
 import { clearParityQueue, recordPosition, setParityUser } from "@/lib/parity/writer";
 import { queryClient } from "@/lib/query-client";
 import { useParityStore } from "@/store/parity-store";
@@ -97,6 +99,16 @@ class MockPlayer {
     this.emit();
   }
 
+  /** The end of the chapter: the one report with `didJustFinish`. */
+  finish() {
+    this.playing = false;
+    this.currentTime = 600;
+    const status = { ...this.currentStatus, didJustFinish: true };
+    setTimeout(() => {
+      for (const listener of this.listeners) listener(status);
+    }, 0);
+  }
+
   setPlaybackRate() {}
   setActiveForLockScreen() {}
   clearLockScreenControls() {}
@@ -125,10 +137,11 @@ jest.mock("@/lib/queries/audio", () => ({
   }),
 }));
 
-// Autoplay's neighbour lookups are not under test.
+// Autoplay's neighbour lookups are not under test: the end of the book,
+// unless a test says otherwise.
 jest.mock("@/lib/audio/resolve", () => ({
   resolveChapter: jest.fn(),
-  resolveNextChapter: () => Promise.resolve(null),
+  resolveNextChapter: jest.fn(() => Promise.resolve(null)),
 }));
 
 // Supabase stubbed at the one call the writer makes:
@@ -285,4 +298,23 @@ it("plays a paused chapter from the reading place, and records it as listening",
 
   expect(player()).toMatchObject({ playing: true, currentTime: 90 });
   expect(position("chapter-4")).toMatchObject({ lastWrittenBy: "audio", audioMs: 90_000, textOffset: 1_234 });
+});
+
+it("stops at the end before a locked chapter and reports it, for M6 to open M5a", async () => {
+  jest.mocked(resolveNextChapter).mockResolvedValueOnce({ kind: "locked", chapterId: "chapter-5" });
+  const stopped = jest.fn();
+  const unsubscribe = onStoppedBeforeLocked(stopped);
+  try {
+    await playChapter4();
+    player().finish();
+    await settle();
+
+    expect(stopped).toHaveBeenCalledTimes(1);
+    expect(stopped).toHaveBeenCalledWith("chapter-4", "chapter-5");
+    // Nothing else loads: the finished chapter stays, paused at its end.
+    expect(getAudioSnapshot().chapter).toEqual(CHAPTER_4);
+    expect(player().playing).toBe(false);
+  } finally {
+    unsubscribe();
+  }
 });

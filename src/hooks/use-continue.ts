@@ -4,6 +4,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 
 import { useLoadedChapter, useLoadedSecondsLeft } from "@/hooks/use-audio";
+import { useEntitlement } from "@/hooks/use-entitlement";
 import { track } from "@/lib/analytics";
 import { resolveCoverUrl } from "@/lib/covers";
 import {
@@ -22,6 +23,7 @@ import {
   type ResumeTarget,
 } from "@/lib/library";
 import { flush } from "@/lib/parity/writer";
+import { openPaywall } from "@/lib/paywall";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
 import { recentPositionsOptions } from "@/lib/queries/reading-position";
@@ -80,6 +82,7 @@ export function useContinue(segment: LibrarySegment): {
   const recent = useQuery({ ...recentPositionsOptions(userId ?? ""), enabled: Boolean(userId) });
   const settings = useQuery(appSettingsOptions());
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
+  const entitlement = useEntitlement();
   // Re-renders only when the loaded chapter changes, never with the position.
   const loadedChapter = useLoadedChapter();
   const loaded: LoadedPlace | null =
@@ -149,6 +152,7 @@ export function useContinue(segment: LibrarySegment): {
         target: resumeTarget(resumeAt, {
           freeChaptersAtStart: settings.data?.free_chapters_at_start,
           unlockedChapterIds: unlocks.data ? new Set(unlocks.data.map((unlock) => unlock.chapter_id)) : undefined,
+          isSubscribed: entitlement.data?.active,
         }),
         positionMs: resumeAt.audioMs,
         durationSeconds: resumeAt.audioDurationSeconds,
@@ -177,12 +181,13 @@ export function useContinue(segment: LibrarySegment): {
 
 /**
  * Where the Continue card's resume button goes, from M7 (`library`) or M3
- * (`discover`). Pushed, so back returns to the screen it came from.
+ * (`discover`). Pushed, so back returns to the screen it came from. A Locked
+ * chapter opens M5a, never the reader or the player.
  */
 export function openResumeTarget(target: ResumeTarget, from: "discover" | "library"): void {
-  // TODO(paywall): a Locked chapter opens M5a here. It must never open the
-  // reader or the player: that would be a paywall bypass.
-  if (target.kind === "player") {
+  if (target.kind === "locked") {
+    openPaywall(target.chapterId, target.mode, "continue");
+  } else if (target.kind === "player") {
     track("continue_resumed", { from, mode: "audio" });
     // A play button, as M5's Listen is: M6 starts the chapter once it is ready.
     router.push({ pathname: "/player/[chapterId]", params: { chapterId: target.chapterId, play: "1" } });

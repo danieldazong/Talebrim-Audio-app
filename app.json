@@ -7,6 +7,8 @@
     "scheme": "talebrimapp",
     "userInterfaceStyle": "dark",
     "android": {
+      "package": "com.talebrim.app",
+      "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -17,6 +19,7 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/Image/logo.png",
           "backgroundColor": "#150E1F"
         }
       ],
@@ -29,11 +32,23 @@
           "recordAudioAndroid": false,
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#E8663F"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "effcd777-50c4-4c5e-beb9-ff598da08002"
+      }
+    },
+    "owner": "ayoko123"
   }
 }

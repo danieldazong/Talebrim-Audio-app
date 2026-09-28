@@ -1,8 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, View } from "react-native";
+import { AppState, BackHandler, View } from "react-native";
 
 import { PlayerSecondaryControls, PlayerTransport } from "@/components/player/player-controls";
 import { PlayerCover } from "@/components/player/player-cover";
@@ -21,9 +21,16 @@ import {
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import { useHandoffNotice } from "@/hooks/use-handoff-notice";
 import { track, trackHandoffLanded, trackHandoffStart } from "@/lib/analytics";
-import { onChapterAdvance, pausePlayback, setPlaybackSpeed, skipToChapter } from "@/lib/audio/player";
+import {
+  onChapterAdvance,
+  onStoppedBeforeLocked,
+  pausePlayback,
+  setPlaybackSpeed,
+  skipToChapter,
+} from "@/lib/audio/player";
 import { formatSpeed } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
+import { openPaywall } from "@/lib/paywall";
 import { usePlaybackStore } from "@/store/playback-store";
 import { nowPlayingGradient } from "@/theme";
 
@@ -95,7 +102,7 @@ export default function PlayerRoute() {
   // A stale or hand-typed link is simply not available: there is nothing to
   // fetch and nothing a retry could fix.
   if (!isUuid(chapterId)) {
-    return <Player view={{ status: "unavailable" }} meta={NO_META} onRetry={noop} onRead={noop} />;
+    return <Player view={{ status: "unavailable" }} meta={NO_META} onRetry={noop} onRead={noop} onUnlock={noop} />;
   }
   return <ChapterPlayer key={chapterId} chapterId={chapterId} autoplay={play === "1"} />;
 }
@@ -122,9 +129,24 @@ function ChapterPlayer({ chapterId, autoplay }: { chapterId: string; autoplay: b
     [chapterId],
   );
 
+  // Autoplay stopped before a locked chapter: M5a names it, once, but only
+  // while this screen is the one in front and the app is too. Never a sheet
+  // over another screen, or one arriving from the background (prompt 22 step
+  // 12).
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    return onStoppedBeforeLocked((fromChapterId, lockedChapterId) => {
+      if (fromChapterId !== chapterId || AppState.currentState !== "active") return;
+      openPaywall(lockedChapterId, "audio", "player");
+    });
+  }, [chapterId, isFocused]);
+
   // No narration: nothing plays, so there is no place to hand over. The
   // reader restores its own.
   const read = () => openReader(chapterId);
+  // Only from the locked state's button, never by itself.
+  const unlock = () => openPaywall(chapterId, "audio", "locked_screen");
 
   return (
     <Player
@@ -134,6 +156,7 @@ function ChapterPlayer({ chapterId, autoplay }: { chapterId: string; autoplay: b
       onAutoplay={consumeAutoplay}
       onRetry={retry}
       onRead={read}
+      onUnlock={unlock}
     />
   );
 }
@@ -149,9 +172,11 @@ type PlayerProps = {
   onRetry: () => void;
   /** The no-audio state's Read instead. */
   onRead: () => void;
+  /** The locked state's button: M5a for this chapter. */
+  onUnlock: () => void;
 };
 
-function Player({ view, meta, autoplay = false, onAutoplay = noop, onRetry, onRead }: PlayerProps) {
+function Player({ view, meta, autoplay = false, onAutoplay = noop, onRetry, onRead, onUnlock }: PlayerProps) {
   return (
     // The app's only full-screen gradient (AGENTS.md § Design System),
     // under the status bar and the home indicator.
@@ -189,6 +214,7 @@ function Player({ view, meta, autoplay = false, onAutoplay = noop, onRetry, onRe
               onRetry={onRetry}
               onBack={close}
               onRead={onRead}
+              onUnlock={onUnlock}
             />
           </View>
         )}
@@ -206,7 +232,7 @@ type PlayingViewProps = {
 
 /** The ready state: the cover, the lines, the scrubber and both control rows. */
 function PlayingView({ chapter, meta, autoplay, onAutoplay }: PlayingViewProps) {
-  const { previousId, nextId } = chapter;
+  const { previousId, nextId, nextLocked } = chapter;
 
   // The `playback` slice is the source; `lib/audio` applies it to the player.
   const speed = usePlaybackStore((state) => state.speed);
@@ -264,6 +290,12 @@ function PlayingView({ chapter, meta, autoplay, onAutoplay }: PlayingViewProps) 
     if (chapter.isLoaded) void skipToChapter(targetId);
     openChapter(targetId);
   };
+  // A locked next chapter opens M5a over this one, which plays on
+  // underneath: never a dead end, and never the locked chapter itself.
+  const goToNext = (targetId: string) => {
+    if (nextLocked) openPaywall(targetId, "audio", "player");
+    else goToChapter(targetId);
+  };
 
   return (
     <View className="flex-1 pb-8">
@@ -287,7 +319,7 @@ function PlayingView({ chapter, meta, autoplay, onAutoplay }: PlayingViewProps) 
         onSkipBack={skipBack}
         onSkipForward={skipForward}
         onPrevious={previousId === null ? null : () => goToChapter(previousId)}
-        onNext={nextId === null ? null : () => goToChapter(nextId)}
+        onNext={nextId === null ? null : () => goToNext(nextId)}
         className="mt-9"
       />
 

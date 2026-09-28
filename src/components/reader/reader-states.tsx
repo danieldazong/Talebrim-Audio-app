@@ -111,13 +111,15 @@ type ReaderStateMessageProps = {
   canListen: boolean;
   onRetry: () => void;
   onBack: () => void;
+  /** Locked: opens M5a for this chapter. */
+  onUnlock: () => void;
 };
 
 /**
- * Failed, offline, not available, no text and locked. Only Failed (Retry)
- * and Not available (Go back) carry a control: offline queries resume on
- * their own, no text uses the toolbar's Listen, and locked is where the
- * paywall will open.
+ * Failed, offline, not available, no text and locked. Failed (Retry), Not
+ * available (Go back) and Locked (M5a) carry a control: offline queries
+ * resume on their own, and no text uses the toolbar's Listen. Locked never
+ * opens M5a by itself: a dismissed sheet must not come straight back.
  */
 export function ReaderStateMessage({
   status,
@@ -126,6 +128,7 @@ export function ReaderStateMessage({
   canListen,
   onRetry,
   onBack,
+  onUnlock,
 }: ReaderStateMessageProps) {
   const { icon, message, caption } = messageFor(status, chapterNumber, canListen);
 
@@ -146,8 +149,9 @@ export function ReaderStateMessage({
       {status === "unavailable" ? (
         <ReaderPill label="Go back" palette={palette} onPress={onBack} className="mt-2" />
       ) : null}
-      {/* TODO(paywall): the locked state opens the M5a paywall sheet here
-          (AGENTS.md M5a). This screen does not gate or check entitlement. */}
+      {status === "locked" ? (
+        <ReaderPill label="Unlock chapter" palette={palette} onPress={onUnlock} className="mt-2" />
+      ) : null}
     </View>
   );
 }

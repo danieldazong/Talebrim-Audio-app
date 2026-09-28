@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
-import { FlatList, useWindowDimensions, View } from "react-native";
+import { FlatList, Text, useWindowDimensions, View } from "react-native";
 
 import { BookNotFound } from "@/components/book/book-states";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/components/chapters/chapter-list-header";
 import { ChapterListMessage, ChapterRowsSkeleton } from "@/components/chapters/chapter-list-states";
 import { ChapterRow, chapterListRowHeight } from "@/components/chapters/chapter-row";
-import { Screen } from "@/components/ui";
+import { Button, Screen } from "@/components/ui";
 import { useChapterList } from "@/hooks/use-chapter-list";
 import {
   openingRowIndex,
@@ -19,6 +19,7 @@ import {
   type ChapterSortOrder,
 } from "@/lib/chapter-list";
 import { isUuid } from "@/lib/ids";
+import { openPaywall } from "@/lib/paywall";
 
 // M9 Full Chapter List — AGENTS.md M9, prompt 20, material/5.png.
 //
@@ -26,9 +27,9 @@ import { isUuid } from "@/lib/ids";
 // bar and no mini player, by construction: both live in the tab shell, which
 // this route is pushed over (as M4).
 //
-// TODO(paywall): the bottom bar, "Unlock all chapters" and the ember
-// "Go Ad-Free", goes below the list. Until then the list runs to the bottom
-// safe-area inset.
+// Below the list, for a reader who isn't subscribed and has a chapter locked
+// here, the bar with "Unlock all chapters" and the ember "Go Ad-Free"
+// (prompt 22 step 11). The list's measured height is what the bar leaves.
 
 function goBack() {
   if (router.canGoBack()) router.back();
@@ -52,13 +53,20 @@ export default function ChapterListRoute() {
   return <ChapterList bookId={bookId} />;
 }
 
-// Taps push, never replace, so back from M5 or M6 returns here.
+// Taps push, never replace, so back from M5, M6 or M5a returns here. A
+// Locked row opens M5a, never the reader or the player.
 function openRow(row: ChapterListRow) {
-  // TODO(paywall): a Locked row opens M5a here. It must never open the reader
-  // or the player: that would be a paywall bypass.
-  if (row.opens === null) return;
-  const pathname = row.opens === "reader" ? "/reader/[chapterId]" : "/player/[chapterId]";
-  router.push({ pathname, params: { chapterId: row.id } });
+  switch (row.opens?.kind) {
+    case "paywall":
+      openPaywall(row.id, row.opens.mode, "chapter_list");
+      return;
+    case "reader":
+      router.push({ pathname: "/reader/[chapterId]", params: { chapterId: row.id } });
+      return;
+    case "player":
+      router.push({ pathname: "/player/[chapterId]", params: { chapterId: row.id } });
+      return;
+  }
 }
 
 /** The headphone. No `play` flag: as with M4's Listen, M6 waits for its own Play. */
@@ -144,6 +152,25 @@ function ChapterList({ bookId }: { bookId: string }) {
           />
         )}
       </View>
+
+      {view.showAdFreeBar ? <AdFreeBar /> : null}
     </Screen>
+  );
+}
+
+/**
+ * From material/5.png: a `raised` bar above the bottom safe area. "Unlock
+ * all chapters" is a caption saying what the subscription does, not a
+ * control: there is no per-book product. "Go Ad-Free" is M9's one ember
+ * action, and opens M10 with no chapter, so back returns here.
+ */
+function AdFreeBar() {
+  return (
+    <View className="flex-row items-center gap-3 bg-raised px-4 py-2">
+      <Text className="font-ui text-muted flex-1 text-base" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+        Unlock all chapters
+      </Text>
+      <Button label="Go Ad-Free" onPress={() => router.push("/subscription")} />
+    </View>
   );
 }

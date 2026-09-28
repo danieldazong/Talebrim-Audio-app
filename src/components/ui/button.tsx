@@ -8,7 +8,7 @@ import {
 
 import { colors } from "@/theme";
 
-type Variant = "primary" | "secondary" | "inverted" | "outlined" | "audio";
+type Variant = "primary" | "secondary" | "inverted" | "outlined" | "audio" | "accent";
 
 const VARIANT_CLASS: Record<Variant, string> = {
   primary: "btn--primary",
@@ -16,6 +16,9 @@ const VARIANT_CLASS: Record<Variant, string> = {
   inverted: "btn--inverted",
   outlined: "btn--outlined",
   audio: "btn--audio",
+  // Teal outlined, the same pill as `audio`: a secondary accent that isn't
+  // audio (AGENTS.md § Colors). M5a's Go Ad-Free, M10's Restore and Manage.
+  accent: "btn--audio",
 };
 
 // Ember labels are ink, never white — AGENTS.md § Design System.
@@ -25,6 +28,7 @@ const LABEL_CLASS: Record<Variant, string> = {
   inverted: "text-champagne",
   outlined: "text-body",
   audio: "text-teal",
+  accent: "text-teal",
 };
 
 const SPINNER_COLOR: Record<Variant, string> = {
@@ -33,6 +37,7 @@ const SPINNER_COLOR: Record<Variant, string> = {
   inverted: colors.champagne,
   outlined: colors.body,
   audio: colors.teal,
+  accent: colors.teal,
 };
 
 type ButtonProps = {

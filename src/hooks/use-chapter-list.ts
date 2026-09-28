@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { useEntitlement } from "@/hooks/use-entitlement";
 import { buildChapterRows, unlockedCount, type ChapterListRow } from "@/lib/chapter-list";
 import { resolveCoverUrl } from "@/lib/covers";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
@@ -12,7 +13,13 @@ import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
 
 export type ChapterListView =
-  | { status: "ready"; rows: ChapterListRow[]; unlockedCount: number }
+  | {
+      status: "ready";
+      rows: ChapterListRow[];
+      unlockedCount: number;
+      /** M9's bottom bar: not subscribed, and at least one chapter locked (prompt 22 step 11). */
+      showAdFreeBar: boolean;
+    }
   | { status: "loading" | "offline" | "failed" | "unavailable" | "empty" };
 
 type Resolved = { view: ChapterListView; waitingOn: NeededQuery[] };
@@ -25,12 +32,14 @@ function settled(status: "loading" | "unavailable" | "empty"): Resolved {
  * Everything M9 reads for one book, and the state it resolves to, in M5's
  * and M6's precedence (prompt 20 step 12).
  *
- * Five queries for a book of any length, never one per row: the book, every
- * chapter's metadata, the settings, the unlocks and the resume target. M4
- * reads all but the chapter list, so they are usually cached.
+ * Six queries for a book of any length, never one per row: the book, every
+ * chapter's metadata, the settings, the unlocks, the entitlement and the
+ * resume target. M4 reads all but the chapter list, so they are usually
+ * cached.
  *
- * The rows wait for the list, the settings and the unlocks, so a row never
- * shows Unlocked and then turns Locked. They wait for the resume target too,
+ * The rows wait for the list, the settings, the unlocks and the entitlement,
+ * so a row never shows Unlocked and then turns Locked, and the bottom bar
+ * never shows to a subscriber. They wait for the resume target too,
  * so the list opens at the Reading Now row, but only for one answer: failed
  * or offline, it means no Reading Now row. Parity never blocks the list.
  */
@@ -42,6 +51,7 @@ export function useChapterList(bookId: string) {
   const settings = useQuery(appSettingsOptions());
   // Signed-in route, so `userId` is set. RLS returns only this reader's rows.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
+  const entitlement = useEntitlement();
   // Reading Now is the chapter M4's Read resumes. The parity writer puts every
   // row it saves into this key, so it moves when the reader comes back from
   // M5 or M6.
@@ -66,8 +76,8 @@ export function useChapterList(bookId: string) {
     // Unpublished, missing or hidden by RLS — including a book the dashboard
     // unpublishes while M9 is open, since catalog sync refetches it.
     if (book.data === null) return settled("unavailable");
-    if (book.data === undefined || list.data === undefined || !settings.data || !unlocks.data) {
-      return waitFor([book, list, settings, unlocks]);
+    if (book.data === undefined || list.data === undefined || !settings.data || !unlocks.data || !entitlement.data) {
+      return waitFor([book, list, settings, unlocks, entitlement]);
     }
     if (!resumeSettled) return settled("loading");
 
@@ -76,11 +86,21 @@ export function useChapterList(bookId: string) {
       {
         freeChaptersAtStart: settings.data.free_chapters_at_start,
         unlockedChapterIds: new Set(unlocks.data.map((unlock) => unlock.chapter_id)),
+        isSubscribed: entitlement.data.active,
       },
       resume.data?.chapter_id ?? null,
     );
     if (rows.length === 0) return settled("empty");
-    return { view: { status: "ready", rows, unlockedCount: unlockedCount(rows) }, waitingOn: [] };
+    const unlocked = unlockedCount(rows);
+    return {
+      view: {
+        status: "ready",
+        rows,
+        unlockedCount: unlocked,
+        showAdFreeBar: !entitlement.data.active && unlocked < rows.length,
+      },
+      waitingOn: [],
+    };
   }
 
   const { view, waitingOn } = resolve();

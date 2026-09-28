@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { ChapterRowsSkeleton, ChaptersEmpty, ChaptersError } from "@/components/book/book-states";
 import { ChapterPreviewRow } from "@/components/book/chapter-preview-row";
-import type { ChaptersSection } from "@/hooks/use-book-detail";
+import type { ChaptersSection, PreviewChapter } from "@/hooks/use-book-detail";
 import { colors } from "@/theme";
 
 type BookChaptersProps = {
@@ -11,7 +11,8 @@ type BookChaptersProps = {
   chapterCount: number | null;
   section: ChaptersSection;
   onRetry: () => void;
-  onOpenChapter: (chapterId: string) => void;
+  /** The reader, or M5a for a locked chapter: the route decides. */
+  onOpenChapter: (chapter: PreviewChapter) => void;
   onSeeAll: () => void;
 };
 

@@ -130,9 +130,11 @@ function DiscoverContent({
     continueView.status === "ready" && continueView.card.mode === "audio" ? "Continue Listening" : "Continue Reading";
 
   return (
+    // paddingTop 8: the tab strip already ends 8dp below its underline, so the
+    // first section starts 16dp under it, as in material/3.png.
     <ScrollView
       className="no-scrollbar"
-      contentContainerStyle={{ gap: 24, paddingTop: 16, paddingBottom: bottomPadding + 16 }}
+      contentContainerStyle={{ gap: 24, paddingTop: 8, paddingBottom: bottomPadding + 16 }}
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
     >

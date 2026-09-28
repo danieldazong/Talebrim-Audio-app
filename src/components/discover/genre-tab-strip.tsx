@@ -33,35 +33,44 @@ type GenreTabStripProps = {
 
 export function GenreTabStrip({ value, onChange }: GenreTabStripProps) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 24, paddingHorizontal: 16 }}
-      className="no-scrollbar"
-    >
-      {DISCOVER_TABS.map((tab) => {
-        const isActive = tab === value;
-        return (
-          <Pressable
-            key={tab}
-            accessibilityRole="tab"
-            accessibilityLabel={tab}
-            accessibilityState={{ selected: isActive }}
-            hitSlop={8}
-            onPress={() => onChange(tab)}
-            style={{ minHeight: layout.minTouchTarget, justifyContent: "center" }}
-            className="tab-strip__item"
-          >
-            <Text
-              className={`tab-strip__label ${isActive ? "tab-strip__label--active" : ""}`}
-              maxFontSizeMultiplier={1.3}
+    // A View, not the ScrollView, sits in the screen's column: a ScrollView
+    // defaults to flexShrink 1, and there it shrank under the tall content
+    // below and cut the labels off.
+    <View>
+      {/* The frame's hairline, drawn first so the ember underline paints over it. */}
+      <View className="tab-strip__divider" />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 24, paddingHorizontal: 16 }}
+        className="no-scrollbar"
+      >
+        {DISCOVER_TABS.map((tab) => {
+          const isActive = tab === value;
+          return (
+            <Pressable
+              key={tab}
+              accessibilityRole="tab"
+              accessibilityLabel={tab}
+              accessibilityState={{ selected: isActive }}
+              hitSlop={8}
+              onPress={() => onChange(tab)}
+              style={{ minHeight: layout.minTouchTarget }}
+              className="tab-strip__item"
             >
-              {tab}
-            </Text>
-            {isActive ? <View className="tab-strip__underline" /> : null}
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+              <Text
+                className={`tab-strip__label ${isActive ? "tab-strip__label--active" : ""}`}
+                maxFontSizeMultiplier={1.3}
+              >
+                {tab}
+              </Text>
+              {/* Drawn on every tab, filled only on the active one, so all the
+                  labels share one baseline. */}
+              <View className={`tab-strip__underline ${isActive ? "tab-strip__underline--active" : ""}`} />
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }

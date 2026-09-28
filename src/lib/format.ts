@@ -3,6 +3,16 @@
 const DURATION_UNKNOWN = "Duration unknown";
 
 /**
+ * A calendar date in the reader's locale, day, short month and year ("21 Sept
+ * 2026", "Sep 21, 2026"). Null for a string that isn't a date.
+ */
+export function formatDate(iso: string): string | null {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+/**
  * Formats a duration in seconds as `h:mm:ss` / `m:ss`.
  *
  * `null` means UNKNOWN, not zero — a chapter can have audio in storage with

@@ -65,6 +65,13 @@ export interface ResolveChapterStateInput {
    */
   isUnlockedByUser?: boolean;
   /**
+   * True while the reader's `ad_free` entitlement is active
+   * (`entitlementOptions()`, from RevenueCat's `customerInfo` only). A
+   * subscribed reader's chapters are all accessible. Never an `unlocks` row,
+   * so a lapsed subscription needs no revocation.
+   */
+  isSubscribed?: boolean;
+  /**
    * True if this chapter's audio and/or text is stored on this device for
    * offline use. Local-device state, never a table; always `false` until the
    * download feature (AGENTS.md § Audio Rules) lands.
@@ -92,12 +99,13 @@ export function resolveChapterState(
     freeChaptersAtStart,
     isCurrentlyReading = false,
     isUnlockedByUser = false,
+    isSubscribed = false,
     isDownloaded = false,
   } = input;
 
   const isFreeByPosition = chapterNumber <= freeChaptersAtStart;
   const isAccessible =
-    access === "free" || isFreeByPosition || isUnlockedByUser;
+    access === "free" || isFreeByPosition || isUnlockedByUser || isSubscribed;
 
   if (!isAccessible) {
     return { kind: "locked" };
@@ -127,6 +135,8 @@ export type ChapterLockInputs = {
   freeChaptersAtStart: number;
   /** Chapter ids from the reader's `unlocks` rows. */
   unlockedChapterIds: ReadonlySet<string>;
+  /** The reader's `ad_free` entitlement is active. */
+  isSubscribed: boolean;
 };
 
 /** M9's per-row flags, passed through to `resolveChapterState()`. */
@@ -150,6 +160,7 @@ export function chapterStateFor(
     chapterNumber: chapter.number,
     freeChaptersAtStart: inputs.freeChaptersAtStart,
     isUnlockedByUser: inputs.unlockedChapterIds.has(chapter.id),
+    isSubscribed: inputs.isSubscribed,
     isCurrentlyReading: flags.isCurrentlyReading,
     isDownloaded: flags.isDownloaded,
   });
@@ -158,17 +169,28 @@ export function chapterStateFor(
 const NO_UNLOCKS: ReadonlySet<string> = new Set();
 
 /**
- * A chapter's lock state, or null while that can't be told yet. Unlocks only
- * ever open a locked chapter, so one that is free by access or by position
- * never waits for them. M5 and M6 both call this.
+ * A chapter's lock state, or null while that can't be told yet. Unlocks and
+ * the subscription only ever open a locked chapter, so one that is free by
+ * access or by position waits for neither, and either one opens it as soon
+ * as it is known to: a subscriber never waits for their unlocks. Undefined
+ * is "not known yet", never "no", so a subscriber never sees a paywall flash
+ * while the entitlement loads. M5, M6, the player and Library call this.
  */
 export function lockStateFor(
   chapter: LockableChapter,
   freeChaptersAtStart: number,
   unlockedChapterIds: ReadonlySet<string> | undefined,
+  isSubscribed: boolean | undefined,
 ): ChapterState | null {
-  const withoutUnlocks = chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds: NO_UNLOCKS });
-  if (withoutUnlocks.kind !== "locked") return withoutUnlocks;
-  if (unlockedChapterIds === undefined) return null;
-  return chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds });
+  const withNeither = chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds: NO_UNLOCKS, isSubscribed: false });
+  if (withNeither.kind !== "locked") return withNeither;
+
+  const opened = chapterStateFor(chapter, {
+    freeChaptersAtStart,
+    unlockedChapterIds: unlockedChapterIds ?? NO_UNLOCKS,
+    isSubscribed: isSubscribed === true,
+  });
+  if (opened.kind !== "locked") return opened;
+  // Still locked by what is known so far: final only once both are known.
+  return unlockedChapterIds === undefined || isSubscribed === undefined ? null : opened;
 }

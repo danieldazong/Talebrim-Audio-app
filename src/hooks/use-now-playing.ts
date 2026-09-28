@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useLoadedPhase } from "@/hooks/use-audio";
+import { useEntitlement } from "@/hooks/use-entitlement";
 import { retryLoaded, type LoadedChapter } from "@/lib/audio/player";
 import { audioRestoreMs, newerPosition } from "@/lib/audio/rules";
 import { resolveCoverUrl } from "@/lib/covers";
@@ -24,6 +25,11 @@ export type PlayingChapter = LoadedChapter & {
   /** Null at either end of the book, and while the neighbours load or after they fail. */
   previousId: string | null;
   nextId: string | null;
+  /**
+   * The next chapter is locked for this reader: next opens M5a for it
+   * (prompt 22 step 12). False while its lock can't be told yet.
+   */
+  nextLocked: boolean;
   /**
    * Where Play starts, in milliseconds, and whether it was mapped from
    * reading. Always set while this isn't the loaded chapter. On the loaded
@@ -76,9 +82,9 @@ function toOpenChapter(row: ChapterDetailRow | null): OpenChapter | null {
   };
 }
 
-function neighbourId(row: ChapterTargetRow | null | undefined): string | null {
+function toNeighbour(row: ChapterTargetRow | null | undefined): LockableChapter | null {
   if (!row || row.id === null || row.number === null) return null;
-  return row.id;
+  return { id: row.id, number: row.number, access: row.access };
 }
 
 function settled(status: "unavailable" | "locked" | "no-audio" | "failed" | "offline" | "loading"): Resolved {
@@ -117,6 +123,9 @@ export function useNowPlaying(chapterId: string) {
   // Signed-in route, so `userId` is set. Only a chapter that is free neither
   // by access nor by position waits for it.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
+  // The subscription, waited for on the same terms as the unlocks.
+  const entitlement = useEntitlement();
+  const isSubscribed = entitlement.data?.active;
   const neighbours = useQuery({
     ...chapterNeighboursOptions(bookId ?? "", open?.number ?? 0),
     enabled: open != null,
@@ -127,11 +136,15 @@ export function useNowPlaying(chapterId: string) {
     () => (unlocks.data ? new Set(unlocks.data.map((unlock) => unlock.chapter_id)) : undefined),
     [unlocks.data],
   );
-  // The one lock rule, shared with M4 and M5.
-  // TODO(paywall): the subscription entitlement is not checked yet.
+  // The one lock rule, shared with M4 and M5, the subscription included.
   const lockState =
     open && freeChaptersAtStart !== undefined
-      ? lockStateFor(open, freeChaptersAtStart, unlockedChapterIds)
+      ? lockStateFor(open, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
+      : null;
+  const next = toNeighbour(neighbours.data?.next);
+  const nextLockState =
+    next && freeChaptersAtStart !== undefined
+      ? lockStateFor(next, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
       : null;
 
   // The narration URL: only after the lock check, never for a locked
@@ -232,7 +245,7 @@ export function useNowPlaying(chapterId: string) {
     // Missing, unpublished, hidden by RLS, or unpublished while open.
     if (open === null || book.data === null) return settled("unavailable");
     if (book.data === undefined || settings.data === undefined) return waitFor([book, settings]);
-    if (lockState === null) return waitFor([unlocks]);
+    if (lockState === null) return waitFor([unlocks, entitlement]);
     if (lockState.kind === "locked") return settled("locked");
     // A null `has_audio` is the view's nullable typing: nothing to play either.
     if (open.hasAudio !== true) return settled("no-audio");
@@ -276,8 +289,9 @@ export function useNowPlaying(chapterId: string) {
           author: book.data.author,
           coverUrl: resolveCoverUrl(settings.data.public_cdn_domain, book.data.cover_path),
           durationSeconds,
-          previousId: neighbourId(neighbours.data?.previous),
-          nextId: neighbourId(neighbours.data?.next),
+          previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
+          nextId: next?.id ?? null,
+          nextLocked: nextLockState?.kind === "locked",
           restore,
           isLoaded,
           hasBookmark,

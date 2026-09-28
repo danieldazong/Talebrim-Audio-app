@@ -10,7 +10,8 @@ export const CHAPTER_ROW_HEIGHT = 62;
 
 type ChapterPreviewRowProps = {
   chapter: PreviewChapter;
-  onOpen: (chapterId: string) => void;
+  /** The reader, or M5a for a locked chapter: never the reader for one. */
+  onOpen: (chapter: PreviewChapter) => void;
 };
 
 /**
@@ -37,12 +38,6 @@ export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
       ? "Audio · duration unknown"
       : `${formatDuration(chapter.audioDurationSeconds)} audio`;
 
-  function open() {
-    // TODO(paywall): a locked row opens M5a here. It must never open the reader.
-    if (locked) return;
-    onOpen(chapter.id);
-  }
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -53,7 +48,7 @@ export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
       ]
         .filter((part) => part !== null)
         .join(". ")}
-      onPress={open}
+      onPress={() => onOpen(chapter)}
       className="flex-row items-center gap-3 rounded-card border border-raised bg-surface px-4 py-3"
       style={({ pressed }) => ({ minHeight: CHAPTER_ROW_HEIGHT, opacity: pressed ? 0.7 : 1 })}
     >

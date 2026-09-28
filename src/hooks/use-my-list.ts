@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AccessibilityInfo } from "react-native";
 
+import { useAskForAlerts } from "@/hooks/use-alerts";
 import { track } from "@/lib/analytics";
 import { withBookAdded, withBookRemoved } from "@/lib/library";
 import {
@@ -38,6 +39,7 @@ export function useMyList(bookId: string, book: BookDetailRow | null | undefined
   const { userId } = useAuth();
   const queryClient = useQueryClient();
   const queryKey = queryKeys.libraryItems.byUser(userId ?? "");
+  const askForAlerts = useAskForAlerts();
 
   const list = useQuery({ ...libraryItemsByUserOptions(userId ?? ""), enabled: Boolean(userId) });
 
@@ -71,8 +73,10 @@ export function useMyList(bookId: string, book: BookDetailRow | null | undefined
       return { previous };
     },
     // Once the server confirms, never at the optimistic change (prompt 21a).
+    // The first add asks about new-chapter alerts, once (prompt 23a).
     onSuccess: (_data, change) => {
       track(change === "add" ? "my_list_added" : "my_list_removed", { book_id: bookId });
+      if (change === "add") askForAlerts();
     },
     onError: (_error, _change, context) => {
       if (context) queryClient.setQueryData(queryKey, context.previous);

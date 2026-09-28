@@ -3,9 +3,13 @@ import { useCallback } from "react";
 
 import { stopForSignOut } from "@/lib/audio/player";
 import { flushWithin } from "@/lib/parity/writer";
+import { releaseAlertsWithin } from "@/lib/push";
 import { clearUserScopedState } from "@/lib/session";
 
-/** How long sign-out waits for a queued reading position to reach the server. */
+/**
+ * How long sign-out waits for a queued reading position, and for the phone's
+ * alerts to be released, to reach the server.
+ */
 const SIGN_OUT_FLUSH_MS = 2_000;
 
 /**
@@ -21,10 +25,12 @@ export function useSignOut() {
   return useCallback(async () => {
     // Pause, and record where the listener was, so the flush below sends it.
     stopForSignOut();
-    // Send the reader's place while this account's token still works. Bounded,
-    // so sign-out never hangs on the network; whatever is left is dropped by
-    // `clearUserScopedState()`, never sent under the next account.
-    await flushWithin(SIGN_OUT_FLUSH_MS);
+    // Send the reader's place, and stop this phone's new-chapter alerts, while
+    // this account's token still works. Side by side, each bounded, so
+    // sign-out never hangs on the network. A place still queued is dropped by
+    // `clearUserScopedState()`, never sent under the next account; alerts not
+    // released offline are released or claimed by the next sign-in here.
+    await Promise.all([flushWithin(SIGN_OUT_FLUSH_MS), releaseAlertsWithin(SIGN_OUT_FLUSH_MS)]);
     try {
       await signOut();
     } finally {

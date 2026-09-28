@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
 import { colors } from "@/theme";
@@ -37,12 +38,13 @@ export function DiscoverHeader({ onPressSearch }: DiscoverHeaderProps) {
           <Ionicons name="search" size={20} color={colors.body} />
         </Pressable>
 
+        {/* New-chapter alerts (prompt 23a): turns them on or off. There is no
+            inbox of past alerts. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Notifications"
+          accessibilityLabel="New chapter alerts"
           hitSlop={8}
-          // TODO: no notifications screen/feature exists yet — no-op until
-          // one is built.
+          onPress={() => router.push({ pathname: "/alerts", params: { from: "bell" } })}
           className="icon-btn icon-btn--round"
         >
           <Ionicons name="notifications-outline" size={20} color={colors.body} />

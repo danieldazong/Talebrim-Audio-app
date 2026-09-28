@@ -124,6 +124,15 @@ export const queryKeys = {
     byUser: (userId: string) => ["libraryItems", userId] as const,
   },
 
+  billing: {
+    /** Everything RevenueCat answers — never persisted (`shouldPersistQuery()`, lib/query-client.ts). */
+    all: () => ["billing"] as const,
+    /** The reader's `ad_free` entitlement — `lib/queries/billing.ts`. */
+    entitlement: (userId: string) => [...queryKeys.billing.all(), userId, "entitlement"] as const,
+    /** RevenueCat's current offering: M10's plans. Per account, as RevenueCat can target one. */
+    offering: (userId: string) => [...queryKeys.billing.all(), userId, "offering"] as const,
+  },
+
   audio: {
     /** Every signed narration URL — never persisted (`shouldPersistQuery()`, lib/query-client.ts). */
     all: () => ["audioSource"] as const,

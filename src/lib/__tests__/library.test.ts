@@ -75,7 +75,7 @@ function position(overrides: Partial<LibraryPosition> = {}): LibraryPosition {
 }
 
 /** Five free chapters by position; nothing unlocked. */
-const LOADED: ResumeLockInputs = { freeChaptersAtStart: 5, unlockedChapterIds: new Set() };
+const LOADED: ResumeLockInputs = { freeChaptersAtStart: 5, unlockedChapterIds: new Set(), isSubscribed: false };
 
 describe("segments", () => {
   const items = [item("a", 3), item("b", 0), item("c", null), item("d", 1)];
@@ -208,28 +208,48 @@ describe("resumeTarget", () => {
     ).toBe("none");
   });
 
-  it("opens nothing for a Locked chapter", () => {
-    expect(resumeTarget(position({ number: 6 }), LOADED)).toEqual({ kind: "locked" });
+  it("opens M5a for a Locked chapter, in the mode it would have opened", () => {
+    expect(resumeTarget(position({ number: 6 }), LOADED)).toEqual({ kind: "locked", chapterId: "chapter-1", mode: "text" });
+    expect(resumeTarget(position({ number: 6, lastMode: "audio" }), LOADED)).toEqual({
+      kind: "locked",
+      chapterId: "chapter-1",
+      mode: "audio",
+    });
+    expect(resumeTarget(position({ number: 6, lastMode: "audio", hasAudio: false }), LOADED)).toMatchObject({
+      kind: "locked",
+      mode: "text",
+    });
+    // Nothing to unlock.
+    expect(resumeTarget(position({ number: 6, hasText: false, hasAudio: false }), LOADED)).toEqual({ kind: "none" });
   });
 
-  it("opens an unlocked chapter", () => {
-    const inputs = { freeChaptersAtStart: 5, unlockedChapterIds: new Set(["chapter-1"]) };
-    expect(resumeTarget(position({ number: 6 }), inputs).kind).toBe("reader");
+  it("opens an unlocked chapter, and every chapter for a subscriber", () => {
+    const unlocked = { ...LOADED, unlockedChapterIds: new Set(["chapter-1"]) };
+    expect(resumeTarget(position({ number: 6 }), unlocked).kind).toBe("reader");
+    expect(resumeTarget(position({ number: 6 }), { ...LOADED, isSubscribed: true }).kind).toBe("reader");
   });
 
-  it("waits for the settings, and for the unlocks only when the chapter isn't free", () => {
-    expect(resumeTarget(position({ number: 2 }), { freeChaptersAtStart: undefined, unlockedChapterIds: undefined }))
-      .toEqual({ kind: "pending" });
-    const noUnlocks = { freeChaptersAtStart: 5, unlockedChapterIds: undefined };
+  it("waits for the settings, and for the unlocks and the entitlement only when the chapter isn't free", () => {
+    expect(
+      resumeTarget(position({ number: 2 }), {
+        freeChaptersAtStart: undefined,
+        unlockedChapterIds: undefined,
+        isSubscribed: undefined,
+      }),
+    ).toEqual({ kind: "pending" });
+    const noUnlocks = { ...LOADED, unlockedChapterIds: undefined };
     expect(resumeTarget(position({ number: 6 }), noUnlocks)).toEqual({ kind: "pending" });
     expect(resumeTarget(position({ number: 2 }), noUnlocks).kind).toBe("reader");
     expect(resumeTarget(position({ number: 9, access: "free" }), noUnlocks).kind).toBe("reader");
+    const noEntitlement = { ...LOADED, isSubscribed: undefined };
+    expect(resumeTarget(position({ number: 6 }), noEntitlement)).toEqual({ kind: "pending" });
+    expect(resumeTarget(position({ number: 2 }), noEntitlement).kind).toBe("reader");
   });
 
   it("says where it goes, or why it won't", () => {
     expect(resumeLabel({ kind: "player", chapterId: "c" }, "Dusk", 4)).toBe("Continue listening to Dusk, chapter 4");
     expect(resumeLabel({ kind: "reader", chapterId: "c" }, "Dusk", 4)).toBe("Continue reading Dusk, chapter 4");
-    expect(resumeLabel({ kind: "locked" }, "Dusk", 4)).toBe("Dusk, chapter 4 is locked");
+    expect(resumeLabel({ kind: "locked", chapterId: "c", mode: "text" }, "Dusk", 4)).toBe("Dusk, chapter 4 is locked");
     expect(resumeLabel({ kind: "pending" }, "Dusk", 4)).toBe("Loading Dusk, chapter 4");
   });
 });

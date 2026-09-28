@@ -12,8 +12,11 @@
 // first) and go with the next flush once the network is back.
 import PostHog, { PostHogPersistedProperty, type PostHogOptions } from "posthog-react-native";
 
+import type { AlertsFrom } from "@/lib/alerts";
+import type { PurchaseFailure } from "@/lib/billing";
 import { isUuid } from "@/lib/ids";
 import type { RestorePoint } from "@/lib/parity/convert";
+import type { PaywallFrom } from "@/lib/paywall";
 import type { ParitySourceMode } from "@/store/parity-store";
 
 type HandoffDirection = "read_to_listen" | "listen_to_read";
@@ -36,6 +39,27 @@ type AnalyticsEvents = {
   search_performed: { result_count: number };
   /** How the destination found its place: mapped from the other mode, or its own ("none"). */
   handoff: { direction: HandoffDirection; mapped: "estimate" | "chapter-start" | "none" };
+  // Billing (prompt 22). Ids and fixed words only: never a price or a
+  // currency. RevenueCat reports revenue; PostHog never sees a price.
+  /** M5a showed a locked chapter, once per open. */
+  paywall_shown: { book_id: string; chapter_id: string; from: PaywallFrom };
+  /** The reader picked a plan card on M10, not the preselection. */
+  plan_selected: { package_id: string };
+  purchase_started: { package_id: string };
+  purchase_completed: { package_id: string };
+  purchase_cancelled: { package_id: string };
+  purchase_failed: { package_id: string; kind: PurchaseFailure };
+  restore_tapped: { from: "paywall" | "subscription" };
+  restore_completed: { entitled: boolean };
+  // New-chapter alerts (prompt 23a). Never a push token.
+  /** The alerts sheet asked, once per open. */
+  notify_prompt_shown: { from: AlertsFrom };
+  notify_prompt_accepted: { from: AlertsFrom };
+  /** "Not now", a refusal at the system's prompt, or closing the sheet while it asked. */
+  notify_prompt_declined: { from: AlertsFrom };
+  alerts_turned_off: Record<string, never>;
+  /** A tap on an alert opened M4. */
+  notification_opened: { book_id: string };
 };
 
 const KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY ?? "";

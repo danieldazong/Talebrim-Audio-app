@@ -5,4 +5,6 @@ export { Cover } from "./cover";
 export { ProgressBar } from "./progress-bar";
 export { Screen } from "./screen";
 export { SegmentedControl, type SegmentedOption } from "./segmented-control";
+export { Sheet } from "./sheet";
+export { TextLink } from "./text-link";
 export { Body, Heading } from "./typography";

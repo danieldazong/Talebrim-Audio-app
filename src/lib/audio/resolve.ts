@@ -8,6 +8,7 @@ import { audioRestoreMs, newerPosition } from "@/lib/audio/rules";
 import { resolveCoverUrl } from "@/lib/covers";
 import { adoptServerPosition } from "@/lib/parity/writer";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
+import { entitlementOptions } from "@/lib/queries/billing";
 import { bookDetailOptions } from "@/lib/queries/book";
 import { chapterDetailOptions, chapterNeighboursOptions, chapterTextOptions } from "@/lib/queries/chapters";
 import { readingPositionByChapterOptions, type ReadingPosition } from "@/lib/queries/reading-position";
@@ -33,7 +34,7 @@ export type LoadedChapter = {
 
 export type ChapterVerdict =
   | { kind: "playable"; chapter: LoadedChapter; startMs: number }
-  | { kind: "locked" }
+  | { kind: "locked"; chapterId: string }
   | { kind: "no-audio" }
   | { kind: "unavailable" };
 
@@ -74,15 +75,23 @@ export async function resolveChapter(userId: string, chapterId: string): Promise
   ]);
   if (book === null) return { kind: "unavailable" };
 
-  // The one lock rule, shared with M4, M5 and M6. Unlocks are fetched only
-  // for a chapter that is free neither by access nor by position.
-  // TODO(paywall): the subscription entitlement is not checked yet.
-  let lock = lockStateFor(chapter, settings.free_chapters_at_start, undefined);
+  // The one lock rule, shared with M4, M5 and M6, the subscription included.
+  // The unlocks and the entitlement are fetched only for a chapter that is
+  // free neither by access nor by position.
+  let lock = lockStateFor(chapter, settings.free_chapters_at_start, undefined, undefined);
   if (lock === null) {
-    const unlocks = await queryClient.fetchQuery(unlocksByUserOptions(userId));
-    lock = lockStateFor(chapter, settings.free_chapters_at_start, new Set(unlocks.map((unlock) => unlock.chapter_id)));
+    const [unlocks, entitlement] = await Promise.all([
+      queryClient.fetchQuery(unlocksByUserOptions(userId)),
+      queryClient.fetchQuery(entitlementOptions(userId)),
+    ]);
+    lock = lockStateFor(
+      chapter,
+      settings.free_chapters_at_start,
+      new Set(unlocks.map((unlock) => unlock.chapter_id)),
+      entitlement.active,
+    );
   }
-  if (lock === null || lock.kind === "locked") return { kind: "locked" };
+  if (lock === null || lock.kind === "locked") return { kind: "locked", chapterId };
   if (row.has_audio !== true) return { kind: "no-audio" };
 
   const durationSeconds =

@@ -12,6 +12,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthGate } from "@/components/auth-gate";
 import { AuthedQueryProvider } from "@/components/providers";
+import { useAlertTaps, useAlertsSync } from "@/hooks/use-alerts";
 import { useAppFonts } from "@/hooks/use-app-fonts";
 import { useCatalogSync } from "@/hooks/use-catalog-sync";
 import { useParitySync } from "@/hooks/use-parity-sync";
@@ -84,6 +85,10 @@ function RootNavigator() {
   useParitySync();
   // One screen event per route change, named by route, ids only (prompt 21a).
   useScreenTracking();
+  // New-chapter alerts (prompt 23a): the server learns at each sign-in
+  // whether this phone alerts this account, and a tap on an alert opens M4.
+  useAlertsSync();
+  useAlertTaps(Boolean(isSignedIn) && hasCompletedOnboarding);
 
   return (
     <Stack screenOptions={screenOptions}>
@@ -105,6 +110,26 @@ function RootNavigator() {
         <Stack.Screen name="player/[chapterId]" options={{ animation: "slide_from_bottom" }} />
         <Stack.Screen name="chapters/[bookId]" />
         <Stack.Screen name="search" />
+        {/* M5a: a sheet over whatever opened it, which stays drawn beneath
+            its scrim. Faded, not slid: the scrim moves with the screen. */}
+        <Stack.Screen
+          name="paywall/[chapterId]"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen name="subscription" />
+        {/* New-chapter alerts: a sheet like M5a's. */}
+        <Stack.Screen
+          name="alerts"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
       </Stack.Protected>
 
       {/* Reachable regardless of gate state: the OAuth callback (mid-flight

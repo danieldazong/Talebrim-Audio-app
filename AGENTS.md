@@ -102,15 +102,32 @@ Use the following stack:
 - `jest-expo` with `jest` — dev-only, unit tests under `__tests__/` (approved
   2026-09-24; installed by prompt 16)
 - `expo-dev-client` — the development build, through EAS, Android first
-  (approved 2026-09-24; installed by the deferred setup before prompt 22, see
+  (approved 2026-09-24; installed 2026-09-25 by the deferred setup, see
   Build order)
+- `patch-package` — dev-only; the `postinstall` script reapplies `patches/`
+  after every install, EAS's included. It holds one patch, to `expo-audio`
+  (approved 2026-09-25; Decisions — 2026-09-25, "Development build"). Check
+  the patch still applies whenever `expo-audio` is upgraded.
 - `expo-file-system` — offline downloads, new API only (`File`, `Directory`,
   `Paths`), never the legacy one (approved 2026-09-25; installed by prompt 24
   with `npx expo install`)
 - `posthog-react-native` — analytics, explicit events only, with the Expo
   modules it requires (approved 2026-09-25; installed by prompt 21a)
 - `expo-notifications` — new-chapter alerts for books on My List (approved
-  2026-09-25; installed by prompt 23a, which needs the development build)
+  2026-09-25; 57.0.21, installed 2026-09-28 by prompt 23a with `npx expo
+  install`). Native, so it needs a development build made after it.
+  Required inside `lib/push.ts` only where push runs, never imported at the
+  top of a module: in Expo Go its import logs a warning, and Android's Expo
+  Go has no remote push. Android pushes go through Firebase Cloud Messaging:
+  the app carries `google-services.json` (client config, committed), and the
+  FCM V1 service-account key lives only in EAS
+- `react-native-purchases` — RevenueCat's SDK, the "RevenueCat" above
+  (10.10.2, installed 2026-09-25 by prompt 22 with `npx expo install`; no
+  config plugin). Native, so it needs a development build made after it.
+  Required inside `lib/revenuecat.ts` only where billing runs, never imported
+  at the top of a module: its import pulls in a browser bundle that the web
+  build's server render and Jest can't load (Decisions — 2026-09-25,
+  "Paywall as built")
 
 Do not introduce new major libraries unless there is a strong reason.
 
@@ -297,13 +314,15 @@ Ember button labels are `#1A1420`. Never white.
 
 **M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid — the dashboard's genre list, mirrored in `data/genres.ts` (see Decisions); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
 
-**M3 · Home / Discover** — Wordmark left; search and notification icons right. Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
+**M3 · Home / Discover** — Wordmark left; search and notification icons right. The bell opens the new-chapter alerts sheet to turn alerts on or off; there is no inbox (Decisions — 2026-09-28). Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
 **M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9. **No bottom nav, no mini player.**
 
 **M5 · Reader** — Light mode `#FBF7F1` by default (sepia and dark are user choices). Literata 18sp/1.7. Minimal top bar: back, chapter title, `Aa`. Fraunces chapter heading. Floating bottom toolbar on `#2C1E42` with brightness, `Aa`, bookmark, and a teal Listen icon that hands off to M6 at the equivalent position. Ember progress bar with position label. **No bottom nav, no mini player.**
 
-**M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet, lock icon, headline naming the next chapter. Ember `Watch ad & continue`. Teal outlined `Go Ad-Free`. Muted restore-purchases and manage-subscription links. States the ad-free value proposition before any purchase. Never shown for an already-unlocked chapter.
+**M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet, lock icon, headline naming the next chapter. Ember `Watch ad & continue`. Teal outlined `Go Ad-Free`. Muted restore-purchases and manage-subscription links. States the ad-free value proposition before any purchase. Never shown for an already-unlocked chapter. Its ember is "Unlock free" while the reader's free unlock for the book is available, otherwise `Watch ad & continue` (Decisions — 2026-09-25, "Retention and revenue"); both arrive with prompt 23, so prompt 22's sheet has no ember. `Go Ad-Free` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall").
+
+**Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; the Discover bell always opens it. Built by prompt 23a (Decisions — 2026-09-28).
 
 **M6 · Now Playing** — The app's only full-screen gradient. Dismiss chevron. Large square cover with a thin ember rim. Title, author, chapter. Scrub bar with ember track and thumb, elapsed and remaining labels. Transport row: back-15, previous, 72dp ember play/pause with a `#1A1420` icon, next, forward-15. Secondary teal controls: speed, `Sleep timer`, `Read instead` — hands back to M5 at the equivalent position.
 
@@ -311,7 +330,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M8 · Search & Results** — Back chevron plus search field in the header. Filter chips, active chip blush-filled. Result count line. Rows: cover thumbnail, title, author, metadata, audio badge where applicable. Recent searches when the query is empty. Needs a real empty state and a distinct no-results state.
 
-**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with `Unlock all chapters` and an ember `Go Ad-Free`. Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. `Download all` and the bottom bar wait for the downloads and paywall prompts (Decisions — 2026-09-25, "M9"). Built by prompt 20 ("M9 as built").
+**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with an ember `Go Ad-Free` and, beside it, the muted caption `Unlock all chapters` (text saying what the subscription does, not a second purchase: Decisions — 2026-09-25, "Paywall"). Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. `Download all` and the bottom bar wait for the downloads and paywall prompts (Decisions — 2026-09-25, "M9"). Built by prompt 20 ("M9 as built").
 
 **M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.**
 
@@ -568,6 +587,7 @@ instead of handing a stale object to a component.
 | `playback`   | `currentChapterId` (mirrors the player's loaded chapter), `speed`, and the sleep timer's end time and chosen length. Only `lib/audio` writes it. Playing and the position are read from the player, never copied here (prompt 18) | no — session only |
 | `parity`     | the in-session authoritative reading position, keyed by chapter, with the server `updated_at` it last saw and a dirty flag | no — see Read/listen parity below; only `lib/parity/writer.ts` writes it |
 | `search`     | M8's `recentSearches` (most recent first, at most 8) — added in prompt 11 | yes — per account, so sign-out clears it; never written to the database, and no search-history table exists or should |
+| `notifications` | new-chapter alerts: `answered` (the ask was answered, so the app never opens it again) and `enabled` — added in prompt 23a | yes — per account, so sign-out clears it; the server's copy is `push_tokens`, written only through `lib/push.ts` |
 
 `hasCompletedOnboarding` also drives the routing gate: `app/_layout.tsx` uses
 Expo Router's `Stack.Protected` (not an imperative `router.replace` in a
@@ -582,7 +602,9 @@ the navigator rather than merely redirected away from.
 TanStack cache, the persisted `onboarding` slice (so the next account on
 this device sees M2 again, not the previous account's genres) and the
 persisted `search` slice (one account's recent searches are not the next
-one's), and resets `parity`/`playback` in memory. It deliberately leaves the `reader` slice
+one's) and the persisted `notifications` slice (the next account is asked
+about alerts once, and starts with them off), and resets `parity`/`playback`
+in memory. It deliberately leaves the `reader` slice
 alone.
 
 ---
@@ -599,7 +621,8 @@ lib/
   query-status.ts  how a screen's status reads the queries it waits on (M5, M6)
   chapter-list.ts, library.ts, hero.ts  M9's, M7's and M3's hero's pure parts, each with its tests
   audio/        the one app-wide player (expo-audio), from prompt 18
-  revenuecat.ts
+  revenuecat.ts  the one billing client; billing.ts its pure parts; paywall.ts every way into M5a
+  push.ts       the one push client (new-chapter alerts); alerts.ts its pure parts
   format.ts
   cn.ts
 ```
@@ -614,7 +637,7 @@ Never expose secret keys in the mobile app.
 
 Strict split — violating it causes the parity bug this app exists to avoid.
 
-**TanStack Query** owns all server data: catalog, book and chapter metadata, chapter text, audio URLs, entitlements, unlock records. (Unlock records live in `unlocks`, which the app can read but never write. There is no entitlement mirror: subscription access comes from RevenueCat. See Data Contract.) It also owns offline caching via a persister. Query keys are declared in one place.
+**TanStack Query** owns all server data: catalog, book and chapter metadata, chapter text, audio URLs, entitlements, unlock records. (Unlock records live in `unlocks`, which the app can read but never write. There is no entitlement mirror: subscription access comes from RevenueCat. The mirror planned in prompt 22a is for server-side checks only; the app still reads `customerInfo`. See Data Contract.) It also owns offline caching via a persister. Query keys are declared in one place.
 
 **Zustand** owns transient client state, as listed under `store/`.
 
@@ -948,7 +971,7 @@ Made while building prompts 15–17 and reviewing each prompt before it.
     caller. This is the second sanctioned change to a dashboard-owned object,
     after the catalog broadcast triggers. It also carries out the dashboard
     AGENTS.md's own intent for `audio/`. The subscription branch waits for the
-    entitlement mirror (the paywall prompt).
+    entitlement mirror (prompt 22a; Decisions — 2026-09-25, "Paywall").
   - **No Edge Function.** Prompt 18 had planned one. It would have added no
     protection while `audio_read` let any reader sign any file, and it needed
     a service-role key and hand-verified Clerk tokens.
@@ -973,9 +996,10 @@ Made while building prompts 15–17 and reviewing each prompt before it.
   - **Moved from prompt 19 into prompt 18:** the live mini player and the
     Android notification permission. Dismissing M6 leaves audio playing, and
     the mini player must not show a placeholder over a real track.
-  - **Still to revise at their own reviews:** prompt 22 (the policy's
-    subscription branch) and prompt 24 (it signs downloads through an Edge
-    Function). Prompt 19 was revised on 2026-09-25.
+  - **Still to revise at their own reviews:** prompt 24 (it signs downloads
+    through an Edge Function). Prompt 19 was revised on 2026-09-25. Prompt
+    22's review (2026-09-25) moved the policy's subscription branch to
+    prompt 22a (Decisions — 2026-09-25, "Paywall").
 - **Audio as built (prompt 18).** `lib/audio/`:
   - `player.ts` holds the one `createAudioPlayer()`, made at the first play
     and released at sign-out. Its one `playbackStatusUpdate` listener records
@@ -1553,10 +1577,418 @@ under § Clerk Rules.
   - **New-chapter notifications:** its own prompt, 23a, after the deferred
     setup. Asked once, when a reader first adds a book to My List, never at
     launch. Only for books on My List, several chapters bundled into one
-    alert. A tap opens M4. It needs a `push_tokens` table, and a server
-    trigger watching `chapters`, which would be the third sanctioned change
-    to a dashboard-owned table, so the owner's yes comes before it.
+    alert. A tap opens M4. It needs a `push_tokens` table and a way to find
+    new chapters on the server. The trigger on `chapters` first planned
+    here was replaced at review by a scheduled job, which changes no
+    dashboard-owned table (below, "New-chapter notifications (prompt 23a
+    review)"). The owner's yes still comes before the migration.
   - **More stories** through the dashboard: 3 are published.
+- **Development build (the deferred setup, first part).** Started on
+  2026-09-25 because the owner found the lock-screen controls, the playback
+  notification and the headphone buttons not working. None of them can work
+  in Expo Go, so the fix was the development build, not a code change.
+  - **Owner's choices:** package `com.talebrim.app`; the EAS project on the
+    Expo account `ayoko123` (`@ayoko123/talebrim-app`), which also holds the
+    Android keystore; and a patch to `expo-audio` for unplugging, over a local
+    module.
+  - **Added:** `expo-dev-client`, `eas.json` with a `development` profile (an
+    internal APK), `android.package`, `extra.eas.projectId` and `owner` in
+    `app.json`, `patch-package` with a `postinstall` script, and
+    `patches/expo-audio+57.0.5.patch`. `eas init` also wrote a fixed
+    `android.permissions` list and an empty `extra.router` into `app.json`;
+    both were removed, so the plugins stay the only source of permissions.
+  - **Unplugging and Bluetooth disconnects pause.** `expo-audio` 57.0.5
+    builds its ExoPlayer without `setHandleAudioBecomingNoisy`, so on Android
+    audio carried on through the speaker. The patch turns it on. ExoPlayer
+    then pauses itself, and `player.ts` records that pause like any other
+    (a lock-screen pause takes the same path). Only `AudioPlayer.kt` is
+    patched: the app never uses `expo-audio`'s playlist.
+  - **A source patch needs `buildFromSource`.** `expo-audio` ships a
+    precompiled Android library (`local-maven-repo/…/expo.modules.audio-
+    57.0.5.aar`), and Gradle uses it instead of compiling the sources, so
+    the first build ran no `:expo-audio` compile steps and the owner's phone
+    kept playing on unplug (found 2026-09-26). `package.json` now has
+    `expo.autolinking.android.buildFromSource: ["expo-audio"]`, which makes
+    Gradle compile `expo-audio` from the patched sources. Any future patch
+    to an Expo module's native code needs the same entry. Check the build
+    log for that module's `compile…Kotlin` task: "Applying patches ✔"
+    alone doesn't prove the patch was compiled. The rebuilt build passed the
+    owner's check on 2026-09-26: unplugging headphones pauses the story.
+  - **No notification permission for playback.** Android's documentation
+    exempts media-session notifications from Android 13's
+    `POST_NOTIFICATIONS`, and `expo-audio`'s notification is a Media3
+    media-session one. Asking would be a prompt with nothing behind it, and
+    would be refused anyway: the plugin declares the permission only for
+    background recording. The phone check confirms it. (Since prompt 23a,
+    2026-09-28, the manifest declares it through `expo-notifications`, for
+    new-chapter alerts only; playback still never asks.)
+  - **`.easignore`**, which EAS reads instead of `.gitignore`: it repeats
+    `.gitignore`, and adds `.claude/`, `.agents/`, `.commandcode/` and
+    `material/`. The agent folders hold Windows symlinks that EAS cannot
+    recreate when it copies the project (EPERM); `material/` is 26 MB of
+    design frames the build never uses.
+  - **Build with `EAS_NO_VCS=1`** on this PC. With git, EAS packs the
+    repository's history too, and the 42 MB upload kept dropping
+    (ECONNRESET) partway. Without it the upload is 8 MB. In Git Bash:
+    `EAS_NO_VCS=1 npx eas-cli build --profile development --platform android`;
+    in PowerShell: `$env:EAS_NO_VCS=1; npx eas-cli build --profile development --platform android`.
+  - **Environment variables.** A development build loads its JavaScript from
+    Metro on the PC, which reads `.env.local`, so the `development` profile
+    needs no EAS environment variables. A preview or production build embeds
+    its JavaScript, and will need the `EXPO_PUBLIC_` values set on EAS
+    (prompt 21a step 13).
+  - **Passed on the phone on 2026-09-26** (§ Deferred setup, step 9): the
+    lock screen, the notification's controls, background playback, and
+    pausing on unplug and on Bluetooth disconnect. **Still to check:**
+    Bluetooth and car buttons. Their "next track" won't change chapter:
+    `expo-audio` has no next/previous-chapter controls, as already accepted
+    (§ Audio Rules). Note what they do instead.
+  - **EAS builds pin Node 24.15.0** (`"node"` in each `eas.json` profile),
+    which brings **npm 11.12.1**. EAS runs `npm ci`, which refuses a lock
+    file that lacks anything Linux would install. Two builds failed on it:
+    - With EAS's default Node 22 (npm 10), the lock lacked `typescript@5.9.3`,
+      a peer of Clerk's Solana packages. The Node pin fixed that.
+    - The owner's PC runs an older npm, 11.6.2, which leaves out optional
+      packages that Linux installs: `bufferutil`, `utf-8-validate` (under
+      `rpc-websockets`) and `@emnapi/core`/`runtime`. The lock was rewritten
+      with `npx npm@11.12.1 install --package-lock-only`, which only added
+      those entries.
+    - **After any `npm install` on the PC, rewrite the lock that way before
+      building,** or upgrade the PC's npm (`npm install -g npm@11.12.1`).
+  - **The native splash shows `assets/Image/logo.png`** (the owner's ember
+    mark, as onboarding shows it) on `bg`. `expo-splash-screen` always points
+    Android's splash style at `splashscreen_logo`, but creates that image
+    only when `image` is set, so without one the build failed at resource
+    linking (the third build, 2026-09-25). Don't remove the `image`.
+- **Paywall (prompt 22 review).** Settled on 2026-09-25 while reviewing
+  prompt 22 against the code and `material/11.png` (M10) and
+  `material/5.png` (M9's bar). The prompt carries the detail; the owner may
+  flip any of these before it is built.
+  - **"Unlock all chapters" is M9's caption for "Go Ad-Free"**, not a
+    purchase. The frame draws it as plain muted text beside the ember pill.
+    There is no per-book product: one would need a store product per book,
+    which a catalog loaded from the dashboard can't keep up with.
+  - **M5a has no plan cards.** Its teal "Go Ad-Free" opens M10, the one
+    place plans are chosen and bought, carrying the chapter so a purchase
+    returns to it. Until prompt 23, M5a has no ember button: "Unlock free"
+    and "Watch ad & continue" are `TODO(unlocks)` positions, never visible
+    placeholders.
+  - **Entitlement is read from `customerInfo` only**, through a TanStack
+    query that TanStack doesn't persist: RevenueCat's SDK keeps its own copy
+    on the device, which serves offline, and sign-out leaves none behind. The
+    lock rule gains `isSubscribed`, and an entitlement not yet known is
+    "can't tell yet", never "locked", as with unlocks.
+  - **The App User ID is the Clerk user id**: `logIn` beside
+    `identifyReader()`, `logOut` in `clearUserScopedState()`.
+  - **The entitlement mirror is prompt 22a**, written after prompt 22 is
+    built, in the dashboard repo: RevenueCat's webhook → an Edge Function
+    (verified by the webhook's authorization header) → an additive
+    `entitlements` table keyed by the Clerk user id, with an expiry. Server
+    checks read it; the app never writes it. If RevenueCat's plan lacks
+    webhooks, the same function is called by the app after a purchase or
+    restore, and fetches the subscriber from RevenueCat's REST API with the
+    secret key. Until 22a, a subscriber's locked chapter plays no audio once
+    the audio storage policy is live: a known gap, never patched in the
+    client.
+  - **Android only**, while iOS scope is open. **Entitlement id `ad_free`**,
+    one constant.
+  - **Every locked path opens M5a**, M5's end-of-chapter Next and M6's
+    next included (owner, 2026-09-25). Autoplay stopping before a locked
+    chapter opens it only when M6 is on screen. A locked screen offers a
+    button to M5a and never opens it by itself.
+  - **M10** follows `material/11.png`. For a non-subscriber it preselects
+    the "Best value" plan. It keeps AGENTS.md's muted "Cancel subscription"
+    link, which the frame doesn't draw. Terms and Privacy render only once
+    their URLs exist (none do: a launch blocker).
+  - **Store setup is split around a build.** Play Console allows
+    subscriptions only after a build with billing is uploaded, so prompt 22
+    adds an EAS `production` profile (an app bundle) and stops while the
+    owner uploads it to internal testing and creates the products.
+  - **Billing never runs where it can't:** not in the web build's server
+    render, not on the web, not in Expo Go if the SDK can't, and not without
+    a key (the lesson of prompt 21a's analytics).
+- **Paywall as built (prompt 22, code only).** Built on 2026-09-25 at the
+  owner's request before its preconditions were met: the deferred setup is
+  still open, and there is no Google Play app, RevenueCat project or
+  `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` yet. So step 17's store setup and
+  step 18's sandbox tests wait, and nothing below has run against a store.
+  - **`lib/revenuecat.ts`** holds `ENTITLEMENT_ID = "ad_free"` and the one
+    client. `billingAvailable()` is false without a `window` (the server
+    render), off Android, in Expo Go and without the key; every call is then
+    a no-op and the entitlement reads "not subscribed". In Expo Go the SDK
+    would fall back to a browser mode that takes only Test Store keys. The
+    SDK is `require`d on first use, configured with the Clerk user id as
+    its App User ID, so no anonymous id is made first. Identity changes run
+    one at a time; before every call `getAppUserID()` is checked and
+    `logIn` runs if it differs. `logOutBilling()` in
+    `clearUserScopedState()` skips an anonymous user. The listener forwards
+    only while its account is the one logged in.
+  - **The entitlement** is `entitlementOptions(userId)`
+    (`lib/queries/billing.ts`, `networkMode: "always"`: the SDK answers
+    offline from its own copy). The listener writes each update into it
+    (`components/providers.tsx`). `shouldPersistQuery()` drops every
+    `billing` key. `hooks/use-entitlement.ts` reads it.
+  - **The lock rule** takes `isSubscribed` (`types/states.ts`, tested in
+    `types/__tests__/states.test.ts`). `lockStateFor()` has a fourth
+    argument: an unlock or a subscription opens a chapter as soon as either
+    is known to; it is locked only once both are known. M4, M5, M6, M9,
+    Continue, M5a and the player's `resolveChapter()` all pass it, and M4's
+    and M9's rows wait for the entitlement as they wait for the unlocks.
+  - **Every locked path pushes M5a** through `openPaywall()`
+    (`lib/paywall.ts`): M4's Read, Listen and preview rows; M9's rows
+    (`ChapterRowOpens` gains `paywall`, with the mode the tap was going to);
+    Continue on M3 and M7 (`ResumeTarget`'s `locked` carries the chapter and
+    mode, and the button is enabled); M5's "Next chapter" and M6's next when
+    that chapter is locked; the "Unlock chapter" button on M5's and M6's
+    locked states. Autoplay stopping before a locked chapter is reported by
+    `onStoppedBeforeLocked()` (`lib/audio/player.ts`, tested), and M6 opens
+    M5a only while focused with the app active. `ChapterVerdict`'s `locked`
+    now carries its chapter id.
+  - **M5a** is `app/paywall/[chapterId].tsx`, a `transparentModal` with a
+    fade (the scrim would slide with the screen). Lock icon, Fraunces
+    headline, the value line, teal `Go Ad-Free`, then muted Restore
+    purchases (hidden where billing can't run) and Manage subscription
+    (only with a management URL). The two ember actions are
+    `TODO(unlocks)` comments for prompt 23. `hooks/use-paywall-chapter.ts`
+    resolves the lock; a chapter that turns out open replaces the sheet,
+    once. Go Ad-Free replaces the sheet with M10, carrying the chapter,
+    mode and `from`, so back from M10 skips the sheet.
+  - **After a purchase or restore from M5a's path** the chapter replaces
+    M10 in its mode (`openUnlockedChapter()`), except from a chapter's own
+    locked screen, where M10 only goes back: that screen is the chapter,
+    and it opens by itself as the entitlement lands.
+  - **M10** is `app/subscription.tsx`, with `hooks/use-plans.ts`,
+    `hooks/use-purchase.ts` (the one purchase path) and
+    `components/subscription/`. `lib/billing.ts` builds the plans (tested
+    in `lib/__tests__/billing.test.ts`): ordered by period, savings per
+    week against the shortest plan from the store's `pricePerWeek`,
+    rounded down, "Best value" for the most. Sublines use only the store's
+    strings: the shortest plan "Billed every 7 days", the others
+    "{per week}/week", plus " · Save N%" on Best value. The frame's
+    "Save $4.97 vs weekly" would need a currency formatted by hand, so it
+    isn't built. The status card is `raised`, as the frame measures
+    (#2C1E42), not `surface` as prompt 22 step 14 says; plan cards are
+    `surface` with a `raised` hairline and a 2dp ember border when
+    selected. A switch passes `{ oldProductIdentifier }` with no
+    replacement mode: the bridge sends null, and purchases-android then
+    uses its default, `WITHOUT_PRORATION` per RevenueCat's docs (the
+    default lives in the native AAR; confirm in the sandbox).
+  - **The store's product title** drops a trailing parenthesis, the app
+    name Google Play appends (`storeTitle()`); confirm on the phone. A plan
+    no longer in the offering, or offline, shows "Ad-Free".
+  - **M9's bar** (`AdFreeBar` in `app/chapters/[bookId].tsx`) shows when
+    `showAdFreeBar`: not subscribed, and a row locked. M9's ember action is
+    now its "Go Ad-Free", beside the Reading row's progress marker.
+  - **New shared UI:** `TextLink` in `components/ui/`, and `Button`'s
+    `accent` variant (teal outlined, the `btn--audio` pill, for secondary
+    actions that aren't audio). `formatDate()` in `lib/format.ts`.
+  - **`constants/legal.ts`** holds the Terms and Privacy URLs, both null.
+    M10 renders a link only for a URL that is set.
+  - **`eas.json` gains `production`:** Node 24.15.0, `autoIncrement`, an
+    Android app bundle, EAS environment `production`. Its `EXPO_PUBLIC_`
+    variables are not created yet (step 17).
+  - **Analytics:** `paywall_shown`, `plan_selected`, `purchase_started`,
+    `purchase_completed`, `purchase_cancelled`, `purchase_failed` (`kind`:
+    `pending`, `already_owned`, `store_unavailable`, `network`, `other`),
+    `restore_tapped` and `restore_completed`. Ids and fixed words only.
+- **Build order from here.** Decided by the owner on 2026-09-25, after
+  prompt 22's code was built: RevenueCat and rewarded ads go last, before
+  only the two passes.
+  1. The rest of the deferred setup (§ Deferred setup). Prompt 23a needs the
+     development build on the phone, and prompt 24 signs downloads under
+     the audio storage policy (step 8).
+  2. Prompt 23a, new-chapter notifications. Built 2026-09-28 (Decisions —
+     2026-09-28); its device checks are open.
+  3. Prompt 24, offline downloads.
+  4. Prompt 25, M11 Profile. Its billing parts (Restore purchases, Manage
+     subscription, "See plans", the plan badge) are built on prompt 22's
+     code and behave as M10 does until RevenueCat is set up.
+  5. RevenueCat and Google Play: prompt 22's store setup (step 17) and
+     sandbox tests (step 18).
+  6. Prompt 23, rewarded ads and wait-for-free.
+  7. Prompts 26 and 27, the states and accessibility passes. Last, because
+     they go over every screen, M5a's two ember actions from prompt 23
+     included.
+  - **Until step 5, billing stays off:** every reader is "not subscribed",
+    and M5a's Go Ad-Free leads to M10's "available in the Android app"
+    message. Accepted: there are no real readers yet.
+  - **Start the Google Play developer account now anyway.** It has the
+    longest lead time left: identity verification takes days, and a
+    personal account must run a closed test with at least 12 testers for
+    14 days before production access. AdMob, for prompt 23, has its own
+    approval. Neither waits on any prompt.
+- **New-chapter notifications (prompt 23a review).** Settled on 2026-09-25
+  while reviewing prompt 23a against the code, the deferred setup and
+  `material/3.png`, `6.png` and `10.png`. The prompt carries the detail; the
+  owner may flip any of these before it is built.
+  - **No trigger on `chapters`.** An Edge Function, `notify-new-chapters`,
+    the project's first, runs every 5 minutes from `pg_cron` through
+    `pg_net`, finds readable chapters in published books that it hasn't
+    seen, and sends. No dashboard-owned table gains anything, so this is not
+    a third sanctioned change. The price is up to about 15 minutes'
+    delay, which the bundling needs anyway.
+  - **Bundling and the cap are per book:** a book sends once none of its
+    new chapters is under 10 minutes old, and at most once in 24 hours.
+    Held-back chapters go into the next alert.
+  - **New tables, in the dashboard repo:** `push_tokens` (readers select
+    their own; written only through `set_push_token(token, enabled)`, a
+    `security definer` function that moves a token to the caller or
+    releases it), and three server-only tables: `chapter_alerts`,
+    `book_alerts` and `push_tickets`. A backfill marks every chapter already
+    readable as sent.
+  - **Sign-out stops alerts** by releasing the phone's token before Clerk's
+    sign-out, bounded like the parity flush. Offline, the next sign-in on
+    the phone releases or claims it.
+  - **One permission request in the whole app**, this prompt's: playback
+    never asks (§ Deferred setup, step 9). The "New chapters" channel is
+    created at "Notify me", never at launch, and hides its content on a
+    secure lock screen, since every live book is `mature_17`.
+  - **The ask:** once, after the first My List add the server confirms, as
+    a sheet (`app/alerts.tsx`, shaped like M5a's). "Not now" is remembered
+    per account in a new persisted `notifications` slice, cleared at
+    sign-out. The bell on Discover, a no-op until now, opens the same sheet
+    to turn alerts on or off; no inbox. M11's switch comes with prompt 25.
+  - **Android only**, and push never loads on the web, in the server render
+    or in Expo Go (`lib/push.ts`, shaped like `lib/revenuecat.ts`).
+  - **Owner:** a Firebase project, `google-services.json` committed, the FCM
+    V1 key uploaded to EAS, Expo's enhanced push security with its access
+    token in the function's secrets only, and a notification icon, which
+    is not supplied yet (`// MISSING ASSET: notification-icon`).
+
+## Decisions — 2026-09-28
+
+- **New-chapter alerts as built (prompt 23a).** Built on 2026-09-28 as
+  reviewed (Decisions — 2026-09-25, "New-chapter notifications"). The
+  server side is live. The device checks at the end of prompt 23a wait for
+  the development build made that day.
+  - **The SDK.** `expo-notifications` 57.0.21. Used: `getPermissionsAsync`
+    and `requestPermissionsAsync` (`granted`, `canAskAgain`),
+    `setNotificationChannelAsync` (`AndroidImportance.DEFAULT`,
+    `AndroidNotificationVisibility.PRIVATE`), `getExpoPushTokenAsync` with
+    the EAS project id from `expo-constants`, `addPushTokenListener`,
+    `setNotificationHandler` (`shouldShowBanner`, `shouldShowList`, no
+    sound, no badge), `addNotificationResponseReceivedListener`, and
+    `getLastNotificationResponse` with `clearLastNotificationResponse` for
+    a cold start. Importing it logs a warning in Expo Go, and asking Expo
+    Go on Android for a push token throws; the server render and the web
+    never load it. Android's token needs no permission, so a sign-in with
+    alerts off can release a token without prompting. The package's own
+    manifest declares `POST_NOTIFICATIONS` (Android 13+'s prompt) and
+    `RECEIVE_BOOT_COMPLETED`.
+  - **The app.** `lib/push.ts` is the one push client, shaped like
+    `lib/revenuecat.ts`: `pushAvailable()` is false without a `window`, off
+    Android and in Expo Go, and every call is then a no-op. Its calls to
+    `set_push_token()` run one at a time, so a sign-out's release never
+    lands after the next account's registration. `lib/alerts.ts` holds the
+    pure rules (the ask, the permission, a tap's book), tested in
+    `lib/__tests__/alerts.test.ts`. `hooks/use-alerts.ts` holds the sheet's
+    state and answers, the first-add ask, the sign-in sync and the taps.
+  - **The sheet** is `app/alerts.tsx`, a `transparentModal` like M5a, with
+    `from` (`my_list` or `bell`). M5a's scrim and sheet moved into
+    `components/ui/sheet.tsx` (`Sheet`), which both use. States: off (the
+    ask, with the ember "Notify me" and "Not now"), on ("Turn off"),
+    blocked ("Open settings") and unavailable. The permission is read again
+    when the reader comes back from Android's settings. "Not now", a
+    refusal at the system's prompt, and closing the sheet while it asks
+    (the scrim or Android back, through `beforeRemove`) are all "Not now".
+  - **The ask** (`useAskForAlerts()`) runs from `use-my-list.ts`'s
+    `onSuccess` for an add: once per account, only with the notifications
+    slice rehydrated, and only while M4 is focused and the app in front.
+  - **The `notifications` slice** (`store/notifications-store.ts`,
+    version 1): `answered` and `enabled`, persisted, cleared by
+    `clearUserScopedState()`. Not on the hydration gate;
+    `useAlertsSync()` waits for it instead, so a cold start never releases
+    a reader's token before it knows alerts are on.
+  - **The server learns** at each sign-in and each start signed in: on,
+    only while Android still allows notifications (turned off in its
+    settings since counts as off, and the slice follows), and otherwise
+    released. Also on a token change, with alerts on. Offline, the next
+    start tries again.
+  - **Sign-out releases the token side by side with the parity flush,**
+    each bounded at 2 seconds, before Clerk's `signOut()`. A deviation from
+    prompt 23a step 6 ("after the parity flush"): one after the other would
+    make an offline sign-out wait 4 seconds, and the two don't depend on
+    each other.
+  - **Taps** (`useAlertTaps()` in the root navigator): each alert once, by
+    notification id, the default action only, a `book_id` that passes
+    `isUuid()`, and only signed in and past onboarding. A tap on a
+    signed-out phone is dropped, not kept for after sign-in.
+  - **Analytics:** `notify_prompt_shown`, `notify_prompt_accepted` and
+    `notify_prompt_declined` (each with `from`), `alerts_turned_off` and
+    `notification_opened` (`book_id`). Never a token.
+  - **`app.json`:** the `expo-notifications` plugin with `color` ember and
+    no `icon` (`// MISSING ASSET: notification-icon` sits in `lib/push.ts`,
+    since JSON takes no comment), and `android.googleServicesFile`.
+  - **The server** (dashboard repo, migration `20260928120000`, applied
+    2026-09-28): `pg_cron` and `pg_net` enabled; `push_tokens` and
+    `set_push_token()`; the server-only `chapter_alerts`, `book_alerts` and
+    `push_tickets`; and three `service_role`-only steps:
+    `notify_find_new_chapters()`, `notify_due_books()` and
+    `notify_mark_sent()`. The backfill marked 25 chapters sent. Types
+    regenerated in both repos: additions only, 171 lines each.
+    `supabase/verify/new_chapter_alerts_rls.sql` runs 57 checks (readers A,
+    B and C, `anon`, an admin, `service_role`), all passing, and
+    `reader_tables_rls.sql` still passes (47).
+  - **The Edge Function** `notify-new-chapters` (the dashboard's
+    `supabase/functions/`) is deployed with `verify_jwt` off, as Supabase's
+    docs require for a function not called with a user's token under the
+    `sb_` keys. It checks a shared secret (`x-notify-secret`) against
+    `NOTIFY_CRON_SECRET` in constant time; the same value is in Vault as
+    `notify_new_chapters_secret`, where the schedule reads it. It uses its
+    own project's secret key (`SUPABASE_SECRET_KEYS`). Expo's access token
+    is `EXPO_ACCESS_TOKEN`, set by the owner. None of the three is in either
+    repo or this app.
+  - **Expo's side** (owner, 2026-09-28): the token is a robot user's
+    (`supabase-push`, Developer role), and enhanced push security is on, so
+    Expo refuses any push without it. Prompt 23a had recorded this as done
+    on 2026-09-26; at the build the account had no token and the toggle was
+    off. Expo doesn't document which role may send, so the first real alert
+    proves the role: a refusal shows in the function's log as a refused
+    message, and the fix is a new token in the same secret.
+  - **Live, 2026-09-28:** a manual run through `pg_net` answered 200 (found
+    0, due 0), and the schedule (migration `20260928130000`, `cron.job`
+    `notify-new-chapters`, `*/5 * * * *`) is active. Its first scheduled
+    run, at 17:50 UTC, succeeded with the same 200. A call without the
+    secret, or with a wrong one, gets 403. `NOTIFY_CRON_SECRET` was made
+    with .NET's `RandomNumberGenerator` and written to the function's
+    secrets and to Vault without ever being printed.
+  - **Checking it later:** `select * from cron.job_run_details order by
+    start_time desc limit 5` shows the runs; `net._http_response` holds each
+    run's answer, a JSON count (`found`, `books_due`, `books_sent`,
+    `books_without_readers`, `books_failed`, `messages`, `tokens_removed`,
+    `receipts_checked`); the function's own log is in the Supabase
+    dashboard → Edge Functions → `notify-new-chapters`.
+  - **The dashboard's gates** passed after the change: `typecheck`, `lint`
+    (0 errors; its 4 existing React Hook Form warnings) and `build`.
+    `supabase/functions/` is Deno, so its `tsconfig.json` excludes it and
+    `eslint.config.mjs` ignores it; `supabase/config.toml` sets the
+    function's `verify_jwt = false`.
+  - **The install.** `npx expo install expo-notifications`, then the lock
+    rewritten with `npx npm@11.12.1 install --package-lock-only` (§ Decisions
+    — 2026-09-25, "Development build"): it added the same four Linux-only
+    entries and removed nothing. `.easignore` doesn't exclude
+    `google-services.json`.
+  - **The development build with it** (EAS build `596d2398`, 2026-09-28)
+    finished, and is not yet installed on the owner's phone. The build
+    installed before it has no `expo-notifications`, so on it, as in the web
+    preview and Expo Go, the bell opens the "work in the Talebrim app for
+    Android" message. The owner saw exactly that in the web preview on
+    2026-09-28: expected, not a fault.
+  - **"10 minutes" is compared at 9**, so the quiet period is two runs of the
+    5-minute schedule and a run's few seconds of lateness never pushes an
+    alert to a third: a chapter reaches a phone within about 15 minutes.
+  - **Copy, flagged for the owner.** Sheet: "Get notified when new chapters
+    come out?", "Alerts are only for the stories on your My List.", "Notify
+    me", "Not now"; "New chapter alerts are on", "We'll let you know when a
+    story on your My List has new chapters." (a line the prompt doesn't
+    ask for), "Turn off"; "Notifications for Talebrim are turned off in
+    Android's settings.", "Open settings"; "New chapter alerts work in the
+    Talebrim app for Android." with a "Close" button (also not asked for:
+    the sheet's one way on). Channel: "New chapters", "New chapters of the
+    stories on your My List." Alerts: "New chapter of {book}" / "Chapter
+    {n}: {title}" or "Chapter {n}"; "{count} new chapters of {book}" /
+    "Chapters {first}–{last}"; "a story on My List" if a book has no
+    title. The bell's spoken label is "New chapter alerts".
 
 ---
 
@@ -1624,9 +2056,22 @@ The owner decided notifications, wait-for-free and analytics on 2026-09-25
 (Decisions — 2026-09-25, "Retention and revenue"). Analytics (21a) is built
 and confirmed sending real events, tagged `environment = development`, with
 no IP or location and no duplicate or server-render events (Decisions —
-2026-09-25, "Analytics as built"). **Next:** the deferred setup (§ Deferred
-setup), which prompts 22, 23 and 23a wait on. Each prompt is reviewed
-against the code before it is built. Open before M5 ships:
+2026-09-25, "Analytics as built"). The deferred setup is under way: the first
+development build was queued on EAS on 2026-09-25 (Decisions — 2026-09-25,
+"Development build"). Prompt 22 was reviewed the same day (Decisions —
+2026-09-25, "Paywall"), and its code was built at the owner's request ahead
+of its preconditions (Decisions — 2026-09-25, "Paywall as built"): M5a, M10,
+M9's bar and the subscription in the lock rule. Its store setup (step 17)
+and sandbox tests (step 18) wait for the owner's Google Play and RevenueCat
+accounts, and for a development build made after the SDK was installed.
+New-chapter alerts (23a) were built on 2026-09-28, the server side live
+(Decisions — 2026-09-28); their device checks wait for the development build
+made that day.
+**Next:** the device checks of 23a, the rest of the deferred setup
+(§ Deferred setup), then prompts 24 and 25; RevenueCat and prompt 23 come
+after them, and the passes 26 and 27 last (Decisions — 2026-09-25, "Build
+order from here"). Each prompt
+is reviewed against the code before it is built. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
@@ -1636,19 +2081,42 @@ private bucket, and `expo-audio`. Prompt 18 runs in Expo Go. The development
 build and the audio storage policy wait for the deferred setup below, which is
 due before prompt 22.
 
-### Deferred setup — due before prompt 22
+### Deferred setup — due before prompt 23a
 
 Postponed on 2026-09-24 so building can carry on in Expo Go. It cannot wait
 for the last prompt: RevenueCat (prompt 22) and rewarded ads (prompt 23) do not
-run in Expo Go, and Google Play products need the package name. Prompt 22 stops
-until this is done.
+run in Expo Go, and Google Play products need the package name. Once due
+before prompt 22, whose code was then built ahead of it; now due before
+prompt 23a, which needs the development build, and prompt 24, which needs the
+audio storage policy (Decisions — 2026-09-25, "Build order from here").
+
+**Progress, 2026-09-25** (Decisions — 2026-09-25, "Development build"):
+steps 1, 2 and 6 are done, and the first development build was queued on
+EAS. Still open: 3 (Clerk redirect), 4 and 5 (the owner's phone and test
+data), 7 (Google sign-in on the build), 8 (the audio storage policy) and the
+device checks in 9.
+
+**Progress, 2026-09-26:** the rebuilt development build is installed on the
+owner's phone, an itel A662LM on Android 12 (step 4 asked for 13 or newer
+where possible). Four of step 9's checks passed on it; the rest of 9 is still
+open, as are 3, 5, 7 and 8.
+
+**Progress, 2026-09-28:** a new development build with `expo-notifications`
+(EAS build `596d2398`, for prompt 23a) finished, and is waiting to be
+installed on the phone over the current one (same keystore, so the app's
+data stays). Steps 3, 5, 7 and 8, and the rest of 9, are still open.
 
 **Owner, before anything else:**
 
-1. **Android package name.** Recommended: `com.talebrim.app`. It is permanent
-   once the app is on Google Play. Lowercase letters, digits and underscores;
-   at least two parts separated by dots, each starting with a letter.
-2. **Expo account and EAS.** Sign up at expo.dev, then run these in this repo:
+1. **Android package name.** **Done 2026-09-25: `com.talebrim.app`**, in
+   `app.json`. It is permanent once the app is on Google Play. Lowercase
+   letters, digits and underscores; at least two parts separated by dots, each
+   starting with a letter.
+2. **Expo account and EAS.** **Done 2026-09-25:** the project is
+   `@ayoko123/talebrim-app` (`extra.eas.projectId`
+   `effcd777-50c4-4c5e-beb9-ff598da08002`, `owner: "ayoko123"` in
+   `app.json`), and EAS generated and keeps the Android keystore on that
+   account. The original instructions: sign up at expo.dev, then run these in this repo:
    `npm install -g eas-cli`, `eas login`, `eas whoami`, `eas init`. The last
    one adds a `projectId` to `app.json`, which is expected. If PowerShell
    blocks scripts, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`,
@@ -1674,7 +2142,10 @@ until this is done.
    set `android.package`. The owner runs
    `eas build --profile development --platform android` and installs the build
    on the phone. From then on, `npx expo start` opens the development build;
-   press `s` to switch to Expo Go.
+   press `s` to switch to Expo Go. **Done 2026-09-25.** The build (rebuilt
+   with `buildFromSource`) was installed on the owner's phone, an itel
+   A662LM on Android 12, on 2026-09-26. On this PC the build command needs `EAS_NO_VCS=1` in
+   front of it (Decisions — 2026-09-25, "Development build").
 7. Sign in with Google on the build, to prove the redirect.
 8. **The audio storage policy**, a migration in the dashboard repo, with
    § Phase 2's discipline:
@@ -1691,7 +2162,7 @@ until this is done.
        free_chapters_at_start` from the live `app_settings` row), or has an
        `unlocks` row for `auth.jwt() ->> 'sub'`.
    - Subscribers wait for the entitlement mirror: leave `-- TODO(paywall)`
-     where prompt 22 adds it.
+     where prompt 22a adds it.
    - It is the second sanctioned change to a dashboard-owned object, after the
      catalog broadcast triggers. The `is_admin()` branch keeps the dashboard's
      playback (`createAudioPlaybackUrl`) and uploads working. Show the owner
@@ -1709,18 +2180,30 @@ until this is done.
 9. The device checks prompt 18 could not run in Expo Go, on the development
    build:
    - background playback past three minutes, and the lock-screen controls,
-     with their skip interval
-   - Bluetooth pause and resume, and headphones unplugged
-   - the Android 13+ notification: whether its controls appear without
-     `POST_NOTIFICATIONS`. If they don't, request it with
-     `requestNotificationPermissionsAsync()` at the first Play, never at
-     launch. On denial, playback still works with fewer controls, and the app
-     never asks twice in a session.
-   - headphones unplugged and Bluetooth disconnecting on Android. `expo-audio`
-     57.0.5 has no `ACTION_AUDIO_BECOMING_NOISY` handling (iOS pauses on its
-     own), so playback likely carries on through the speaker. If it does, the
-     owner chooses between a small local module and a patch to `expo-audio`;
-     both need the development build.
+     with their skip interval. **Passed 2026-09-26.**
+   - pause and resume from Bluetooth headphone buttons
+   - the Android 13+ notification: its controls should appear with no
+     permission asked. **Settled 2026-09-25:** Android exempts
+     media-session notifications from `POST_NOTIFICATIONS`, and
+     `expo-audio`'s is one (a Media3 `MediaSessionService`), so the app never
+     requests it for playback. Its manifest didn't declare it until prompt
+     23a: since 2026-09-28 `expo-notifications`' own manifest declares it,
+     for new-chapter alerts only. Confirm on the phone that the controls
+     show in the notification drawer. Prompt 23a requests the permission for
+     new-chapter alerts, from the alerts sheet's "Notify me", never for
+     playback.
+     **Passed 2026-09-26 on Android 12:** the controls show, and nothing
+     asked. Android 12 has no notification permission, so the "nothing
+     asked" half is proven only on Android 13 or newer.
+   - headphones unplugged and Bluetooth disconnecting on Android: playback
+     pauses. **Patched 2026-09-25** (owner's choice over a local module):
+     its ExoPlayer sets `setHandleAudioBecomingNoisy(true)`, in
+     `patches/expo-audio+57.0.5.patch`. **It failed the phone check on
+     2026-09-26**, because the build used `expo-audio`'s precompiled copy;
+     `buildFromSource` now compiles the patch (Decisions — 2026-09-25,
+     "Development build"). **Both passed on 2026-09-26** with the rebuilt
+     build: unplugging, and switching Bluetooth headphones off. iOS pauses on
+     its own.
    - the lock screen's 10-second skips (see Decisions — 2026-09-24, "Audio
      as built"): accept them, or decide otherwise
    - a phone call pauses and then resumes; another app taking audio focus
@@ -1786,8 +2269,9 @@ subscription entitlement (a `security definer` function or an Edge Function),
 written as an additive migration in the dashboard repo — the `chapters`
 policies stay the dashboard's. Audio closes the same gap in the deferred
 setup (§ Deferred setup): its storage policy signs only what the reader may
-play. Both checks need the subscription entitlement mirror once the paywall
-prompt adds subscriptions.
+play. Both checks need the subscription entitlement mirror, which prompt 22a
+builds after the paywall prompt adds subscriptions (Decisions — 2026-09-25,
+"Paywall").
 
 **The instance is `t3.nano`.** `AGENTS.md` measures a **~450ms floor for a
 trivial query** and concludes that **instance size outranks every code-level
@@ -1845,6 +2329,15 @@ resumable-upload endpoint rejects them at parse, so a Node script written
 against the old format will fail confusingly (AGENTS.md, prompt 16). The
 mobile app does not upload, so it is unaffected — noted only so the format is
 not mistaken for a misconfiguration.
+
+**Edge Functions.** One exists, `notify-new-chapters` (prompt 23a; Decisions —
+2026-09-28), in the dashboard repo's `supabase/functions/`, where every
+function lives, beside the only migration history. It is called by `pg_cron`,
+never by this app. Its secrets (`NOTIFY_CRON_SECRET`, `EXPO_ACCESS_TOKEN`,
+and the project's own secret key, which Supabase injects) live only in the
+function's environment. Under the `sb_` keys a function not called with a
+user's token is deployed with `verify_jwt` off and checks its own credential
+(Supabase's docs); deploy it with `--no-verify-jwt --use-api`.
 
 ### Clerk
 
@@ -1985,8 +2478,30 @@ history (see Phase 2).
   after any change to these tables:
   `npx supabase db query --linked -f supabase/verify/reader_tables_rls.sql`.
 
+### New-chapter alerts (migration 20260928120000)
+
+Applied 2026-09-28 from the dashboard repo, additive, with prompt 23a
+(Decisions — 2026-09-28).
+
+| Object                 | What it is                                                         | Readers may                        |
+| ---------------------- | ------------------------------------------------------------------ | ---------------------------------- |
+| `push_tokens`          | one row per phone with alerts on: its Expo push token, one account | select their own                   |
+| `set_push_token(token, enabled)` | `security definer`: true gives the phone's token to the caller, false releases it whoever holds it | call it (`authenticated` only) |
+| `chapter_alerts`, `book_alerts`, `push_tickets` | the job's state: chapters found and sent, each book's last alert, Expo's tickets | nothing (server only) |
+| `notify_find_new_chapters()`, `notify_due_books()`, `notify_mark_sent()` | the job's steps | nothing (`service_role` only) |
+
+- Writer: `push_tokens` only through `lib/push.ts`, and only by calling
+  `set_push_token()`. Nothing else in the app touches these objects.
+- The Edge Function `notify-new-chapters` (dashboard repo) runs every 5
+  minutes from `pg_cron` through `pg_net`, with a shared secret from Vault.
+- Verified by `supabase/verify/new_chapter_alerts_rls.sql` in the dashboard
+  repo: 57 checks, the job's steps included, all passing. Re-run it after any
+  change to these objects.
+
 **Still does not exist:** `bookmarks` (M5's bookmark button is omitted until
-it does) and any entitlement mirror.
+it does) and any entitlement mirror (planned as prompt 22a: RevenueCat → an
+Edge Function → an additive `entitlements` table, for server-side checks
+only; Decisions — 2026-09-25, "Paywall").
 
 ### Column facts that change how screens are built
 
@@ -2147,6 +2662,9 @@ app. Do not create one.
 
 - `expo-audio` (decided 2026-09-24), with one app-wide player from `createAudioPlayer()` that outlives M6: background playback, lock-screen and Bluetooth controls through its media session, variable speed, sleep timer, and autoplay next chapter. It shows no next/previous-chapter buttons on the lock screen and offers no Android Auto browsing; both accepted.
 - Its config plugin runs with `recordAudioAndroid: false` and `microphonePermission: false`. This app never records, and Google Play asks every app holding `RECORD_AUDIO` to justify it.
+- Lock-screen controls, the playback notification and Bluetooth or car buttons all come from `expo-audio`'s media session. None of them exist in Expo Go (its manifest lacks the media service, so `player.ts` skips them there); test them on the development build.
+- Playback pauses when headphones are unplugged or Bluetooth disconnects. On Android that is a patch to `expo-audio` (`patches/expo-audio+57.0.5.patch`, `setHandleAudioBecomingNoisy(true)`), because `expo-audio` 57.0.5 doesn't handle it. It only takes effect because `package.json` lists `expo-audio` under `expo.autolinking.android.buildFromSource`; without that, Gradle uses the module's precompiled copy and ignores the patch. Keep both through every upgrade until `expo-audio` does it itself.
+- Never ask for the notification permission for playback: Android 13+ exempts media-session notifications from `POST_NOTIFICATIONS`.
 - Narration is AAC in `.m4a`, mono, 64 kbps, with fast start: the dashboard's upload standard (Decisions — 2026-09-25, "Narration format"). This app plays whatever `audio_path` names and never converts audio.
 - Downloads are offline copies, not files the reader owns: app-private storage, tied to the account, checked again online, and valid for 30 days offline. A chapter's audio and its text are two separate files. Implement both (prompt 24; Decisions — 2026-09-25, "Downloads").
 - Auto-bookmark on pause.
@@ -2192,7 +2710,7 @@ Refactor only when needed.
 
 Only create reusable components when necessary. Ask if unsure.
 
-Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `ProgressBar` (prompt 21), `Screen`, `SegmentedControl` and the `Body`/`Heading` type helpers. Add others there when a screen first needs them.
+Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `ProgressBar` (prompt 21), `Screen`, `SegmentedControl`, `Sheet` (a sheet route's scrim and frame, prompt 23a), `TextLink` (prompt 22) and the `Body`/`Heading` type helpers. Add others there when a screen first needs them.
 
 Components take data via props and do not fetch. Fetching lives in `hooks/`.
 
@@ -2219,6 +2737,66 @@ npm test
 Fix errors. A change that does not typecheck is not done.
 
 Do not disable a rule to silence an error; fix the cause. An inline disable needs a justification comment. Do not reformat files you did not otherwise change.
+
+---
+
+## Running the development build on the owner's phone
+
+Established on 2026-09-26. The owner tests the development build
+(`com.talebrim.app`, built by EAS; see Decisions — 2026-09-25, "Development
+build") on an **itel A662LM** (Android 12) connected to the PC by a **USB
+cable**. Loading the app's code over Wi-Fi doesn't work on the owner's
+network: the development bundle is about 18 MB and the download stalls at
+99%, then "Reloading...". Always connect over USB.
+
+**If the owner asks an agent** ("connect the phone to the dev build"):
+1. Check that Metro is running: `curl -s http://localhost:8081/status` should
+   print `packager-status:running`. If it doesn't, start Metro in the
+   background with `npx expo start --dev-client --port 8081`.
+2. Link the phone over USB: `adb -d reverse tcp:8081 tcp:8081`.
+3. Open the app pointed at the PC:
+   `adb -d shell am force-stop com.talebrim.app`, then
+   `adb -d shell am start -a android.intent.action.VIEW -d "exp+talebrim-app://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081" com.talebrim.app`.
+4. Confirm it loaded. `curl http://localhost:8081/json/list` lists one
+   target once the app's JavaScript runs. Then take a screenshot with
+   `adb -d exec-out screencap -p > screen.png` and look at it.
+
+`adb` is `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`. `-d` means
+"the device on USB". BlueStacks is often attached too (as `emulator-5554`),
+and it rejects `adb reverse` ("error: closed").
+
+**If the owner does it themselves**, in the VS Code terminal (PowerShell):
+
+Terminal 1, left running while testing:
+```powershell
+npx expo start
+```
+
+Terminal 2, with the phone plugged in by USB (again after every re-plug):
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb -d reverse tcp:8081 tcp:8081
+& $adb -d shell am start -a android.intent.action.VIEW -d "exp+talebrim-app://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081" com.talebrim.app
+```
+
+Give the owner PowerShell syntax (`$env:LOCALAPPDATA`, `& "…"`), never
+Command Prompt's `%LOCALAPPDATA%`, which PowerShell rejects.
+
+**When it doesn't load:**
+- **"unexpected end of stream on http://localhost:8081"** on the phone
+  means Metro isn't running. `%TEMP%\adb.log` then shows "cannot connect to
+  127.0.0.1:8081 … actively refused". Start Metro again.
+- **A blank grey screen** is normal for about 15 seconds in development
+  mode. If it stays grey, the phone has no internet. It needs its own Wi-Fi
+  or mobile data for Clerk, Supabase and the audio; only the app's code
+  comes over the cable.
+- **"Allow USB debugging?"** on the phone: tap Allow, and tick "Always allow
+  from this computer".
+- **To read the phone's log**, first raise its 64 KB buffer with
+  `adb -d logcat -G 16M`, then reproduce the problem and read
+  `adb -d logcat -d`.
+- **Two Metro servers** on port 8081 clash. Stop one before starting
+  another.
 
 ---
 

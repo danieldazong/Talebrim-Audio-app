@@ -7,6 +7,16 @@ Read AGENTS.md first and follow it strictly. Do only what is on this page.
 > placeholder's temporary link. Step 6's "clear cache" no longer holds
 > chapter text: prompt 24 took text out of the persisted cache. See AGENTS.md
 > § Decisions — 2026-09-25, "Downloads".
+>
+> Revision note, 2026-09-25 (prompt 23a review). Prompt 23a is built before
+> this one and gives notifications a backing service, so the "Do not" line
+> against notification preferences no longer holds for one row: M11 gets a
+> "New chapter alerts" switch, bound to the `notifications` slice and
+> `lib/push.ts` exactly as the alerts sheet (`app/alerts.tsx`) is, with the
+> same blocked and unavailable states. No other notification settings. The
+> rest of this prompt is reviewed against the code before it is built. See
+> AGENTS.md § Decisions — 2026-09-25, "New-chapter notifications (prompt 23a
+> review)".
 Design material: @prompt_material/13-profile.png — ensure everything is as is
 shown. This is the last screen; it is also where several legal and store
 requirements land, so read steps 8 and 9 before starting.

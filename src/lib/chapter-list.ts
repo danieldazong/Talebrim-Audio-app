@@ -2,6 +2,7 @@
 // reader left off, in; what each row shows, says and opens, out.
 // No React, no hooks, no JSX — AGENTS.md § lib/.
 import { formatDuration, formatDurationSpoken } from "@/lib/format";
+import type { ParitySourceMode } from "@/store/parity-store";
 import type { ChapterListItemRow } from "@/types/catalog";
 import { chapterStateFor, type ChapterLockInputs, type ChapterState } from "@/types/states";
 
@@ -9,6 +10,16 @@ export type ChapterSortOrder = "oldest" | "newest";
 
 /** The one thing in a row's right-hand slot. "listen" is the teal headphone, a button of its own. */
 export type ChapterRowTrailing = "reading" | "downloaded" | "locked" | "listen" | null;
+
+/**
+ * What a tap on a row opens. A locked chapter opens M5a, in the mode the tap
+ * was going to: never the reader or the player, which would be a paywall
+ * bypass.
+ */
+export type ChapterRowOpens =
+  | { kind: "reader" }
+  | { kind: "player" }
+  | { kind: "paywall"; mode: ParitySourceMode };
 
 export type ChapterListRow = {
   id: string;
@@ -21,8 +32,8 @@ export type ChapterListRow = {
   accessibilityLabel: string;
   state: ChapterState;
   trailing: ChapterRowTrailing;
-  /** What a tap on the row opens. Null opens nothing: a locked chapter, or one with nothing to open. */
-  opens: "reader" | "player" | null;
+  /** Null opens nothing: a chapter with neither text nor narration. */
+  opens: ChapterRowOpens | null;
 };
 
 const STATE_WORDS: Record<ChapterState["kind"], string> = {
@@ -64,9 +75,9 @@ function trailingFor(state: ChapterState, hasAudio: boolean): ChapterRowTrailing
  * returns them oldest first. Rows without an id or a number are the view's
  * nullable typing and are dropped, as on M4.
  *
- * Every state goes through `chapterStateFor()`, the one lock rule: Locked
- * beats Reading Now, and a null `access` is Locked.
- * TODO(paywall): the subscription entitlement isn't checked yet, as on M4–M6.
+ * Every state goes through `chapterStateFor()`, the one lock rule, the
+ * subscription included: Locked beats Reading Now, and a null `access` is
+ * Locked.
  */
 export function buildChapterRows(
   chapters: readonly ChapterListItemRow[],
@@ -86,7 +97,7 @@ export function buildChapterRows(
       isDownloaded: false,
     });
     const detail = detailLines(hasText, hasAudio, row.audio_duration_seconds);
-    const locked = state.kind === "locked";
+    const mode: ParitySourceMode | null = hasText ? "text" : hasAudio ? "audio" : null;
 
     return [
       {
@@ -101,8 +112,12 @@ export function buildChapterRows(
         ].join(". ")}.`,
         state,
         trailing: trailingFor(state, hasAudio),
-        // TODO(paywall): a locked row opens M5a. Never the reader or the player.
-        opens: locked ? null : hasText ? "reader" : hasAudio ? "player" : null,
+        opens:
+          mode === null
+            ? null
+            : state.kind === "locked"
+              ? { kind: "paywall", mode }
+              : { kind: mode === "text" ? "reader" : "player" },
       },
     ];
   });

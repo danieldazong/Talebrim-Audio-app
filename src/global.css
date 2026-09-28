@@ -189,8 +189,10 @@
    A FILTER, not navigation — distinct from `chip`/`chip--selected` (blush-
    filled, used by M2/M8). Selected state is an ember underline; exempt from
    the one-ember-element-per-screen rule, same as nav active state. */
+/* `justify-end pb-2`: the underline sits 8dp above the strip's bottom at
+   every text size, where the divider below meets it. */
 @utility tab-strip__item {
-  @apply items-start gap-2 pb-2;
+  @apply items-start justify-end gap-2 pb-2;
 }
 @utility tab-strip__label {
   font-family: var(--font-ui-medium);
@@ -202,7 +204,15 @@
   color: var(--color-body);
 }
 @utility tab-strip__underline {
-  @apply h-0.5 w-full rounded-pill bg-ember;
+  @apply h-0.5 w-full rounded-pill;
+}
+@utility tab-strip__underline--active {
+  @apply bg-ember;
+}
+/* The frame's 1dp `surface` hairline across the strip, just under the
+   underline (material/3.png). Fixed: it doesn't scroll with the tabs. */
+@utility tab-strip__divider {
+  @apply absolute inset-x-4 bottom-[7px] h-px bg-surface;
 }
 
 /* Bottom nav — three-item, AGENTS.md § Layout. Active item is a filled

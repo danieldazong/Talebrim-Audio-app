@@ -173,7 +173,7 @@ export default function Search() {
       {hasInput ? (
         <ScrollView
           horizontal
-          className="no-scrollbar mt-4 grow-0"
+          className="no-scrollbar mt-4 grow-0 shrink-0"
           contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
           keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}

@@ -62,13 +62,16 @@ export function createPersister(userId: string | null | undefined) {
 /** How long a persisted cache stays restorable. */
 export const PERSIST_MAX_AGE_MS = GC_TIME_MS;
 
-const AUDIO_SOURCE_ROOT = queryKeys.audio.all()[0];
+/** Roots of keys that live in memory only. */
+const NEVER_PERSISTED: readonly unknown[] = [queryKeys.audio.all()[0], queryKeys.billing.all()[0]];
 
 /**
  * What the persister writes to disk: the default (successful queries), less
- * every signed narration URL. A signed URL is a bearer credential, so it
- * lives in memory only (AGENTS.md § Storage buckets).
+ * every signed narration URL and everything RevenueCat answers. A signed URL
+ * is a bearer credential, so it lives in memory only (AGENTS.md § Storage
+ * buckets). The entitlement is the SDK's to keep on the device: a TanStack
+ * copy could outlive a sign-out or a lapse (prompt 22 step 5).
  */
 export function shouldPersistQuery(query: Query): boolean {
-  return defaultShouldDehydrateQuery(query) && query.queryKey[0] !== AUDIO_SOURCE_ROOT;
+  return defaultShouldDehydrateQuery(query) && !NEVER_PERSISTED.includes(query.queryKey[0]);
 }

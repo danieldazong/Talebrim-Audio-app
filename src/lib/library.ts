@@ -164,14 +164,15 @@ export function chapterProgress(number: number, chapterCount: number | null): Ch
   return { label: `Chapter ${number} of ${chapterCount}`, fraction: Math.min(number / chapterCount, 1) };
 }
 
-/** Where the Continue card's button goes. Only "reader" and "player" open anything. */
+/** Where the Continue card's button goes. "pending" and "none" open nothing. */
 export type ResumeTarget =
   | { kind: "reader"; chapterId: string }
   /** M6, told to play: it is a play button, as M5's Listen is. */
   | { kind: "player"; chapterId: string }
   /** The lock can't be told yet. */
   | { kind: "pending" }
-  | { kind: "locked" }
+  /** M5a, in the mode the button would have opened: never the reader or the player. */
+  | { kind: "locked"; chapterId: string; mode: ParitySourceMode }
   /** The chapter has neither text nor narration. */
   | { kind: "none" };
 
@@ -180,14 +181,16 @@ export type ResumeLockInputs = {
   freeChaptersAtStart: number | undefined;
   /** Chapter ids from the reader's unlocks; undefined while they load. */
   unlockedChapterIds: ReadonlySet<string> | undefined;
+  /** The reader's `ad_free` entitlement is active; undefined while it loads. */
+  isSubscribed: boolean | undefined;
 };
 
 /**
  * Resumes in the mode the reader left, or the other one when the chapter no
  * longer has that side: never a round trip to an empty state. The lock is
- * `lockStateFor()`'s, as on M5 and M6, so a chapter free by access or by
- * position never waits for the unlocks.
- * TODO(paywall): the subscription entitlement isn't checked yet, as on M4–M6.
+ * `lockStateFor()`'s, as on M5 and M6, the subscription included, so a
+ * chapter free by access or by position waits for neither the unlocks nor
+ * the entitlement.
  */
 export function resumeTarget(position: LibraryPosition, inputs: ResumeLockInputs): ResumeTarget {
   if (inputs.freeChaptersAtStart === undefined) return { kind: "pending" };
@@ -195,13 +198,17 @@ export function resumeTarget(position: LibraryPosition, inputs: ResumeLockInputs
     { id: position.chapterId, number: position.number, access: position.access },
     inputs.freeChaptersAtStart,
     inputs.unlockedChapterIds,
+    inputs.isSubscribed,
   );
   if (lock === null) return { kind: "pending" };
-  if (lock.kind === "locked") return { kind: "locked" };
 
   const order: ("player" | "reader")[] = position.lastMode === "audio" ? ["player", "reader"] : ["reader", "player"];
   const kind = order.find((mode) => (mode === "player" ? position.hasAudio : position.hasText));
-  return kind ? { kind, chapterId: position.chapterId } : { kind: "none" };
+  if (kind === undefined) return { kind: "none" };
+  if (lock.kind === "locked") {
+    return { kind: "locked", chapterId: position.chapterId, mode: kind === "player" ? "audio" : "text" };
+  }
+  return { kind, chapterId: position.chapterId };
 }
 
 /** What a screen reader hears for the resume button, including why it won't open. */

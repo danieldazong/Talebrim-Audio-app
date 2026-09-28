@@ -98,7 +98,8 @@ type ContinueCardViewProps = {
 function ContinueCardView({ card, onOpenBook, onResume, resumeVariant }: ContinueCardViewProps) {
   const primary = resumeVariant === "primary";
   const eyebrow = card.mode === "audio" ? "Listening" : "Reading";
-  const canResume = card.target.kind === "reader" || card.target.kind === "player";
+  // A Locked chapter opens M5a.
+  const canResume = card.target.kind !== "pending" && card.target.kind !== "none";
   // "Chapter 1 of 13 · 2:00 left" while listening; live while this chapter is in the player.
   const line = useProgressLine(card);
 

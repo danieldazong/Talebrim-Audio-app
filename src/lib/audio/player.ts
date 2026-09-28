@@ -87,6 +87,7 @@ let audioMode: Promise<void> | null = null;
 let snapshot: AudioSnapshot = EMPTY;
 const listeners = new Set<() => void>();
 const advanceListeners = new Set<(fromChapterId: string, toChapterId: string) => void>();
+const lockedListeners = new Set<(fromChapterId: string, lockedChapterId: string) => void>();
 
 /** The account the loaded chapter plays under: autoplay and a re-mint read as it. */
 let userId: string | null = null;
@@ -139,6 +140,20 @@ export function onChapterAdvance(listener: (fromChapterId: string, toChapterId: 
   advanceListeners.add(listener);
   return () => {
     advanceListeners.delete(listener);
+  };
+}
+
+/**
+ * Called when autoplay stops at the end of a chapter because the next one is
+ * locked, with the chapter it finished and the locked one. M6 opens M5a for
+ * it when it is on screen; nothing else does. Returns the unsubscribe.
+ */
+export function onStoppedBeforeLocked(
+  listener: (fromChapterId: string, lockedChapterId: string) => void,
+): () => void {
+  lockedListeners.add(listener);
+  return () => {
+    lockedListeners.delete(listener);
   };
 }
 
@@ -433,7 +448,7 @@ function prefetchNext(chapter: LoadedChapter, status: AudioStatus) {
  * Autoplay, on `didJustFinish`: the end is already recorded, so it is
  * flushed, then the next chapter plays at its restore point if it is
  * unlocked and narrated. A locked one, one without narration, or the end of
- * the book stops cleanly.
+ * the book stops cleanly; a locked one is reported, for M6 to open M5a.
  */
 async function advance(finished: LoadedChapter) {
   const gen = generation;
@@ -449,7 +464,7 @@ async function advance(finished: LoadedChapter) {
   }
   if (gen !== generation || next === null) return;
   if (next.kind === "locked") {
-    // TODO(paywall): M5a opens here, for the next chapter.
+    for (const listener of lockedListeners) listener(finished.chapterId, next.chapterId);
     return;
   }
   if (next.kind !== "playable") return;

@@ -10,10 +10,11 @@ import {
 } from "@/components/book/book-states";
 import { BookSynopsis } from "@/components/book/book-synopsis";
 import { Screen } from "@/components/ui";
-import { useBookDetail, type ChapterTarget } from "@/hooks/use-book-detail";
+import { useBookDetail, type ChapterTarget, type PreviewChapter } from "@/hooks/use-book-detail";
 import { useMyList } from "@/hooks/use-my-list";
 import { resolveCoverUrl } from "@/lib/covers";
 import { isUuid } from "@/lib/ids";
+import { openPaywall } from "@/lib/paywall";
 import type { BookDetailRow } from "@/types/catalog";
 
 // M4 Story Detail — AGENTS.md M4, prompt 12.
@@ -62,15 +63,23 @@ function BookDetail({ bookId }: { bookId: string }) {
   // Hidden when both are null (or empty).
   const synopsis = data?.synopsis || data?.short_description || null;
 
+  // A locked chapter opens M5a, never the reader or the player. Every path
+  // pushes, so back returns here.
   function openTarget(target: ChapterTarget, pathname: "/reader/[chapterId]" | "/player/[chapterId]") {
     if (target.kind !== "ready") return;
-    // TODO(paywall): a locked target opens M5a here. It must never navigate.
-    if (target.locked) return;
+    if (target.locked) {
+      openPaywall(target.chapterId, pathname === "/player/[chapterId]" ? "audio" : "text", "book");
+      return;
+    }
     router.push({ pathname, params: { chapterId: target.chapterId } });
   }
 
-  function openChapter(chapterId: string) {
-    router.push({ pathname: "/reader/[chapterId]", params: { chapterId } });
+  function openChapter(chapter: PreviewChapter) {
+    if (chapter.state.kind === "locked") {
+      openPaywall(chapter.id, "text", "book");
+      return;
+    }
+    router.push({ pathname: "/reader/[chapterId]", params: { chapterId: chapter.id } });
   }
 
   return (
