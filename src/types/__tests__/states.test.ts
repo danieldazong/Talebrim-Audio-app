@@ -2,11 +2,10 @@
 
 import { chapterStateFor, lockStateFor, resolveChapterState, type LockableChapter } from "@/types/states";
 
-// The one lock rule (prompt 22 step 6): free by access, free by position,
+// The one lock rule (prompt 22 step 6): free by the chapter's own access,
 // unlocked, subscribed, and "can't tell yet" while the unlocks or the
-// entitlement load.
+// entitlement load. Never free by position (owner, 2026-09-30).
 
-const FREE_AT_START = 3;
 const NONE: ReadonlySet<string> = new Set();
 
 function chapter(number: number, access: LockableChapter["access"] = "locked"): LockableChapter {
@@ -14,11 +13,10 @@ function chapter(number: number, access: LockableChapter["access"] = "locked"): 
 }
 
 describe("resolveChapterState", () => {
-  const base = { access: "locked", chapterNumber: 9, freeChaptersAtStart: FREE_AT_START } as const;
+  const base = { access: "locked" } as const;
 
-  it("opens a chapter free by access, free by position, unlocked or subscribed", () => {
+  it("opens a chapter free by access, unlocked or subscribed", () => {
     expect(resolveChapterState({ ...base, access: "free" }).kind).toBe("unlocked");
-    expect(resolveChapterState({ ...base, chapterNumber: 3 }).kind).toBe("unlocked");
     expect(resolveChapterState({ ...base, isUnlockedByUser: true }).kind).toBe("unlocked");
     expect(resolveChapterState({ ...base, isSubscribed: true }).kind).toBe("unlocked");
   });
@@ -38,12 +36,12 @@ describe("resolveChapterState", () => {
 
 describe("chapterStateFor", () => {
   it("treats a null access as locked, whatever opens other chapters", () => {
-    const inputs = { freeChaptersAtStart: FREE_AT_START, unlockedChapterIds: new Set(["chapter-1"]), isSubscribed: true };
+    const inputs = { unlockedChapterIds: new Set(["chapter-1"]), isSubscribed: true };
     expect(chapterStateFor(chapter(1, null), inputs).kind).toBe("locked");
   });
 
   it("opens every chapter for a subscriber", () => {
-    const inputs = { freeChaptersAtStart: FREE_AT_START, unlockedChapterIds: NONE, isSubscribed: true };
+    const inputs = { unlockedChapterIds: NONE, isSubscribed: true };
     expect([4, 20, 200].map((number) => chapterStateFor(chapter(number), inputs).kind)).toEqual([
       "unlocked",
       "unlocked",
@@ -53,36 +51,41 @@ describe("chapterStateFor", () => {
 });
 
 describe("lockStateFor", () => {
-  it("opens a chapter free by access or by position without waiting for anything", () => {
-    expect(lockStateFor(chapter(9, "free"), FREE_AT_START, undefined, undefined)?.kind).toBe("unlocked");
-    expect(lockStateFor(chapter(2), FREE_AT_START, undefined, undefined)?.kind).toBe("unlocked");
+  it("opens a chapter free by access without waiting for anything", () => {
+    expect(lockStateFor(chapter(9, "free"), undefined, undefined)?.kind).toBe("unlocked");
+  });
+
+  it("locks a chapter at the start of a book the owner locked: its number never opens it", () => {
+    expect(lockStateFor(chapter(1), NONE, false)?.kind).toBe("locked");
+    expect(lockStateFor(chapter(2), NONE, false)?.kind).toBe("locked");
+    expect(lockStateFor(chapter(2), undefined, undefined)).toBeNull();
   });
 
   it("opens an unlocked chapter, even while the subscription is unknown", () => {
-    expect(lockStateFor(chapter(9), FREE_AT_START, new Set(["chapter-9"]), undefined)?.kind).toBe("unlocked");
-    expect(lockStateFor(chapter(9), FREE_AT_START, new Set(["chapter-9"]), false)?.kind).toBe("unlocked");
+    expect(lockStateFor(chapter(9), new Set(["chapter-9"]), undefined)?.kind).toBe("unlocked");
+    expect(lockStateFor(chapter(9), new Set(["chapter-9"]), false)?.kind).toBe("unlocked");
   });
 
   it("opens every chapter for a subscriber, even while the unlocks are unknown", () => {
-    expect(lockStateFor(chapter(9), FREE_AT_START, undefined, true)?.kind).toBe("unlocked");
-    expect(lockStateFor(chapter(9), FREE_AT_START, NONE, true)?.kind).toBe("unlocked");
+    expect(lockStateFor(chapter(9), undefined, true)?.kind).toBe("unlocked");
+    expect(lockStateFor(chapter(9), NONE, true)?.kind).toBe("unlocked");
   });
 
   it("can't tell while the subscription is unknown: never locked, so no paywall flashes", () => {
-    expect(lockStateFor(chapter(9), FREE_AT_START, NONE, undefined)).toBeNull();
+    expect(lockStateFor(chapter(9), NONE, undefined)).toBeNull();
   });
 
   it("can't tell while the unlocks are unknown", () => {
-    expect(lockStateFor(chapter(9), FREE_AT_START, undefined, false)).toBeNull();
+    expect(lockStateFor(chapter(9), undefined, false)).toBeNull();
   });
 
   it("locks once both are known and neither opens it", () => {
-    expect(lockStateFor(chapter(9), FREE_AT_START, NONE, false)?.kind).toBe("locked");
-    expect(lockStateFor(chapter(9), FREE_AT_START, new Set(["chapter-8"]), false)?.kind).toBe("locked");
+    expect(lockStateFor(chapter(9), NONE, false)?.kind).toBe("locked");
+    expect(lockStateFor(chapter(9), new Set(["chapter-8"]), false)?.kind).toBe("locked");
   });
 
   it("keeps a null access locked once everything is known, subscribed or not", () => {
-    expect(lockStateFor(chapter(1, null), FREE_AT_START, NONE, true)?.kind).toBe("locked");
-    expect(lockStateFor(chapter(1, null), FREE_AT_START, undefined, undefined)).toBeNull();
+    expect(lockStateFor(chapter(1, null), NONE, true)?.kind).toBe("locked");
+    expect(lockStateFor(chapter(1, null), undefined, undefined)).toBeNull();
   });
 });

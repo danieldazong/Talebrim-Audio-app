@@ -49,6 +49,12 @@ function messageFor(status: MessageStatus, chapterNumber: number | null): Messag
         message: chapterNumber === null ? "This chapter is locked." : `Chapter ${chapterNumber} is locked.`,
         caption: null,
       };
+    case "expired":
+      return {
+        icon: "cloud-offline-outline",
+        message: "Connect to the internet to keep this chapter offline.",
+        caption: "Downloads open offline for 30 days after they were last checked.",
+      };
   }
 }
 
@@ -64,8 +70,9 @@ type PlayerStateMessageProps = {
 
 /**
  * Failed (Retry), offline (none: queries resume on their own), not available
- * (Go back), no audio (Read instead) and locked (M5a). Locked never opens
- * M5a by itself: a dismissed sheet must not come straight back.
+ * (Go back), no audio (Read instead), locked (M5a), and expired (none: a
+ * download past its 30 days offline is checked again once online). Locked
+ * never opens M5a by itself: a dismissed sheet must not come straight back.
  */
 export function PlayerStateMessage({
   status,

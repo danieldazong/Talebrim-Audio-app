@@ -59,12 +59,13 @@ function row(
   };
 }
 
+/** Chapters 1–5 are free by access, as the dashboard would create them under a setting of 5; the rest locked. */
 function position(overrides: Partial<LibraryPosition> = {}): LibraryPosition {
   return {
     chapterId: "chapter-1",
     bookId: "book-1",
     number: 5,
-    access: "locked",
+    access: (overrides.number ?? 5) <= 5 ? "free" : "locked",
     hasText: true,
     hasAudio: true,
     lastMode: "text",
@@ -74,8 +75,8 @@ function position(overrides: Partial<LibraryPosition> = {}): LibraryPosition {
   };
 }
 
-/** Five free chapters by position; nothing unlocked. */
-const LOADED: ResumeLockInputs = { freeChaptersAtStart: 5, unlockedChapterIds: new Set(), isSubscribed: false };
+/** Nothing unlocked, not subscribed. */
+const LOADED: ResumeLockInputs = { unlockedChapterIds: new Set(), isSubscribed: false };
 
 describe("segments", () => {
   const items = [item("a", 3), item("b", 0), item("c", null), item("d", 1)];
@@ -229,14 +230,11 @@ describe("resumeTarget", () => {
     expect(resumeTarget(position({ number: 6 }), { ...LOADED, isSubscribed: true }).kind).toBe("reader");
   });
 
-  it("waits for the settings, and for the unlocks and the entitlement only when the chapter isn't free", () => {
-    expect(
-      resumeTarget(position({ number: 2 }), {
-        freeChaptersAtStart: undefined,
-        unlockedChapterIds: undefined,
-        isSubscribed: undefined,
-      }),
-    ).toEqual({ kind: "pending" });
+  it("waits for the unlocks and the entitlement only when the chapter isn't free", () => {
+    expect(resumeTarget(position({ number: 2 }), { unlockedChapterIds: undefined, isSubscribed: undefined }).kind).toBe(
+      "reader",
+    );
+    expect(resumeTarget(position({ number: 2, access: "locked" }), LOADED)).toMatchObject({ kind: "locked" });
     const noUnlocks = { ...LOADED, unlockedChapterIds: undefined };
     expect(resumeTarget(position({ number: 6 }), noUnlocks)).toEqual({ kind: "pending" });
     expect(resumeTarget(position({ number: 2 }), noUnlocks).kind).toBe("reader");

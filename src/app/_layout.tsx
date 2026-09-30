@@ -15,10 +15,11 @@ import { AuthedQueryProvider } from "@/components/providers";
 import { useAlertTaps, useAlertsSync } from "@/hooks/use-alerts";
 import { useAppFonts } from "@/hooks/use-app-fonts";
 import { useCatalogSync } from "@/hooks/use-catalog-sync";
+import { useDownloadsSync } from "@/hooks/use-downloads";
+import { useOnboardingComplete, useOnboardingSync } from "@/hooks/use-onboarding";
 import { useParitySync } from "@/hooks/use-parity-sync";
 import { useScreenTracking } from "@/hooks/use-screen-tracking";
 import { colors, fonts } from "@/theme";
-import { useOnboardingStore } from "@/store/onboarding-store";
 // Imported here (root layout), not just from `(auth)/_layout.tsx`, so its
 // `registerHydratingStore("splash")` call runs before `AuthGate` ever checks
 // `isHydrationComplete()`. `(auth)/_layout.tsx` is a separate route module
@@ -49,9 +50,13 @@ const screenOptions = {
  * The three-way routing gate (prompt 07 step 5), composed with — not
  * replacing — the Clerk auth gate from prompt 06:
  *
- *   not signed in                              → M1 (sign-in / verify / sso-callback)
- *   signed in, hasCompletedOnboarding === false → M2 (genre picker)
- *   signed in, hasCompletedOnboarding === true  → past onboarding
+ *   not signed in                   → M1 (sign-in / verify / sso-callback)
+ *   signed in, onboarding not done  → M2 (genre picker)
+ *   signed in, onboarding done      → past onboarding
+ *
+ * "Done" is on this phone or on the account (`useOnboardingComplete()`,
+ * 2026-09-30), so signing back in, reinstalling or a new phone never shows
+ * M2 again to an account that finished it.
  *
  * Declared with `Stack.Protected` rather than an imperative `router.replace`
  * inside a `useEffect`: when `hasCompletedOnboarding` flips true, Expo Router
@@ -73,9 +78,9 @@ const screenOptions = {
  */
 function RootNavigator() {
   const { isSignedIn } = useAuth();
-  const hasCompletedOnboarding = useOnboardingStore(
-    (state) => state.hasCompletedOnboarding,
-  );
+  const hasCompletedOnboarding = useOnboardingComplete();
+  // M2's answer, kept with the account as well as on the phone.
+  useOnboardingSync();
 
   // Dashboard edits reach every screen live. Signed-in only: the Realtime
   // topic is private.
@@ -89,6 +94,9 @@ function RootNavigator() {
   // whether this phone alerts this account, and a tap on an alert opens M4.
   useAlertsSync();
   useAlertTaps(Boolean(isSignedIn) && hasCompletedOnboarding);
+  // Offline downloads (prompt 24): the index and the folder made to agree on
+  // start, and every download checked online at start and once a day.
+  useDownloadsSync();
 
   return (
     <Stack screenOptions={screenOptions}>
@@ -121,6 +129,10 @@ function RootNavigator() {
           }}
         />
         <Stack.Screen name="subscription" />
+        {/* Offline downloads (prompt 24): M11's "Downloads & offline storage". */}
+        <Stack.Screen name="downloads" />
+        {/* Discover's bell: new chapters of the stories on My List. */}
+        <Stack.Screen name="updates" />
         {/* New-chapter alerts: a sheet like M5a's. */}
         <Stack.Screen
           name="alerts"

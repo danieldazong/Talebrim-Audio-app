@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useLoadedPhase } from "@/hooks/use-audio";
+import { useDownloadEntry, useIsOnline, useVerifyOnOpen } from "@/hooks/use-downloads";
 import { useEntitlement } from "@/hooks/use-entitlement";
+import { useRowCheck } from "@/hooks/use-row-check";
 import { retryLoaded, type LoadedChapter } from "@/lib/audio/player";
 import { audioRestoreMs, newerPosition } from "@/lib/audio/rules";
 import { resolveCoverUrl } from "@/lib/covers";
+import { withinOfflineWindow } from "@/lib/downloads/rules";
 import type { RestorePoint } from "@/lib/parity/convert";
 import { adoptServerPosition } from "@/lib/parity/writer";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
@@ -16,6 +19,7 @@ import { chapterDetailOptions, chapterNeighboursOptions, chapterTextOptions } fr
 import { readingPositionByChapterOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
+import type { DownloadEntry } from "@/store/downloads-store";
 import { useParityStore } from "@/store/parity-store";
 import type { ChapterDetailRow, ChapterTargetRow } from "@/types/catalog";
 import { lockStateFor, type LockableChapter, type PlayerStatus } from "@/types/states";
@@ -43,6 +47,8 @@ export type PlayingChapter = LoadedChapter & {
   hasBookmark: boolean;
   /** False only when `has_text` is: Read instead has nowhere to go. */
   hasText: boolean;
+  /** Opened from its download with no network (prompt 24 step 9). */
+  openedOffline: boolean;
 };
 
 export type NowPlayingView =
@@ -82,12 +88,33 @@ function toOpenChapter(row: ChapterDetailRow | null): OpenChapter | null {
   };
 }
 
+/**
+ * The open chapter from its download's index entry, for a cold start with no
+ * network and nothing cached. `access` is never read: the download's last
+ * online check stands in for the lock check.
+ */
+function fromDownload(entry: DownloadEntry): OpenChapter {
+  return {
+    id: entry.chapterId,
+    bookId: entry.book.id,
+    number: entry.number,
+    title: entry.title,
+    access: null,
+    // Offline, only what was downloaded plays and reads.
+    hasAudio: entry.audio !== null,
+    hasText: entry.text !== null,
+    durationSeconds: entry.durationSeconds,
+  };
+}
+
 function toNeighbour(row: ChapterTargetRow | null | undefined): LockableChapter | null {
   if (!row || row.id === null || row.number === null) return null;
   return { id: row.id, number: row.number, access: row.access };
 }
 
-function settled(status: "unavailable" | "locked" | "no-audio" | "failed" | "offline" | "loading"): Resolved {
+function settled(
+  status: "unavailable" | "locked" | "no-audio" | "failed" | "offline" | "loading" | "expired",
+): Resolved {
   return { view: { status }, waitingOn: [] };
 }
 
@@ -95,8 +122,8 @@ function settled(status: "unavailable" | "locked" | "no-audio" | "failed" | "off
  * Everything M6 reads for one chapter, and the state it resolves to — the
  * same shape and precedence as M5's `useChapterReader()`.
  *
- * The chapter row, settings and unlocks start together; the book and the
- * neighbours follow the row. Each check waits only for what it needs, so only
+ * The chapter row, the settings (for the cover) and the unlocks start
+ * together; the book and the neighbours follow the row. Each check waits only for what it needs, so only
  * a query the screen is waiting on can fail it. The neighbours never hold up
  * the ready state.
  *
@@ -107,21 +134,50 @@ function settled(status: "unavailable" | "locked" | "no-audio" | "failed" | "off
  * the narration (prompt 19 step 4). The loaded chapter waits for none of
  * them: opening M6 from the mini player never re-signs. Its failures are
  * the player's, not a query's.
+ *
+ * A downloaded chapter never waits for a signed URL: it plays from its file,
+ * and its text's length is in the index. Offline, it opens from the index
+ * entry alone (prompt 24 step 9), or says to connect once past its 30 days.
  */
 export function useNowPlaying(chapterId: string) {
   const { userId } = useAuth();
   const loadedPhase = useLoadedPhase(chapterId);
   const isLoaded = loadedPhase !== null;
 
+  // Downloads (prompt 24 step 9), as M5 has them: the index is waited for,
+  // and offline a download opens from its entry, its last online check
+  // within its 30 days standing in for the lock check. Taken the moment the
+  // phone is seen offline, then held for the rest of the open.
+  const download = useDownloadEntry(chapterId);
+  const online = useIsOnline();
+  const [openedAt] = useState(() => Date.now());
+  const [opening, setOpening] = useState<{ copy: DownloadEntry | null }>({ copy: null });
+  if (opening.copy === null && download && !online) setOpening({ copy: download });
+  const copy = opening.copy;
+  const copyExpired = copy !== null && !withinOfflineWindow(copy.verifiedAt, openedAt);
+  // A downloaded chapter plays from its file: never a signed URL for it.
+  const localCopy = copy ?? download ?? null;
+  const hasFile = localCopy?.audio != null;
+  // Online, a download is checked again as it opens, never waited on.
+  useVerifyOnOpen(chapterId, download);
+
   const chapter = useQuery(chapterDetailOptions(chapterId));
-  const open = chapter.data === undefined ? undefined : toOpenChapter(chapter.data);
+  // A cached row can be from before the owner locked the chapter: it decides
+  // nothing until it is current (fetched again when stale) or the phone is
+  // offline (2026-09-30). The loaded chapter doesn't wait: the player checks
+  // it again itself on every catalog change (`recheckLoaded()`), and the mini
+  // player opens it at once.
+  const chapterCheck = useRowCheck(chapter);
+  const rowUsable = chapterCheck === "current" || chapterCheck === "cached" || isLoaded;
+  const open = copy ? fromDownload(copy) : chapter.data === undefined ? undefined : toOpenChapter(chapter.data);
   const bookId = open?.bookId ?? null;
 
   // Usually cached already by M4 or M5.
   const book = useQuery({ ...bookDetailOptions(bookId ?? ""), enabled: bookId !== null });
+  // For the cover only.
   const settings = useQuery(appSettingsOptions());
-  // Signed-in route, so `userId` is set. Only a chapter that is free neither
-  // by access nor by position waits for it.
+  // Signed-in route, so `userId` is set. Only a chapter that isn't free by
+  // its own access waits for it.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
   // The subscription, waited for on the same terms as the unlocks.
   const entitlement = useEntitlement();
@@ -131,26 +187,21 @@ export function useNowPlaying(chapterId: string) {
     enabled: open != null,
   });
 
-  const freeChaptersAtStart = settings.data?.free_chapters_at_start;
   const unlockedChapterIds = useMemo(
     () => (unlocks.data ? new Set(unlocks.data.map((unlock) => unlock.chapter_id)) : undefined),
     [unlocks.data],
   );
   // The one lock rule, shared with M4 and M5, the subscription included.
-  const lockState =
-    open && freeChaptersAtStart !== undefined
-      ? lockStateFor(open, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
-      : null;
+  const lockState = open && rowUsable ? lockStateFor(open, unlockedChapterIds, isSubscribed) : null;
   const next = toNeighbour(neighbours.data?.next);
-  const nextLockState =
-    next && freeChaptersAtStart !== undefined
-      ? lockStateFor(next, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
-      : null;
+  const nextLockState = next ? lockStateFor(next, unlockedChapterIds, isSubscribed) : null;
 
   // The narration URL: only after the lock check, never for a locked
-  // chapter, and never for the loaded chapter, which already plays.
+  // chapter, never for the loaded chapter, which already plays, and never
+  // for a downloaded one, which plays from its file.
   const sourceEnabled =
     !isLoaded &&
+    !hasFile &&
     Boolean(userId) &&
     open != null &&
     lockState !== null &&
@@ -160,17 +211,18 @@ export function useNowPlaying(chapterId: string) {
   const refused = sourceEnabled && source.data?.kind === "refused";
 
   // Storage refused to sign: the lock rule may have changed since it was
-  // read. Settings and unlocks are fetched again, once, and the lock check
-  // above decides between Locked and Not available.
+  // read (the chapter locked in the dashboard, say). The chapter row and the
+  // unlocks are fetched again, once, and the lock check above decides
+  // between Locked and Not available.
   const recheckStarted = useRef(false);
   const [rechecked, setRechecked] = useState(false);
-  const refetchSettings = settings.refetch;
+  const refetchChapter = chapter.refetch;
   const refetchUnlocks = unlocks.refetch;
   useEffect(() => {
     if (!refused || recheckStarted.current) return;
     recheckStarted.current = true;
-    void Promise.allSettled([refetchSettings(), refetchUnlocks()]).then(() => setRechecked(true));
-  }, [refused, refetchSettings, refetchUnlocks]);
+    void Promise.allSettled([refetchChapter(), refetchUnlocks()]).then(() => setRechecked(true));
+  }, [refused, refetchChapter, refetchUnlocks]);
 
   // Where Play starts, as M5 restores (AGENTS.md § Read/listen parity): a
   // position already in this session at once; without one, the server row,
@@ -218,7 +270,11 @@ export function useNowPlaying(chapterId: string) {
   // proved the chapter published, never for a locked one, and only when
   // reading wrote last. Coming from M5 it is cached. One try, like the
   // position: offline or failed, the place falls back to the audio side.
+  // A download knows its text's length already: no text is read for it.
+  const downloadedTextLength = localCopy?.text?.length ?? null;
   const textEnabled =
+    downloadedTextLength === null &&
+    copy === null &&
     placeToMap !== undefined &&
     open != null &&
     lockState !== null &&
@@ -228,7 +284,7 @@ export function useNowPlaying(chapterId: string) {
   const text = useQuery({ ...chapterTextOptions(chapterId), enabled: textEnabled, retry: false });
   const textAnswered =
     positionSettled &&
-    lockState !== null &&
+    (lockState !== null || copy !== null) &&
     (!textEnabled ||
       text.data !== undefined ||
       text.fetchStatus === "paused" ||
@@ -238,15 +294,27 @@ export function useNowPlaying(chapterId: string) {
   const [textSettled, setTextSettled] = useState(false);
   if (!textSettled && textAnswered) setTextSettled(true);
   // A disabled query still hands back what the cache holds: never a fetch.
-  const textLength = typeof text.data === "string" ? text.data.length : null;
+  const textLength = downloadedTextLength ?? (typeof text.data === "string" ? text.data.length : null);
 
   function resolve(): Resolved {
+    // The downloads index is still rehydrating.
+    if (download === undefined) return settled("loading");
     if (open === undefined) return waitFor([chapter]);
-    // Missing, unpublished, hidden by RLS, or unpublished while open.
-    if (open === null || book.data === null) return settled("unavailable");
-    if (book.data === undefined || settings.data === undefined) return waitFor([book, settings]);
-    if (lockState === null) return waitFor([unlocks, entitlement]);
-    if (lockState.kind === "locked") return settled("locked");
+    if (copy === null) {
+      // Missing, unpublished, hidden by RLS, or unpublished while open.
+      if (open === null || book.data === null) return settled("unavailable");
+      if (book.data === undefined) return waitFor([book]);
+      // The cached row is being fetched again, or that failed: it decides nothing yet.
+      if (!rowUsable) {
+        return chapterCheck === "failed" ? { view: { status: "failed" }, waitingOn: [chapter] } : settled("loading");
+      }
+      if (lockState === null) return waitFor([unlocks, entitlement]);
+      if (lockState.kind === "locked") return settled("locked");
+    } else if (copyExpired && !isLoaded) {
+      // Offline past its 30 days: the next online check restores or deletes it.
+      return settled("expired");
+    }
+    if (open === null) return settled("unavailable");
     // A null `has_audio` is the view's nullable typing: nothing to play either.
     if (open.hasAudio !== true) return settled("no-audio");
 
@@ -255,11 +323,13 @@ export function useNowPlaying(chapterId: string) {
       if (loadedPhase === "failed") return settled("failed");
       if (loadedPhase === "offline") return settled("offline");
     } else {
-      if (source.data === undefined) return waitFor([source]);
-      // The row lost its narration after `has_audio` was read.
-      if (source.data.kind === "unavailable") return settled("unavailable");
-      if (source.data.kind === "refused") return settled(rechecked ? "unavailable" : "loading");
-      // The URL is ready; where Play starts is not yet. Never an error.
+      if (!hasFile) {
+        if (source.data === undefined) return waitFor([source]);
+        // The row lost its narration after `has_audio` was read.
+        if (source.data.kind === "unavailable") return settled("unavailable");
+        if (source.data.kind === "refused") return settled(rechecked ? "unavailable" : "loading");
+      }
+      // The URL or the file is ready; where Play starts is not yet. Never an error.
       if (!positionSettled || !textSettled) return settled("loading");
     }
 
@@ -285,9 +355,7 @@ export function useNowPlaying(chapterId: string) {
           bookId: open.bookId,
           number: open.number,
           title: open.title,
-          bookTitle: book.data.title ?? "Untitled",
-          author: book.data.author,
-          coverUrl: resolveCoverUrl(settings.data.public_cdn_domain, book.data.cover_path),
+          ...shownBook(),
           durationSeconds,
           previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
           nextId: next?.id ?? null,
@@ -296,9 +364,21 @@ export function useNowPlaying(chapterId: string) {
           isLoaded,
           hasBookmark,
           hasText: open.hasText !== false,
+          openedOffline: copy !== null,
         },
       },
       waitingOn: [],
+    };
+  }
+
+  /** The book lines and cover: from the download offline, else from the catalog. */
+  function shownBook(): Pick<LoadedChapter, "bookTitle" | "author" | "coverUrl"> {
+    if (copy !== null) return { bookTitle: copy.book.title, author: copy.book.author, coverUrl: copy.book.coverUrl };
+    return {
+      bookTitle: book.data?.title ?? "Untitled",
+      author: book.data?.author ?? null,
+      coverUrl:
+        settings.data && book.data ? resolveCoverUrl(settings.data.public_cdn_domain, book.data.cover_path) : null,
     };
   }
 
@@ -315,7 +395,11 @@ export function useNowPlaying(chapterId: string) {
   }
 
   const meta: NowPlayingMeta = {
-    book: book.data ? { title: book.data.title ?? "Untitled", author: book.data.author } : null,
+    book: copy
+      ? { title: copy.book.title, author: copy.book.author }
+      : book.data
+        ? { title: book.data.title ?? "Untitled", author: book.data.author }
+        : null,
     chapter: open ? { number: open.number, title: open.title } : null,
   };
 

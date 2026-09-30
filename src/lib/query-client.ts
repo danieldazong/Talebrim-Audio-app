@@ -63,15 +63,35 @@ export function createPersister(userId: string | null | undefined) {
 export const PERSIST_MAX_AGE_MS = GC_TIME_MS;
 
 /** Roots of keys that live in memory only. */
-const NEVER_PERSISTED: readonly unknown[] = [queryKeys.audio.all()[0], queryKeys.billing.all()[0]];
+const NEVER_PERSISTED: readonly unknown[] = [
+  queryKeys.audio.all()[0],
+  queryKeys.billing.all()[0],
+  queryKeys.downloads.all()[0],
+];
+
+/** Prefixes below a root, for keys that live in memory only while the rest of their root persists. */
+const NEVER_PERSISTED_PREFIXES: readonly (readonly unknown[])[] = [queryKeys.chapters.textAll()];
+
+function startsWith(key: readonly unknown[], prefix: readonly unknown[]): boolean {
+  return prefix.every((segment, index) => key[index] === segment);
+}
 
 /**
  * What the persister writes to disk: the default (successful queries), less
- * every signed narration URL and everything RevenueCat answers. A signed URL
- * is a bearer credential, so it lives in memory only (AGENTS.md § Storage
- * buckets). The entitlement is the SDK's to keep on the device: a TanStack
- * copy could outlive a sign-out or a lapse (prompt 22 step 5).
+ * every signed narration URL, everything RevenueCat answers, and chapter
+ * text. A signed URL is a bearer credential, so it lives in memory only
+ * (AGENTS.md § Storage buckets). The entitlement is the SDK's to keep on the
+ * device: a TanStack copy could outlive a sign-out or a lapse (prompt 22 step
+ * 5). Chapter text is large (a live chapter reached 314,950 characters), and
+ * the whole cache is one AsyncStorage value that Android can fail to read
+ * back past about 2 MB. Offline reading is what downloads are for, and they
+ * keep text in files of their own (prompt 24 step 10). The rest of
+ * `chapters` still persists.
  */
 export function shouldPersistQuery(query: Query): boolean {
-  return defaultShouldDehydrateQuery(query) && !NEVER_PERSISTED.includes(query.queryKey[0]);
+  return (
+    defaultShouldDehydrateQuery(query) &&
+    !NEVER_PERSISTED.includes(query.queryKey[0]) &&
+    !NEVER_PERSISTED_PREFIXES.some((prefix) => startsWith(query.queryKey, prefix))
+  );
 }

@@ -48,6 +48,34 @@ export function DiscoverError({ onRetry }: DiscoverErrorProps) {
   );
 }
 
+type DiscoverOfflineProps = {
+  /** "See your downloads", whenever anything is downloaded; null hides it. */
+  onOpenDownloads: (() => void) | null;
+};
+
+/**
+ * Offline with nothing cached for this tab (prompt 24 step 12): until now
+ * the paused query showed the skeleton forever. No retry: the query resumes
+ * on its own when the phone reconnects. The outlined "See your downloads" is
+ * the only button: offline, the hero's ember "Read or Listen" isn't there.
+ */
+export function DiscoverOffline({ onOpenDownloads }: DiscoverOfflineProps) {
+  return (
+    <View className="flex-1 items-center justify-center gap-4 px-8" accessibilityLiveRegion="polite">
+      <Ionicons name="cloud-offline-outline" size={32} color={colors.muted} />
+      <Text className="font-ui text-body text-center text-base" maxFontSizeMultiplier={1.5}>
+        You&apos;re offline.
+      </Text>
+      <Text className="font-ui text-muted text-center text-sm" maxFontSizeMultiplier={1.5}>
+        {onOpenDownloads
+          ? "Discover loads when you reconnect. Your downloaded chapters read and play right now."
+          : "Discover loads when you reconnect."}
+      </Text>
+      {onOpenDownloads ? <Button label="See your downloads" variant="outlined" onPress={onOpenDownloads} /> : null}
+    </View>
+  );
+}
+
 type DiscoverEmptyScreenProps = {
   onRetry: () => void;
 };

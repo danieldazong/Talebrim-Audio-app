@@ -106,11 +106,18 @@ Use the following stack:
   Build order)
 - `patch-package` — dev-only; the `postinstall` script reapplies `patches/`
   after every install, EAS's included. It holds one patch, to `expo-audio`
-  (approved 2026-09-25; Decisions — 2026-09-25, "Development build"). Check
-  the patch still applies whenever `expo-audio` is upgraded.
+  (approved 2026-09-25; Decisions — 2026-09-25, "Development build"): pause
+  on unplugging, and since 2026-09-30 ExoPlayer owning audio focus
+  (Decisions — 2026-09-30, "Another app's audio pauses the narration").
+  Check the patch still applies whenever `expo-audio` is upgraded.
 - `expo-file-system` — offline downloads, new API only (`File`, `Directory`,
-  `Paths`), never the legacy one (approved 2026-09-25; installed by prompt 24
-  with `npx expo install`)
+  `Paths`), never the legacy one (approved 2026-09-25; 57.0.7, a direct
+  dependency since 2026-09-28, installed by prompt 24 with `npx expo
+  install`). Linked into every build before that as a dependency of `expo`.
+  It declares `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` up to
+  Android 12, as `expo-image`'s Glide declares the first: `app.json` blocks
+  both (`android.blockedPermissions`). Only `lib/downloads/files.ts` imports
+  it, and only on Android (`downloadsAvailable()`)
 - `posthog-react-native` — analytics, explicit events only, with the Expo
   modules it requires (approved 2026-09-25; installed by prompt 21a)
 - `expo-notifications` — new-chapter alerts for books on My List (approved
@@ -314,15 +321,15 @@ Ember button labels are `#1A1420`. Never white.
 
 **M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid — the dashboard's genre list, mirrored in `data/genres.ts` (see Decisions); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
 
-**M3 · Home / Discover** — Wordmark left; search and notification icons right. The bell opens the new-chapter alerts sheet to turn alerts on or off; there is no inbox (Decisions — 2026-09-28). Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
+**M3 · Home / Discover** — Wordmark left; search and notification icons right. The bell opens Updates, the new-chapter inbox, with a teal dot while a chapter is new (Decisions — 2026-09-30, "Updates inbox"); until then it opened the alerts sheet, with no inbox (Decisions — 2026-09-28). Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
-**M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons, ending in an entry point to M9. **No bottom nav, no mini player.**
+**M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"), then a round download button between the pill and Share that no frame draws either (Decisions — 2026-09-30, "M4's download button"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons (and M9's teal Downloaded disc on a downloaded chapter), ending in an entry point to M9. **No bottom nav, no mini player.**
 
 **M5 · Reader** — Light mode `#FBF7F1` by default (sepia and dark are user choices). Literata 18sp/1.7. Minimal top bar: back, chapter title, `Aa`. Fraunces chapter heading. Floating bottom toolbar on `#2C1E42` with brightness, `Aa`, bookmark, and a teal Listen icon that hands off to M6 at the equivalent position. Ember progress bar with position label. **No bottom nav, no mini player.**
 
 **M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet, lock icon, headline naming the next chapter. Ember `Watch ad & continue`. Teal outlined `Go Ad-Free`. Muted restore-purchases and manage-subscription links. States the ad-free value proposition before any purchase. Never shown for an already-unlocked chapter. Its ember is "Unlock free" while the reader's free unlock for the book is available, otherwise `Watch ad & continue` (Decisions — 2026-09-25, "Retention and revenue"); both arrive with prompt 23, so prompt 22's sheet has no ember. `Go Ad-Free` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall").
 
-**Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; the Discover bell always opens it. Built by prompt 23a (Decisions — 2026-09-28).
+**Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; Updates' alerts row always opens it (the Discover bell did until 2026-09-30). Built by prompt 23a (Decisions — 2026-09-28).
 
 **M6 · Now Playing** — The app's only full-screen gradient. Dismiss chevron. Large square cover with a thin ember rim. Title, author, chapter. Scrub bar with ember track and thumb, elapsed and remaining labels. Transport row: back-15, previous, 72dp ember play/pause with a `#1A1420` icon, next, forward-15. Secondary teal controls: speed, `Sleep timer`, `Read instead` — hands back to M5 at the equivalent position.
 
@@ -330,7 +337,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M8 · Search & Results** — Back chevron plus search field in the header. Filter chips, active chip blush-filled. Result count line. Rows: cover thumbnail, title, author, metadata, audio badge where applicable. Recent searches when the query is empty. Needs a real empty state and a distinct no-results state.
 
-**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with an ember `Go Ad-Free` and, beside it, the muted caption `Unlock all chapters` (text saying what the subscription does, not a second purchase: Decisions — 2026-09-25, "Paywall"). Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. `Download all` and the bottom bar wait for the downloads and paywall prompts (Decisions — 2026-09-25, "M9"). Built by prompt 20 ("M9 as built").
+**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with an ember `Go Ad-Free` and, beside it, the muted caption `Unlock all chapters` (text saying what the subscription does, not a second purchase: Decisions — 2026-09-25, "Paywall"). Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. Built by prompt 20 ("M9 as built"); the bottom bar by prompt 22 ("Paywall as built"); `Download all`, the Downloaded disc and each openable row's long-press sheet by prompt 24 (Decisions — 2026-09-28, "Downloads as built").
 
 **M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.**
 
@@ -582,20 +589,26 @@ instead of handing a stale object to a component.
 
 | Store        | Holds                                                              | Persisted?                                     |
 | ------------ | ------------------------------------------------------------------- | ----------------------------------------------- |
-| `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — the only durable home for genres until Phase 2's profile table |
+| `onboarding` | `hasCompletedOnboarding`, `selectedGenres`                          | yes — per phone, cleared at sign-out; since 2026-09-30 also kept on the account, in Clerk's `unsafeMetadata.onboarding` (`lib/onboarding.ts`), so a returning account skips M2 |
 | `reader`     | `theme`, `fontSize`, `lineSpacing`, `atkinsonEnabled`                | yes — device-level, not per-account, so sign-out does not clear it |
 | `playback`   | `currentChapterId` (mirrors the player's loaded chapter), `speed`, and the sleep timer's end time and chosen length. Only `lib/audio` writes it. Playing and the position are read from the player, never copied here (prompt 18) | no — session only |
 | `parity`     | the in-session authoritative reading position, keyed by chapter, with the server `updated_at` it last saw and a dirty flag | no — see Read/listen parity below; only `lib/parity/writer.ts` writes it |
 | `search`     | M8's `recentSearches` (most recent first, at most 8) — added in prompt 11 | yes — per account, so sign-out clears it; never written to the database, and no search-history table exists or should |
 | `notifications` | new-chapter alerts: `answered` (the ask was answered, so the app never opens it again) and `enabled` — added in prompt 23a | yes — per account, so sign-out clears it; the server's copy is `push_tokens`, written only through `lib/push.ts` |
+| `downloads` | the offline downloads index: the account it belongs to, and per chapter its files (extension, real size, the `audio_path` it came from), `verifiedAt`, `updated_at`, and what M5 and M6 need to open it with no network (number, title, parts, duration, the book's title, author and cover URL) — added in prompt 24 | yes — per account, so sign-out clears it with the files in `downloads/`; never a table, never a signed URL. Only `lib/downloads` writes it |
+| `updates` | when the account last looked at Updates: a time on the server's clock (the newest chapter it had in front of it) — added 2026-09-30 | yes — per account, so sign-out clears it; the account keeps its own copy in Clerk's `unsafeMetadata.updates.seenAt`, and the later of the two counts |
 
-`hasCompletedOnboarding` also drives the routing gate: `app/_layout.tsx` uses
+Onboarding being done also drives the routing gate: `app/_layout.tsx` uses
 Expo Router's `Stack.Protected` (not an imperative `router.replace` in a
 `useEffect`) to compose it with the Clerk auth gate — not signed in → M1;
-signed in and incomplete → M2; signed in and complete → past onboarding. A
-completed user cannot navigate back into M2 by any path, including a
-force-quit or a reinstall-then-sign-in, because the screen is removed from
-the navigator rather than merely redirected away from.
+signed in and incomplete → M2; signed in and complete → past onboarding.
+"Complete" is `useOnboardingComplete()` (`hooks/use-onboarding.ts`): done on
+this phone, or on the account. A completed user cannot navigate back into M2
+by any path, including a force-quit, a sign-out and back in, a reinstall or
+a new phone, because the screen is removed from the navigator rather than
+merely redirected away from. (Until 2026-09-30 the answer lived only on the
+phone, so a sign-out and back in showed M2 again: Decisions — 2026-09-30,
+"M2 is remembered by the account".)
 
 `lib/session.ts`'s `clearUserScopedState()` — called by sign-out and by a
 `__DEV__`-only button on the temporary index route — clears the persisted
@@ -603,9 +616,12 @@ TanStack cache, the persisted `onboarding` slice (so the next account on
 this device sees M2 again, not the previous account's genres) and the
 persisted `search` slice (one account's recent searches are not the next
 one's) and the persisted `notifications` slice (the next account is asked
-about alerts once, and starts with them off), and resets `parity`/`playback`
-in memory. It deliberately leaves the `reader` slice
-alone.
+about alerts once, and starts with them off), and every offline download (the
+`downloads` slice and the `downloads/` folder, after stopping the download
+queue and releasing the player, in that order), and resets
+`parity`/`playback` in memory. It deliberately leaves the `reader` slice
+alone, and never touches anything in `Paths.document` outside `downloads/`:
+PostHog keeps its event queue and the analytics opt-out there.
 
 ---
 
@@ -623,6 +639,10 @@ lib/
   audio/        the one app-wide player (expo-audio), from prompt 18
   revenuecat.ts  the one billing client; billing.ts its pure parts; paywall.ts every way into M5a
   push.ts       the one push client (new-chapter alerts); alerts.ts its pure parts
+  updates.ts    the Updates inbox's pure parts (what shows, what is new, "seen")
+  downloads/    offline downloads (prompt 24): files.ts the only expo-file-system
+                code, queue.ts the one queue, manage.ts the checks and removals,
+                local.ts "is it downloaded", rules.ts the pure parts
   format.ts
   cn.ts
 ```
@@ -992,7 +1012,8 @@ Made while building prompts 15–17 and reviewing each prompt before it.
     setup): the development build, the owner's account and device
     preparation, and the audio storage policy, whose proof needs test
     accounts. Prompt 18 runs in Expo Go. Until the policy lands, audio is no
-    more protected than text, and no real reader uses the app yet.
+    more protected than text, and no real reader uses the app yet. (It
+    landed on 2026-09-28: Decisions — 2026-09-28, "Audio storage policy".)
   - **Moved from prompt 19 into prompt 18:** the live mini player and the
     Android notification permission. Dismissing M6 leaves audio playing, and
     the mini player must not show a placeholder over a real track.
@@ -1405,6 +1426,8 @@ under § Clerk Rules.
     dependency (§ Tech Stack).
   - **Compressed narration decided** (next entry): a 40-chapter book falls
     from about 1.7 GB as WAV to under 300 MB.
+  - **Reviewed again on 2026-09-28** against the code as built through
+    prompt 23a: § Decisions — 2026-09-28, "Downloads (prompt 24 review)".
 - **Narration format.** Decided by the owner on 2026-09-25, and recorded in
   the dashboard's AGENTS.md, which owns uploads (Upload Rules, "Narration
   format").
@@ -1418,7 +1441,20 @@ under § Clerk Rules.
     (28 MB) and Man of Ashes 001 ch1 (30 MB). The owner is converting those
     two with ffmpeg and replacing them in the dashboard, which writes new
     immutable paths. Readers' `audio_ms` positions stay valid, because the
-    timing doesn't change.
+    timing doesn't change. **Still WAV on 2026-09-28** (29,378,490 and
+    31,116,090 bytes, 384 kbps); the other six are `.m4a` at about 195
+    kbps. Prompt 24 reports them again before it builds.
+  - **Converted on 2026-09-28, waiting for the owner's upload.** Both WAVs
+    were downloaded under a short-lived admin token and converted with
+    `ffmpeg -i in.wav -ac 1 -c:a aac -b:a 64k -movflags +faststart
+    out.m4a`, into `C:\Users\PC\Desktop\talebrim-narration\`:
+    `eternal-eclipse-ch1.m4a` (5,336,406 bytes) and
+    `man-of-ashes-001-ch1.m4a` (5,577,220 bytes). The sources were 24 kHz
+    mono PCM; the outputs are AAC, mono, about 69 kbps, `moov` before
+    `mdat`, and their durations match the sources to the millisecond
+    (612.05 s and 648.25 s), so saved positions stay valid. The owner
+    replaces each chapter's narration in the dashboard's chapter editor,
+    which writes the new path, size and duration.
   - **The dashboard stops accepting WAV** through its own Settings screen:
     the accepted audio formats become `.m4a` and `.mp3`. The owner makes that
     change, because this app never writes `app_settings`. The live list also
@@ -1688,8 +1724,9 @@ under § Clerk Rules.
     webhooks, the same function is called by the app after a purchase or
     restore, and fetches the subscriber from RevenueCat's REST API with the
     secret key. Until 22a, a subscriber's locked chapter plays no audio once
-    the audio storage policy is live: a known gap, never patched in the
-    client.
+    the audio storage policy is live (it is, since 2026-09-28): a known gap,
+    never patched in the client. 22a closes it by adding the subscriber
+    branch at `-- TODO(paywall)` in `public.can_play_audio()`.
   - **Android only**, while iOS scope is open. **Entitlement id `ad_free`**,
     one constant.
   - **Every locked path opens M5a**, M5's end-of-chapter Next and M6's
@@ -1796,10 +1833,13 @@ under § Clerk Rules.
   only the two passes.
   1. The rest of the deferred setup (§ Deferred setup). Prompt 23a needs the
      development build on the phone, and prompt 24 signs downloads under
-     the audio storage policy (step 8).
+     the audio storage policy (step 8, live since 2026-09-28).
   2. Prompt 23a, new-chapter notifications. Built 2026-09-28 (Decisions —
      2026-09-28); its device checks are open.
-  3. Prompt 24, offline downloads.
+  3. Prompt 24, offline downloads. Reviewed 2026-09-28 (Decisions —
+     2026-09-28, "Downloads (prompt 24 review)"). Step 8 and step 5's
+     second reader account were done the same day, so it waits only for
+     the development build with prompt 23a on the phone.
   4. Prompt 25, M11 Profile. Its billing parts (Restore purchases, Manage
      subscription, "See plans", the plan badge) are built on prompt 22's
      code and behave as M10 does until RevenueCat is set up.
@@ -1829,7 +1869,8 @@ under § Clerk Rules.
     delay, which the bundling needs anyway.
   - **Bundling and the cap are per book:** a book sends once none of its
     new chapters is under 10 minutes old, and at most once in 24 hours.
-    Held-back chapters go into the next alert.
+    Held-back chapters go into the next alert. (Both removed on 2026-09-30
+    by the owner: Decisions — 2026-09-30, "Alerts go out right away".)
   - **New tables, in the dashboard repo:** `push_tokens` (readers select
     their own; written only through `set_push_token(token, enabled)`, a
     `security definer` function that moves a token to the caller or
@@ -1973,10 +2014,16 @@ under § Clerk Rules.
     installed before it has no `expo-notifications`, so on it, as in the web
     preview and Expo Go, the bell opens the "work in the Talebrim app for
     Android" message. The owner saw exactly that in the web preview on
-    2026-09-28: expected, not a fault.
+    2026-09-28: expected, not a fault. Its manifest (`aapt dump
+    permissions`) gained, through `expo-notifications`,
+    `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, FCM's
+    `c2dm.permission.RECEIVE` and a set of launcher-badge permissions
+    (Samsung, Huawei, Oppo, Sony, HTC and others, from its badge library).
+    None asks the reader anything; list them in Play's Data safety review.
   - **"10 minutes" is compared at 9**, so the quiet period is two runs of the
     5-minute schedule and a run's few seconds of lateness never pushes an
     alert to a third: a chapter reaches a phone within about 15 minutes.
+    (Superseded 2026-09-30: every minute, no quiet period, no cap.)
   - **Copy, flagged for the owner.** Sheet: "Get notified when new chapters
     come out?", "Alerts are only for the stories on your My List.", "Notify
     me", "Not now"; "New chapter alerts are on", "We'll let you know when a
@@ -1989,6 +2036,753 @@ under § Clerk Rules.
     {n}: {title}" or "Chapter {n}"; "{count} new chapters of {book}" /
     "Chapters {first}–{last}"; "a story on My List" if a book has no
     title. The bell's spoken label is "New chapter alerts".
+- **Downloads (prompt 24 review).** Settled on 2026-09-28 while reviewing
+  prompt 24 against the code as built through prompt 23a, `material/5.png`,
+  `10.png` and `3.png`, the live database and build `596d2398`'s APK. The
+  model of § Decisions — 2026-09-25, "Downloads" stands. The prompt carries
+  the detail. The owner accepted all of it the same day, the
+  `chapters_catalog` view change included; prompt 24 writes and applies it.
+  - **Preconditions:** deferred setup step 8 (the audio storage policy,
+    which is what makes audio downloads safe) and step 5's second reader
+    account, plus the development build with prompt 23a. Steps 3 and 7
+    (Google sign-in) and the Bluetooth checks don't block it. Step 8 and
+    the account were done the same day (next entry); only the build on
+    the phone remains.
+  - **Storage permissions are blocked in `app.json`.** `expo-file-system`
+    declares `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE`, and
+    `expo-image`'s Glide `READ_EXTERNAL_STORAGE`, all up to Android 12. Both
+    modules are linked already, through `expo`: build `596d2398` carries
+    both permissions, and `allowBackup` true. Prompt 24 adds
+    `android.blockedPermissions` for the two and `allowBackup: false`, and
+    proves both on the next APK.
+  - **Exact sizes from `chapters_catalog`.** The dashboard already records
+    `chapters.audio_size_bytes`, equal to the stored object for all 8
+    narrated chapters on 2026-09-28. The view gains `audio_size_bytes` and
+    `text_bytes` (`octet_length(script_text)`), appended, `security_invoker`
+    restated: an additive change to this app's own view, with the owner's
+    yes. "Download all" confirms a real size, and the disk check is exact.
+    A duration times a byte rate would be off by up to six times: narration
+    runs 64 to 384 kbps today.
+  - **Only a definite answer deletes a download:** every input fetched
+    fresh and the lock rule says locked, or the chapter gone from
+    `chapters_catalog`. A failed fetch or an entitlement not yet known
+    changes nothing.
+  - **Changes are found by `updated_at`**, at every online check, not only
+    by catalog broadcasts, which a closed app misses. Text is fetched again;
+    narration only if its `audio_path` changed.
+  - **M3 gains an offline state.** Offline with nothing cached, Discover
+    shows its skeleton forever today (the paused query counts as pending).
+    "See your downloads" lives there.
+  - **M9's row sheet offers Listen**, because in the frame the Downloaded
+    disc takes the teal headphone's place. The disc is a sibling button that
+    opens the sheet.
+  - **Offline autoplay** moves to the book's next downloaded chapter, or
+    stops; `resolve.ts` never waits on a paused query for a download.
+  - **Sign-out** stops the queue and releases the player before deleting
+    `downloads/`, and never touches anything else in `Paths.document`
+    (PostHog's files). `allowBackup: false` doesn't stop Android 12+'s
+    device-to-device transfer; the account tie in the index covers it.
+  - **Chapter text leaves the persisted cache** by a prefix match on
+    `queryKeys.chapters.textAll()`: it is nested under `chapters`, which
+    `NEVER_PERSISTED`'s roots can't express.
+  - **Analytics:** `download_requested`, `download_failed`,
+    `download_removed` and `offline_chapter_opened`, ids and fixed words
+    only.
+  - **Known gap:** until the entitlement mirror (prompt 22a), the storage
+    policy doesn't know subscribers, so a subscriber's locked chapter can't
+    be downloaded. It fails as refused and deletes nothing.
+- **Audio storage policy (deferred setup step 8).** Applied 2026-09-28 with
+  the owner's yes: dashboard migration `20260928140000`, the second
+  sanctioned change to a dashboard-owned object. The dashboard's AGENTS.md
+  (Data Model Notes) holds the full record.
+  - **The rule:** `audio_read` became `bucket_id = 'audio' and (is_admin()
+    or can_play_audio(name))`, rewritten in place with `alter policy`.
+    `public.can_play_audio(object_name)` (`security definer`, `stable`,
+    `set search_path = ''`) is true only for a chapter's current
+    `audio_path`, in a published book, free by `access`, free by position
+    or unlocked by the caller: `resolveChapterState()`'s rule without the
+    subscription (`-- TODO(paywall)`, prompt 22a). A malformed path is
+    false, never an error. `authenticated` may execute it; `anon` may not.
+    (Changed 2026-09-30: never free by position. See Decisions —
+    2026-09-30, "A chapter's own access decides".)
+  - **Nothing in the app changed.** `chapterAudioSourceOptions()` already
+    treats a refusal ("Object not found") as a reason to re-check the lock
+    rule once and show Locked or Not available. Regenerated
+    `types/database.ts` gained one line, `can_play_audio`, in both repos.
+  - **Replacing narration:** readers can sign only the chapter's current
+    file, so an old object left behind by a re-upload plays for no one but
+    an admin.
+  - **Proven** by `supabase/verify/audio_read_policy.sql` in the dashboard
+    repo (20 checks; its dry run, rolled back, caught `anon` still holding
+    `EXECUTE` through the project's default privileges, now revoked), and
+    by real Storage requests under freshly minted Clerk tokens. Reader B
+    signed the free chapters, and each URL served bytes. Locked chapters
+    answered 400 `NoSuchKey`, until an `unlocks` row (inserted as the
+    server would, then deleted) opened exactly that one. `anon` signed
+    nothing; the admin signed all 8. `reader_tables_rls.sql` (47) and
+    `new_chapter_alerts_rls.sql` (57) still pass, as do the dashboard's
+    three gates.
+  - **Reader B** (deferred setup step 5) is
+    `talebrim.reader.b+clerk_test@example.com` on the development instance,
+    Clerk id `user_3Jy9gRTu1hhpVmKVSzXmJMW0aVa`, with no `metadata.role`.
+    It was made through Clerk's Backend API. Clerk sends no email to a
+    `+clerk_test` address on a development instance: sign in with the code
+    `424242`. It hasn't been through onboarding, so the app shows M2 first.
+    It has no unlocks.
+- **Downloads as built (prompt 24).** Built on 2026-09-28 as reviewed
+  (previous entries). The code, the view change and the tests are done; the
+  device checks at the end of prompt 24 wait for a development build made
+  after it (below).
+  - **Preconditions, checked first:** `audio_read_policy.sql` passed 20 of 20
+    against the live database; reader B exists. The build with prompt 23a
+    (`596d2398`) was still not on the phone.
+  - **Narration (step 2), 2026-09-28:** 8 narrated chapters. 6 `.m4a` at
+    about 195 kbps (0.56 to 1.19 MB). **2 WAV at 384 kbps are still live:**
+    Eternal Eclipse 1 (29.4 MB) and Man of Ashes 001 1 (31.1 MB). Their `.m4a`
+    conversions (5.3 and 5.6 MB) wait for the owner to upload them in the
+    dashboard; until then those two download at WAV size, which "Download
+    all" states truthfully. `audio_size_bytes` equals the stored object for
+    all 8.
+  - **The view change:** dashboard migration `20260928150000`
+    (`chapters_catalog` appends `audio_size_bytes` and `text_bytes`), shown to
+    the owner and pushed with their yes. `security_invoker=on` held
+    (`pg_class.reloptions`) and the view's grants didn't change. Regenerated
+    types: two added lines in each repo, nothing else. The dashboard's gates
+    passed (`typecheck`; `lint` 0 errors, its 4 warnings; `build`), and so did
+    `reader_tables_rls.sql` (47), `new_chapter_alerts_rls.sql` (57) and
+    `audio_read_policy.sql` (20).
+  - **Dependency:** `expo-file-system` 57.0.7, now direct. The lock rewrite
+    (`npx npm@11.12.1 install --package-lock-only`) added that one line.
+  - **Storage:** `downloads/` under `Paths.document`. Narration is
+    `<chapterId>.<ext>` (the stored file's extension), text `<chapterId>.txt`;
+    each is written as `<name>.part` and renamed into place once every part
+    of the chapter is on disk, then entered in the index. `lib/downloads/
+    files.ts` is the only code that touches the file system, and nothing it
+    writes, renames or deletes is outside `downloads/`. **Android only**
+    (`downloadsAvailable()`): iOS waits for its scope and an iCloud-backup
+    exclusion; the web shows no download controls.
+  - **`app.json`:** `android.allowBackup: false` and
+    `android.blockedPermissions` for `READ_EXTERNAL_STORAGE` and
+    `WRITE_EXTERNAL_STORAGE`. `expo config --type introspect` shows both
+    permissions as `tools:node="remove"` and `android:allowBackup="false"`.
+    **Proven on the built APK** (EAS build `fd1773bc`, finished 2026-09-28):
+    `aapt dump permissions` lists no `READ_EXTERNAL_STORAGE`,
+    `WRITE_EXTERNAL_STORAGE` or media permission (build `596d2398` had both
+    storage permissions, `maxSdkVersion` 32), and `aapt dump xmltree`
+    shows `android:allowBackup` 0x0 (false; it was true). The one match for
+    "MEDIA" is `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, playback's service, not a
+    media-library permission.
+  - **The index** (`store/downloads-store.ts`, version 1). Two deviations
+    from step 5's list: the account is held once for the whole index
+    (`userId`), not per chapter, since an index only ever holds one account's
+    downloads; and the book's cover is kept as its resolved public URL, not
+    its path, because offline with nothing cached there is no CDN domain to
+    resolve a path with, and `expo-image`'s disk cache is keyed by URL. Never
+    a signed URL. Not on the hydration gate: M5, M6, M9, M3 and the Downloads
+    screen wait for `useDownloadsHydrated()`. `useDownloadsSync()` (root
+    navigator) reconciles it with the folder once per account per session,
+    then checks it online.
+  - **The queue** (`lib/downloads/queue.ts`): module state, one chapter at a
+    time, foreground and online only (AppState and `onlineManager`). Leaving
+    the app or the network aborts the chapter in flight, deletes its partial
+    file and puts it back at the head; it starts over when the app returns.
+    (Changed 2026-09-30: it pauses, keeps the bytes and carries on from
+    them. See Decisions — 2026-09-30, "A paused download carries on".)
+    Before each chapter: the lock rule against settings, unlocks and the
+    entitlement no older than a minute, then the free space against its exact
+    size plus 50 MB (`DISK_MARGIN_BYTES`). A full disk fails that chapter and
+    cancels the rest; a refusal from the storage policy fails it for good; any
+    other failed narration download is signed again and tried once more.
+    Text is fetched fresh, on the sanctioned terms. A failed chapter keeps its
+    reason until the reader tries again. The queue isn't persisted: closing
+    the app mid-run drops what was waiting, and Download all picks it up
+    again. `expo-file-system` 57.0.7 also has `File.createDownloadTask()`,
+    which can pause and resume within one app session; not used, as step 7
+    planned without it. Revisit if restarting a long chapter bothers readers.
+  - **The access check** (`verifyDownloads()` in `lib/downloads/manage.ts`):
+    the downloaded chapters' rows by id (100 ids a request), settings, unlocks
+    and the entitlement, all fetched fresh and never retried; any failure
+    changes nothing. Locked or gone: files and entry deleted. Open:
+    `verifiedAt` moves on, and a moved `updated_at` queues a refresh (text
+    again; narration only for a new `audio_path`, the old file deleted if its
+    extension changed). It runs at start, on returning to the foreground at
+    most once a day, on reconnecting while a download is past its 30 days,
+    when M5 or M6 opens a download online, and on a catalog broadcast. **One
+    addition to step 8:** a broadcast that names a downloaded chapter, sends
+    `chapter_ids: null` for its book, **or names its book with no chapters**
+    (a change to the book itself, published → draft included, which the
+    triggers send that way) checks it at once.
+  - **Opening a download:** the player loads the file (`localAudioUri()`:
+    always online, within 30 days offline) and never signs, re-mints or
+    prefetches a URL for it; M6 doesn't wait for one, and takes the text's
+    length from the index. Offline, `resolve.ts` resolves a download from the
+    index. **Offline autoplay, refined:** when the cached neighbours name the
+    next chapter, only that one plays, so a locked or missing chapter is never
+    skipped; without them, the book's next downloaded chapter by number.
+    Either way it never waits. M5 reads a download's text from its file
+    (`downloadedTextOptions()`, `networkMode: "always"`, never persisted),
+    online too, falling back to the network if the file can't be read.
+    Offline, M5 and M6 open from the index entry, taken the moment the phone
+    is seen offline (NetInfo reports a moment after launch) and then held.
+    Past 30 days they show a new `expired` state: "Connect to the internet to
+    keep this chapter offline." M5's Listen is off offline for a download
+    without narration.
+  - **Sign-out** (`clearUserScopedState()`): `stopDownloads()`, then
+    `releaseAudio()`, then the index cleared in memory, then `downloads/`
+    deleted once the chapter in flight has stopped (at most 2 seconds), then
+    the index's stored copy. Tested, with PostHog's files left in place.
+  - **M9:** "Download all" at the right of the sort bar, teal with its icon;
+    a spinner while it fetches fresh answers; the confirmation `Alert`; "12
+    of 41" and Cancel while it runs; "All downloaded", disabled and `muted`,
+    with nothing left; disabled offline; absent where nothing can be
+    downloaded. The Downloaded disc is a sibling button that opens the row's
+    sheet (`components/chapters/chapter-actions-sheet.tsx`, the options
+    sheet's `Modal` pattern): Listen, then Download chapter, Cancel download
+    or Remove download, with a status line; long-press opens it too, and
+    screen readers get the same items as the row's actions. A queued chapter
+    shows "Queued", its percentage or "Failed" in the slot, over the Reading
+    pill while it is in the queue (the Reading row keeps its ember edge). Why
+    chapters failed shows as a line under the sort bar.
+  - **The Downloads screen** (`app/downloads.tsx`,
+    `components/downloads/downloaded-book.tsx`): books as `surface` cards,
+    most recently checked first, each with its cover, size, a `muted`
+    "Remove" and its chapters (M5 when the text is downloaded, else M6; "Connect
+    to keep offline" past 30 days offline); the total and the phone's free
+    space; "Remove all downloads" with its one confirmation. The Profile
+    placeholder's "Downloads" button reaches it in every build until M11.
+  - **M3's offline state** (`DiscoverOffline`): the tab's query paused with
+    nothing cached, instead of the skeleton forever, with an outlined "See
+    your downloads" when anything is downloaded.
+  - **No frame** for the Downloads screen, the row sheet, M3's offline state
+    or M9's failure line: for design review.
+  - **Copy, flagged for the owner:** "Download all", "All downloaded",
+    "Cancel"; the confirmation "Download 12 chapters?" / "12 chapters, 48 MB.
+    You're on mobile data. Keep Talebrim open while they download." ("about
+    48 MB" when estimated); the row slot's "Queued", "34%", "Failed"; the
+    sheet's "Listen", "Download chapter", "Cancel download", "Remove
+    download", "Connect to the internet to download.", and its status lines
+    ("Downloaded. It reads and plays with no connection.", "Queued for
+    download.", "Downloading, 34%.", "Couldn't download: not enough free
+    space on this phone.", "Couldn't download on this account.", "Couldn't
+    download. Check your connection and try again.", "Couldn't download. Try
+    again."); M9's failure lines ("Not enough free space on this phone. Free
+    some space, then try again.", "{N} chapters couldn't be downloaded on
+    this account.", "{N} chapters didn't download. Check your connection and
+    try again.", "We couldn't get this story ready to download. Check your
+    connection and try again."); M5/M6's "Connect to the internet to keep
+    this chapter offline." / "Downloads open offline for 30 days after they
+    were last checked."; M3's "Discover loads when you reconnect. Your
+    downloaded chapters read and play right now." and "See your downloads";
+    the Downloads screen's "{size} on this phone · {size} free", "Remove",
+    "Audio and text · 5.3 MB", "Connect to keep offline", "Remove all
+    downloads" / "Remove all downloads?" / "Every downloaded chapter is
+    removed from this phone. You can download them again.", and "No
+    downloads yet" / "Download chapters from a story's chapter list to read
+    and listen with no connection."
+  - **Analytics:** `download_requested` (`book_id`, `chapters`, `from`),
+    `download_failed` (`kind`), `download_removed` (`scope`) and
+    `offline_chapter_opened` (`mode`). Ids, counts and fixed words.
+  - **Replaced:** both `TODO(downloads)` (M9's `isDownloaded` in
+    `buildChapterRows()`, and the sort bar's "Download all").
+  - **Tests** (232 in all, every one passing): `lib/downloads/__tests__/
+    rules.test.ts` (23: the window, sizes and the 64 kbps fallback,
+    reconciling, the access verdicts, refresh parts, autoplay, grouping),
+    `downloads.test.ts` (18, with `expo-file-system` faked in memory: the
+    queue, a full disk before and during the write leaving no partial file,
+    a refusal, pausing offline, cancelling, the access check allowed, lost,
+    unpublished and failed, an edited text and a replaced narration,
+    reconciling, another account's index, sign-out's order and that nothing
+    outside `downloads/` is touched), `lib/__tests__/query-client.test.ts`
+    (4: chapter text never persisted, the rest of `chapters` still is) and
+    13 more in `chapter-list.test.ts` (Downloaded, the queue's states,
+    "Download all", the row sheet). `player.test.ts` mocks the downloads
+    lookup: nothing downloaded there.
+
+## Decisions — 2026-09-29
+
+- **iOS in scope.** Decided by the owner on 2026-09-29, closing the open
+  item in § Important Constraints. Talebrim ships on iOS as well as
+  Android, from this one codebase and the same Clerk application (rule 5).
+  - **After Android v1, not beside it.** Android finishes first, in the
+    order already agreed (Decisions — 2026-09-25, "Build order from here"),
+    and is tagged `android-v1.0`. Then prompt 28
+    (`prompts/28 — iOS audit and plan.md`) audits the code and writes the
+    iOS series (28a, 28b, …) without writing code; each of those is
+    reviewed, then built on an `ios` branch, with Android unchanged.
+  - **Until then nothing Android-only changes:** billing
+    (`billingAvailable()`), new-chapter alerts (`pushAvailable()`),
+    downloads (`downloadsAvailable()`, which on iOS also needs `downloads/`
+    kept out of iCloud backup) and the `expo-audio` patch. Earlier entries
+    that say "while iOS scope is open" or "iOS waits for its scope" now mean
+    "until the iOS series".
+  - **Apple requires two things the app doesn't have yet:** Sign in with
+    Apple (it offers Google sign-in; M1's frame already draws the Apple
+    button) and account deletion inside the app. Account deletion is also
+    worth adding during the Android work, since Google Play expects a way
+    to delete an account too.
+  - **Owner, now:** start the Apple Developer Program enrollment ($99 a
+    year; a company needs a D-U-N-S number first, which can take weeks). It
+    waits on nothing in the code.
+
+## Decisions — 2026-09-30
+
+- **M4's download button.** Asked for by the owner on 2026-09-30, after
+  looking for a way to download on the story page (the iPhone preview) and
+  finding none: downloads lived only on M9, one tap further in, and only in
+  the Android app. No frame draws it, like the `+ My List` pill beside it.
+  - **Where:** M4's floating top bar, a round 44dp button between the My
+    List pill and Share, outlined as they are (`bg` fill, `raised`
+    hairline), with a teal icon: download controls are teal or `muted`,
+    never ember, and Read stays M4's one ember action (prompt 24 step 14).
+    Built in `components/book/book-header.tsx` (`BookDownloadButton`), with
+    its whole style from a `style` function and no `className` (§ Style
+    Exception Rules).
+  - **What it does:** the whole book, exactly as M9's "Download all": the
+    chapters, their sizes and the lock inputs fetched fresh, then the one
+    size confirmation, then the queue (`useBookDownloads()`, the same hook
+    M9 uses). Its state comes from `downloadButton()` (`lib/downloads/
+    rules.ts`, tested) over M9's own `downloadAllState()`:
+    - ready: the download arrow; a tap downloads the book
+    - preparing: a spinner, disabled
+    - failed (the fresh fetch failed): a `muted` alert mark; a tap tries again
+    - running: a spinner; a tap opens M9, where the run's "12 of 41",
+      Cancel and any failure line are
+    - done: M9's teal Downloaded disc; a tap opens Downloads
+    - loading (the list isn't known yet) and offline: the arrow, dimmed and
+      disabled
+    - hidden: nothing in the book can be downloaded by this reader
+  - **Off Android (iOS, the web preview) it still shows,** so the feature
+    can be found there: a tap opens the Downloads screen, which says
+    "Downloads work in the Talebrim app for Android." It changes when the
+    iOS series brings downloads to iOS (Decisions — 2026-09-29, "iOS in
+    scope").
+  - **Every screen reader label says the state and where a tap goes:**
+    "Download all 12 chapters", "Getting the chapters ready to download",
+    "Downloading, 3 of 12 chapters. Opens the chapter list", "All chapters
+    downloaded. Opens Downloads", "Couldn't get the chapters ready to
+    download. Try again", "Download. Not available offline", "Download.
+    Downloads work in the Talebrim app for Android. Opens Downloads".
+  - **M4 now reads M9's full chapter list** through `useChapterList()`, under
+    the same query keys, so the button knows what is left to download and
+    M9 opens from here with its list already cached. One more request on
+    M4's first open (about 30 KB for 200 chapters), never blocking the
+    page.
+  - **M4's preview rows show the Downloaded disc** (M9's teal disc, as part
+    of the row, not a button) for a downloaded chapter, and say
+    "Downloaded" to screen readers. Locked beats it. `useBookDetail()` passes
+    `isDownloaded` from the index to `chapterStateFor()`; everything that
+    decides what a tap opens still checks only for Locked.
+  - **Unchanged:** there is still no per-chapter download button on M9's
+    rows: one chapter is long-press, as the owner settled on 2026-09-25.
+    The new button is for the whole book.
+  - **Checked:** `typecheck`, `lint` and 237 tests pass (5 new, for
+    `downloadButton()`), and the running Metro bundled M4's route for
+    Android and the web. Not yet seen on a phone.
+- **A paused download carries on from its last byte.** Found by the owner
+  on the phone on 2026-09-30 (prompt 24's check "leaving the app
+  mid-download"): Eternal Eclipse chapter 1 (29 MB) was at about 30% when
+  they pressed Home. Coming back, it started again from 0%, and Profile →
+  Downloads showed nothing, because that screen listed only finished
+  chapters. The chapter looked lost.
+  - **Why it restarted:** prompt 24 assumed the new `expo-file-system` API
+    couldn't resume a file, so a pause deleted the partial file. 57.0.7 can
+    resume: `File.createDownloadTask()` and `DownloadTask.fromSavable()`,
+    which resume with an HTTP Range request from the partial file's length
+    on disk and fall back to the whole file if the server ignores Range. Same
+    API, no new library, and the native class is in build `fd1773bc`. This
+    replaces "No resume within a file" in Decisions — 2026-09-25,
+    "Downloads", and step 7's "that chapter starts over".
+  - **Now:** leaving the app or the network *pauses* the chapter in flight
+    (`downloadToPartial()` in `lib/downloads/files.ts`). Its narration's
+    `.part` file and its percentage stay, and the job holds the partial file
+    and the `audio_path` it is of (`queue.ts`, `KeptPartial`). Coming back,
+    the same recording carries on from its last byte (`downloadAudio()`).
+    Anything else starts from the first byte: a replaced recording, or a
+    resume that fails (signed again, once). A cancel, a failure or a full
+    disk deletes the partial file; only a pause keeps it, in memory, for
+    this session. Reconciling on start already skips while the queue is
+    busy, so it never deletes a kept file.
+  - **The native task is paused, never cancelled.** In 57.0.7,
+    `FileSystemDownloadTask.cancel()` can return from its read loop without
+    settling the promise (the `isCancelling` check just returns), so an
+    await on it would hang. `pause()` always settles, with `null`. So every
+    stop is a pause, and the queue decides in JS whether to keep or delete
+    the bytes.
+  - **Still foreground only**, as prompt 24 decided: nothing downloads while
+    Talebrim is in the background. The confirmation's "Keep Talebrim open
+    while they download." stays true.
+  - **M9** keeps a paused chapter's percentage in its slot, instead of
+    "Queued" (`rowDownload()`).
+  - **The Downloads screen lists books still downloading** above the
+    downloaded ones (`components/downloads/downloading-book.tsx`,
+    `downloadingBooks()` in `rules.ts`): cover, title, "Downloading · 3 of 12
+    · 34%" or "Waiting for a connection · 3 of 12", a muted "Cancel", and a
+    tap opens M9. `QueueItem` now carries its `book`. No frame: for design
+    review. Copy, flagged: "Downloading", "Waiting for a connection",
+    "Cancel".
+  - **Development logs** in the queue: `[downloads] chapter started`,
+    `chapter paused` (with whether bytes were kept), `chapter cancelled`,
+    `chapter done`, and `pausing` (with online and foreground), beside the
+    existing failure lines. Read them with `adb -d logcat -s ReactNativeJS`.
+  - **Tests:** 244 pass. The fake `expo-file-system` in `downloads.test.ts`
+    now models the task (a pause settles with `null` and keeps the bytes; a
+    resume sends a Range and appends). New: pausing offline and carrying on
+    from byte 500, the same for leaving the foreground, cancelling a paused
+    chapter deletes its bytes, a refused resume starts from byte 0, plus
+    `downloadingBooks()` and M9's paused percentage. The test file clears
+    its query cache after the last test, or TanStack's 5-minute GC timers
+    keep Jest from exiting.
+  - **Not yet seen on the phone.** Metro bundles it for Android.
+- **A chapter's own access decides, never its number.** Decided by the
+  owner on 2026-09-30, after locking Whispers In the Mist chapters 2 and 3
+  in the dashboard's chapter editor and finding they still opened in the
+  app (prompt 24's check "losing access": chapter 4 locked as expected).
+  - **Why they stayed open:** the lock rule freed every chapter numbered up
+    to `app_settings.free_chapters_at_start` (3) whatever its own `access`
+    said, and so did the audio storage policy. That matched the dashboard's
+    Settings hint ("Chapters below this number are always free.") but not
+    its code: `createChapter` and bulk import use the setting only to give a
+    new chapter its access (the dashboard's AGENTS.md, Data Model Notes).
+    After that the chapter editor sets `access`, and the owner expects it to
+    hold.
+  - **The rule now:** free by the chapter's own `access`, unlocked by the
+    reader, or subscribed. `resolveChapterState()` (`types/states.ts`) lost
+    `chapterNumber` and `freeChaptersAtStart`; `ChapterLockInputs`,
+    `ResumeLockInputs` and `lockStateFor()` lost the setting. The lock no
+    longer waits for `reader_settings()`: M5 no longer reads the settings at
+    all, and M4, M6, M9, M5a, Continue, the player's resolver and the
+    download checks read them only for cover URLs, if at all. M6's
+    "Storage refused" recheck now refetches the chapter row (its access)
+    and the unlocks, not the settings.
+  - **The server:** dashboard migration `20260930120000`, shown to the owner
+    and pushed with their yes the same day, drops the position branch from
+    `public.can_play_audio()`. Only the function body changed (same
+    signature, `security definer`, grants `authenticated` only); the
+    `audio_read` policy is untouched. Regenerated types: no change in either
+    repo. `supabase/verify/audio_read_policy.sql` now expects a chapter
+    locked inside the free run to be refused, and runs that check live
+    (Whispers 2): 20 of 20 pass. `reader_tables_rls.sql`: 47 of 47. Over
+    HTTP, under a freshly minted token for reader B: Whispers 1 signed (200),
+    Whispers 2 refused (400 `NoSuchKey`).
+  - **What it changed for readers today:** Whispers In the Mist 2 and 3,
+    and Man of Ashes 001 2 and 3, were `locked` in the database and are now
+    Locked in the app. A download of one is deleted at its next online check.
+  - **The dashboard's Settings hint** now reads "New chapters up to this
+    number are created free. You can lock any chapter afterwards in its
+    editor." (`src/components/settings/settings-form.tsx`), since "always
+    free" is no longer true.
+  - **Unchanged, and now approximate:** onboarding's "Start with N free
+    chapters." still reads `free_chapters_at_start`. It holds for stories as
+    created, not for a chapter the owner has since locked.
+  - **Tests:** 246 pass. The fixtures in `chapter-list.test.ts`,
+    `rules.test.ts`, `library.test.ts` and `downloads.test.ts` now free
+    chapters 1–3 by access, as the dashboard creates them. New: a chapter
+    locked inside the free run stays Locked (`states.test.ts`, M9), and a
+    downloaded chapter 1 the owner locks is deleted by the access check.
+- **M2 is remembered by the account.** Found by the owner on the phone on
+  2026-09-30: signing out of their account, into reader B, out again and
+  back in showed the genre picker straight away.
+  - **Why:** M2's answer lived only in the phone's `onboarding` slice, which
+    sign-out clears so the next account on the phone doesn't inherit it. The
+    returning account had nothing to say it was done. This section's claim
+    that a reinstall-then-sign-in never shows M2 was never true.
+  - **Now:** the answer is also written to the reader's own Clerk
+    `unsafeMetadata`, as `{ onboarding: { genres } }` (present means done;
+    Skip saves an empty list). `useOnboardingSync()`, in the root navigator,
+    copies it onto the phone after a sign-in, and writes the phone's answer
+    to the account when the account lacks it or holds other genres,
+    `user.updateMetadata()` (deep-merged, so nothing else in
+    `unsafeMetadata` changes). That also records readers who finished M2
+    before this change. The gate reads `useOnboardingComplete()`, phone or
+    account, so M2 never shows even for the frame before the copy lands.
+  - **Why Clerk, not a table:** no migration and no new library; the value
+    is per account, survives reinstalls and new phones, and a phone can't
+    tell accounts apart without it. `unsafeMetadata` is the reader's own to
+    write and is not in the session token (only `public_metadata` is), so it
+    never reaches RLS or `is_admin()` (rule 4). It is read as untrusted:
+    only known genre slugs are kept (`onboardingFromAccount()`, tested in
+    `lib/__tests__/onboarding.test.ts`). A profile table can replace it
+    later if genres need to be queried on the server.
+  - **Sign-out** still clears the phone's copy, and only after Clerk's
+    `signOut()` has finished, so the sync never copies one account's genres
+    to another. The health probe's development-only clear-storage button no
+    longer brings M2 back for an account that finished it.
+  - **Checked:** `typecheck`, `lint`, 250 tests. Not yet seen on the phone:
+    no account on the development instance holds the record yet; the
+    owner's will get it the first time the app runs this code signed in.
+  - **Downloads going at sign-out is by design**, not part of this fix: the
+    owner decided on 2026-09-25 that downloads are tied to the account and
+    sign-out deletes them (Decisions — 2026-09-25, "Downloads"), as Netflix
+    and Spotify do, so one person's offline copies never open for the next
+    person on a shared phone. Keeping each account's downloads and bringing
+    them back when it signs in again (YouTube's way) is possible, at the
+    cost of storage held for signed-out accounts; not built. When M11's real
+    sign-out lands (prompt 25), it should say how many downloaded chapters
+    it will remove before it does.
+- **Another app's audio pauses the narration.** Found by the owner on the
+  phone on 2026-09-30 (deferred setup step 9): with a chapter playing,
+  they started a YouTube video and both played at once.
+  - **Why:** in `expo-audio` 57.0.5 the ExoPlayer is built with
+    `setAudioAttributes(AudioAttributes.DEFAULT, false)`, so it never
+    touches audio focus. Focus came only from `AudioModule`'s own request:
+    transient (`AUDIOFOCUS_GAIN_TRANSIENT`, even for `doNotMix`), made only
+    from JS `play()` and only while it believed it held none. Play from the
+    lock screen, the notification or Bluetooth goes straight to ExoPlayer and
+    never asked. After any earlier loss, the narration could be playing with
+    no focus at all, so Android never told it YouTube had started.
+  - **The fix,** in `patches/expo-audio+57.0.5.patch` beside the unplug
+    fix: ExoPlayer is built with usage `USAGE_MEDIA`, content
+    `AUDIO_CONTENT_TYPE_SPEECH` and `handleAudioFocus = true`. Media3 then
+    requests full focus whenever playback starts, by any route, pauses for
+    good on a permanent loss (YouTube, music), pauses and resumes around a
+    transient one (a call), pauses rather than ducks for speech (a
+    navigation prompt), and gives focus up on pause. `AudioModule`'s own
+    request is switched off (`focusHandledByPlayer`), since two requests
+    from one app take focus from each other: the module's listener would
+    pause the player the moment ExoPlayer took focus. The JS keeps
+    `interruptionMode: "doNotMix"`, which now matters only on iOS.
+  - **The player's listener already records these pauses**, as it records a
+    lock-screen pause: nothing changed in `lib/audio`.
+  - **Native, so it needs a development build made after it:** EAS build
+    `9235ee79` (2026-09-30, finished). Its log shows "Applying patches" with
+    `expo-audio@57.0.5 ✔`, `:expo-audio:compileDebugKotlin` executed (so
+    the patched sources were compiled, through `buildFromSource`) and
+    `BUILD SUCCESSFUL`.
+  - **Not yet seen on the phone.**
+- **New-chapter alerts: the first real one didn't show.** Reported by the
+  owner on 2026-09-30 (prompt 23a's check "a new chapter arrives"): nothing
+  after 15 minutes.
+  - **What the server did:** the phone registered its token at 13:49 UTC.
+    The job found the new Whispers In the Mist chapters at 13:55 and 14:00,
+    and at 14:10 sent one message, which Expo accepted (an `ok` ticket: the
+    robot token may send). The receipt, checked at 14:25, was not
+    `DeviceNotRegistered` (the token is still registered). So the server did
+    its part and the message was lost between Expo, Firebase and the phone.
+  - **Why it can't be told for sure:** the function kept only
+    `DeviceNotRegistered` from a receipt and dropped every other error
+    without a trace. The FCM V1 key on EAS was checked: present, for the
+    same Firebase project as `google-services.json` (`talebrim-4ba77`).
+  - **The likely cause, fixed:** the function sent no `priority`, and
+    Expo's default on Android is FCM normal priority, which a phone holds
+    while it is idle (Doze). An aggressive battery manager like itel's can
+    hold it indefinitely. The phone was idle and locked then. Every message
+    is now sent with `priority: "high"`, as Expo and Firebase recommend for
+    an alert the reader sees as a notification.
+  - **Fixed too:** each run's report counts ticket and receipt errors by
+    code (`ticket_errors`, `receipt_errors` in `net._http_response`), and the
+    function logs each with its ticket id (never a token), so the next
+    failure says what it was. Redeployed 2026-09-30. Nothing in the app
+    changed.
+  - **The proof script** (`new_chapter_alerts_rls.sql`) failed 2 checks
+    that day, from live data: the real alert's 24-hour cap on its test book,
+    and real readers' phones named beside its test phone. It now sets the
+    cap aside inside its rolled-back transaction and checks the test phone
+    is among those named: 57 of 57.
+  - **Re-testing:** any book on My List, Whispers included, since the
+    24-hour cap is gone (next entry). On the owner's itel, Talebrim should
+    be allowed to run in the background (battery: no restrictions;
+    auto-start on); note whether it was needed.
+  - **Not yet seen on the phone.**
+- **Alerts go out right away.** Decided by the owner on 2026-09-30, after
+  seeing the delay: a reader should hear about a new chapter as soon as it
+  is added, and the admin, not a hidden rule, decides how often chapters
+  come. The app itself already showed a new chapter within about a second
+  while open (live catalog sync); only the phone alert waited.
+  - **Before:** the job ran every 5 minutes, a book waited until its new
+    chapters had been quiet for 10 minutes, and each book alerted at most
+    once in 24 hours: 10 to 15 minutes' delay, and a second chapter the
+    same day went unannounced until the next day.
+  - **Now:** dashboard migration `20260930130000`, shown to the owner and
+    pushed with their yes the same day. The cron job runs every minute
+    (`cron.alter_job`, `* * * * *`), and `notify_due_books()` makes a book
+    due as soon as it has a readable chapter not yet announced. Every
+    chapter the admin adds is announced within about a minute. Chapters
+    found in the same run (a bulk import) still share one alert.
+    `book_alerts` still records each book's last alert; nothing uses it as
+    a cap.
+  - **Why not every few seconds:** truly instant would need a trigger on
+    `chapters`, which this app may not add (rule 2). And the schedule only
+    fires an HTTP call, so runs can overlap if one is slow: two overlapping
+    runs could announce the same chapter twice. A run takes about a second,
+    so a minute leaves room.
+  - **Checked:** `new_chapter_alerts_rls.sql` now tests the new rule (due
+    at once; still due a minute after an alert): 53 of 53, after 4 checks
+    of the old wait and cap were replaced by 2. `reader_tables_rls.sql` 47,
+    `audio_read_policy.sql` 20. Types unchanged in both repos. The function
+    was redeployed with its comments matching.
+  - **Worth watching:** an admin publishing chapters one by one sends one
+    alert per chapter. If readers complain, a short wait (2 minutes) can
+    bundle a quick burst, at the cost of a slower first alert.
+- **Alerts arrived but didn't pop up.** The owner added Whispers In the
+  Mist chapter 8 ("chrus") at 19:54:22 UTC on 2026-09-30 and saw no alert.
+  - **What the phone showed:** the server sent it 39 seconds later, and the
+    phone's log shows Android posting "New chapter of (PART 1) Whispers In
+    the Mist / Chapter 8: chrus" at once, then `No heads up: unimportant
+    notification`. It sat in the notification shade, with no banner. So
+    the earlier "not delivered" was very likely the same: delivered,
+    unseen.
+  - **Why:** the channel was made at `AndroidImportance.DEFAULT`, which on
+    Android plays a sound but never pops up. Alerts a reader should notice
+    need `HIGH`. An app can't raise a channel's importance once made.
+  - **The fix:** `lib/push.ts` makes a new channel, `chapter-alerts`
+    ("New chapters", `HIGH`, content still hidden on a secure lock screen),
+    and deletes the old `new-chapters`. `syncAlerts()` makes it at every
+    start signed in with alerts on, so existing phones switch on their next
+    start; "Notify me" makes it too. The Edge Function sends on
+    `chapter-alerts` (redeployed 2026-09-30). A phone that hasn't made it
+    yet gets Firebase's fallback channel, never nothing. JavaScript only: no
+    new build. Deleting the old channel resets a reader's own choices for
+    it; there are no real readers yet.
+  - **Phone checks, for next time** (`adb -d`): `dumpsys notification
+    --noredact` lists the app's channels with their importance and the
+    alerts in the shade; `logcat` shows `c2dm.intent.RECEIVE` when Firebase
+    delivers, then `onEnqueueNotificationInternal` and the heads-up
+    decision; `am get-standby-bucket com.talebrim.app` (10 is active).
+  - **Not yet seen on the phone:** it was offline when the fix landed, so
+    it still had the old channel. (Seen by the owner the same evening:
+    alerts pop up now.)
+- **Updates inbox.** Asked for by the owner on 2026-09-30: alerts popped up,
+  but nothing in the app showed them, and the bell only held the alerts
+  switch. A bell reads as "what's new for me" in every app readers know, so
+  it now opens Updates. No frame: for design review.
+  - **The screen** (`app/updates.tsx`, `components/updates/update-row.tsx`):
+    Downloads' header, then an alerts row ("New chapter alerts" and On, Off,
+    "Off in Android settings" or "In the Talebrim app for Android", opening
+    the alerts sheet with `from: "updates"`), then the new chapters of the
+    books on My List, newest first: cover, book title in `muted`, "Chapter
+    8: chrus" in `body`, "5 min ago", a teal "New" pill, and a lock for a
+    chapter the reader can't open. A tap opens M5 (M6 for narration only),
+    or M5a for a locked chapter (`from: "updates"`). States: loading
+    (skeleton rows), "Nothing to follow yet" (empty My List), "No new
+    chapters yet", offline, failed with Try again. Teal or `muted`, never
+    ember: the screen has no primary action.
+  - **What shows** (`buildUpdates()`, `lib/updates.ts`): chapters with text
+    or narration, from the last 30 days, of books still on My List, added
+    after the book was put on it. One request, `chapters_catalog` filtered by
+    the My List book ids (`updatesOptions()`, `lib/queries/updates.ts`,
+    under `updates.byBooks(userId, bookIds)`); at most 100 rows. No new
+    table or view: `chapters_catalog.created_at` already existed. Checked
+    over HTTP under a reader's token: 200, Whispers' 9 chapters newest
+    first.
+  - **New and seen:** new means added after the reader last looked. "Seen"
+    is the newest chapter's `created_at`, the server's clock, never the
+    phone's: the owner's phone ran about a minute behind. Kept in the
+    `updates` slice (per account, cleared at sign-out) and in the account's
+    Clerk `unsafeMetadata.updates.seenAt`, as M2's answer is (deep-merged
+    `updateMetadata()`), so it follows the reader to a new phone or back
+    after a sign-out; the later of the two counts. Opening Updates moves
+    it at once, so the bell's dot clears, while the screen keeps this
+    visit's "New" pills (measured against "seen" as it was on opening).
+    Both wait for the slice to rehydrate, so a cold start never counts
+    everything as new.
+  - **The dot** (`DiscoverHeader`, `useUnreadUpdates()`): 10dp, teal, with a
+    `bg` ring, on the bell while any chapter is new. Its label says the
+    count ("Updates, 2 new chapters"), since a dot is colour alone. Catalog
+    sync marks every account's `updates` keys stale on any catalog change
+    (`isUpdatesQuery()`), so the dot appears within about a second of the
+    admin adding a chapter while the app is open, a minute before the alert.
+  - **No banner over a story:** M5 and M6 call `useQuietAlertBanners()`,
+    which counts them in (`quietAlertBanners()`, `lib/push.ts`, a count
+    because a handoff can focus the new screen before the old one leaves);
+    the foreground handler then shows no banner, only the shade and the
+    dot. Elsewhere in the app the banner still shows. With the app closed,
+    alerts pop up as before.
+  - **Also changed:** `useAlertsStatus()` (`hooks/use-alerts.ts`) is the
+    alerts sheet's on/off/blocked logic, now shared with Updates' row.
+    `ALERTS_FROM` and `PAYWALL_FROM` gain `updates`. Analytics:
+    `updates_opened` (`new_chapters`, a count).
+  - **Proven on the phone the same day** (the owner's itel, over USB and
+    Metro): the bell's hook counted 4 new chapters (Whispers 6–9, added
+    after the book went on My List), Hermes parsing Postgres' microsecond
+    timestamps as Node does; the owner opened Updates, and "seen" moved to
+    chapter 9's `created_at` on the phone and on the account
+    (`unsafeMetadata`: `{"updates":{"seenAt":"2026-09-30T20:36:58.747Z"},
+    "onboarding":{"genres":[]}}`, so the merge kept M2's answer); the screen
+    showed the alerts row ("On") and the 4 chapters newest first, with
+    covers, times, and locks on 8 and 9; the dot drew teal with its `bg`
+    ring (forced on for one screenshot, then reverted). The query answered
+    200 over HTTP under a reader's token. Not yet seen: a "New" pill and
+    the dot arriving live (they need a chapter added while looking), and
+    the banner staying quiet over M5 or M6 (an alert while reading).
+  - **Tests:** 260 pass; 10 new in `lib/__tests__/updates.test.ts` (what
+    shows and in what order, new against seen, the account copy read as
+    untrusted, the slice never moving back, the words, and catalog sync
+    marking Updates stale).
+- **A lock set in the dashboard holds.** Reported again by the owner on
+  2026-09-30, after the rule change above ("A chapter's own access
+  decides"): locking Whispers In the Mist chapter 1 or 3 still didn't
+  reach the app.
+  - **The server was right.** At 19:50–19:52 UTC the owner set Whispers 2
+    free, locked 3 and 1, and set `free_chapters_at_start` to 1 (the
+    activity log). `chapters`, `chapters_catalog` and `can_play_audio()` all
+    agreed; the reader had no `unlocks` rows.
+  - **The app decided from old copies.** The phone's persisted cache (read
+    off it with `run-as`) held M9's list and M4's preview from 19:59, with
+    1 and 3 locked, but the reader's own row for chapter 1
+    (`chapters.detail`) was from 14:20 and still said `free`, and so did
+    the neighbour rows. M5, M6 and M5a took whatever row the cache held:
+    a stale "free" started the text fetch and opened the chapter, and only
+    a refetch that arrived and said `locked` would close it. On this phone
+    the connection dropped again and again (the log shows Realtime
+    `transport failure` and Clerk's host not resolving), so the refetch
+    often never came. A chapter playing when it was locked also played on:
+    the player never checked its loaded chapter again.
+  - **Now, the screens.** M5, M6 and M5a open or lock a chapter only with a
+    current row (`rowCheck()` in `lib/query-status.ts`, through
+    `hooks/use-row-check.ts`). A row within its stale time and not marked
+    changed is current. A stale one is fetched again first, with the
+    skeleton showing, and a failed fetch shows Failed with Retry. Offline,
+    the cached row stands, since nothing newer can be had; a download's
+    30-day rule is unchanged. Once current, it stays current for the open,
+    so an open chapter never goes back to loading, and a refetch that says
+    `locked` still turns it Locked at once. M5's next-chapter prefetch waits
+    for a current neighbours row too. M6 doesn't wait for the player's
+    loaded chapter, so the mini player opens it at once; the player checks
+    that chapter itself (next point).
+  - **Now, the player.** Every catalog change that names the loaded chapter
+    or its book, and every catch-up after a reconnect or a return to the
+    app, runs `recheckLoaded()` (`lib/audio/player.ts`, from
+    `hooks/use-catalog-sync.ts`, after the invalidation). It asks
+    `checkChapter()` (`lib/audio/resolve.ts`), and a chapter now locked,
+    unpublished or without narration is paused, its place recorded and
+    sent, and unloaded: the mini player, the lock screen and the
+    notification let it go. Only a definite answer stops it; offline, or
+    after a failed check, it plays on.
+  - **`checkChapter()`** is `resolveChapter()`'s first half: published, the
+    lock rule, then audio. Online it always reads the chapter's row fresh
+    (`staleTime: 0`), so autoplay, next and previous never move into a
+    chapter the owner has just locked.
+  - **The lists** (M4's preview, M9, Updates, Continue) still show the
+    cached copy while they fetch again, then correct themselves, as before.
+    A tap on a row that is out of date lands on M5, M6 or M5a, and each of
+    those now decides on a current row.
+  - **One rule for "does this change concern this chapter":**
+    `changeTouchesChapter()` in `lib/catalog-sync.ts`, shared by the
+    downloads check and the player.
+  - **Proven on the phone the same night** (the owner's itel, over USB and
+    Metro, with a temporary development log of each screen's state, since
+    removed). The phone still held chapter 1's row from 14:20 saying `free`
+    (read off it with `run-as`) while the server said `locked`; opening it
+    in the reader went loading ("checking") → Locked, never ready, and the
+    screen showed "Chapter 1 is locked." The owner then changed locks live
+    in the dashboard (22:06–22:10 UTC). The app got each change about 3
+    seconds after the save, and M4's rows matched the database every time
+    (1 free, 2 locked, 3 free, 4 and 5 locked, at 22:07). A reader opened on
+    a stale `locked` copy of a chapter just freed checked, then opened it.
+    Then chapter 1 played (handed off from the reader, no wait), and the
+    owner locked it at 22:10:42: about 3 seconds later M6 showed Locked,
+    and 1.5 seconds after that the player logged "loaded chapter stopped".
+    Android then showed no Talebrim audio player, an empty audio focus
+    stack and no active media session. The owner tested it again
+    themselves the same night and confirmed it works.
+  - **Tests:** 276 pass, 16 new: `lib/__tests__/query-status.test.ts`
+    (current, cached, checking, failed, held for the open),
+    `lib/__tests__/catalog-sync.test.ts` (the change rule),
+    `lib/audio/__tests__/resolve.test.ts` (a fresh read online even over a
+    fresh cache, both ways; the cache offline), and three in
+    `player.test.ts` (a chapter locked while loaded stops, records and
+    unloads; a catch-up checks it; a change elsewhere, a playable answer, a
+    failed check and offline leave it playing).
 
 ---
 
@@ -2066,11 +2860,17 @@ and sandbox tests (step 18) wait for the owner's Google Play and RevenueCat
 accounts, and for a development build made after the SDK was installed.
 New-chapter alerts (23a) were built on 2026-09-28, the server side live
 (Decisions — 2026-09-28); their device checks wait for the development build
-made that day.
-**Next:** the device checks of 23a, the rest of the deferred setup
-(§ Deferred setup), then prompts 24 and 25; RevenueCat and prompt 23 come
-after them, and the passes 26 and 27 last (Decisions — 2026-09-25, "Build
-order from here"). Each prompt
+made that day. The audio storage policy (deferred setup step 8) went live
+the same day, with a second reader account to prove it (Decisions —
+2026-09-28, "Audio storage policy"). Offline downloads (24) were built the
+same evening, with the `chapters_catalog` size columns live (Decisions —
+2026-09-28, "Downloads as built"); their device checks wait for the
+development build made after them, `fd1773bc` (finished the same night),
+which also carries 23a.
+**Next:** installing build `fd1773bc` on the phone and the device checks of
+23a and 24, the rest of the deferred setup (§ Deferred setup), then prompt
+25; RevenueCat and prompt 23 come after it, and the passes 26 and 27 last
+(Decisions — 2026-09-25, "Build order from here"). Each prompt
 is reviewed against the code before it is built. Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
@@ -2104,7 +2904,20 @@ open, as are 3, 5, 7 and 8.
 **Progress, 2026-09-28:** a new development build with `expo-notifications`
 (EAS build `596d2398`, for prompt 23a) finished, and is waiting to be
 installed on the phone over the current one (same keystore, so the app's
-data stays). Steps 3, 5, 7 and 8, and the rest of 9, are still open.
+data stays). Later that day step 8 went live and step 5's reader account
+was made (Decisions — 2026-09-28, "Audio storage policy"). Steps 3 and 7,
+and the rest of 9, are still open. That evening prompt 24 queued another
+development build, `fd1773bc` (downloads: `expo-file-system` direct,
+`allowBackup` off, storage permissions blocked); it replaces `596d2398`,
+which never reached the phone.
+
+**Progress, 2026-09-30:** `fd1773bc` was installed and the owner ran the
+device checks for prompts 23a and 24 and step 9. Five failures were fixed
+the same day (Decisions — 2026-09-30): a paused download starting over, a
+chapter locked inside the free run staying open, M2 showing again after
+signing back in, another app's audio playing over the narration, and the
+first real alert not showing. The audio fix is native: EAS build `9235ee79`
+replaces `fd1773bc` on the phone.
 
 **Owner, before anything else:**
 
@@ -2133,7 +2946,13 @@ data stays). Steps 3, 5, 7 and 8, and the rest of 9, are still open.
 5. **Test data.** A second reader account on the development instance that is
    not an admin, with an email you can receive codes on. Also a locked chapter
    with narration (chapter 4 or later, access locked, audio uploaded through
-   the dashboard), besides a free chapter with audio.
+   the dashboard), besides a free chapter with audio. **The chapters exist
+   (checked 2026-09-28):** Whispers In the Mist 4 and 5 and Man of Ashes 001
+   13 are locked with narration; Whispers 1 to 3 are free with narration.
+   **The second reader account exists (2026-09-28):**
+   `talebrim.reader.b+clerk_test@example.com`, no role; sign in with the
+   code `424242`, as Clerk sends nothing to a `+clerk_test` address on a
+   development instance.
 
 **Then one prompt, to be written before prompt 22:**
 
@@ -2148,7 +2967,9 @@ data stays). Steps 3, 5, 7 and 8, and the rest of 9, are still open.
    front of it (Decisions — 2026-09-25, "Development build").
 7. Sign in with Google on the build, to prove the redirect.
 8. **The audio storage policy**, a migration in the dashboard repo, with
-   § Phase 2's discipline:
+   § Phase 2's discipline. **Done 2026-09-28** (dashboard migration
+   `20260928140000`, proven over HTTP; Decisions — 2026-09-28, "Audio
+   storage policy"). The plan it followed:
    - Replace `audio_read` with a policy that allows `select` on `audio`
      objects when `is_admin()` OR a new `security definer` function (`stable`,
      `set search_path = ''`) says this caller may play this object. The
@@ -2207,7 +3028,10 @@ data stays). Steps 3, 5, 7 and 8, and the rest of 9, are still open.
    - the lock screen's 10-second skips (see Decisions — 2026-09-24, "Audio
      as built"): accept them, or decide otherwise
    - a phone call pauses and then resumes; another app taking audio focus
-     pauses without resuming
+     pauses without resuming. **Failed on 2026-09-30** (YouTube played over
+     the narration); fixed in the `expo-audio` patch, waiting for build
+     `9235ee79` (Decisions — 2026-09-30, "Another app's audio pauses the
+     narration")
    - with the screen off: the sleep timer pausing on time, autoplay into the
      next chapter, and a re-mint after the URL expires (`DEV_FORCE_EXPIRY`
      in `lib/queries/audio.ts` signs for 60 seconds)
@@ -2267,8 +3091,8 @@ is not security: anyone replaying their own token can read every chapter.
 Before launch, serve text through a server-side check of unlocks and
 subscription entitlement (a `security definer` function or an Edge Function),
 written as an additive migration in the dashboard repo — the `chapters`
-policies stay the dashboard's. Audio closes the same gap in the deferred
-setup (§ Deferred setup): its storage policy signs only what the reader may
+policies stay the dashboard's. Audio closed the same gap on 2026-09-28
+(§ Deferred setup, step 8): its storage policy signs only what the reader may
 play. Both checks need the subscription entitlement mirror, which prompt 22a
 builds after the paywall prompt adds subscriptions (Decisions — 2026-09-25,
 "Paywall").
@@ -2284,15 +3108,16 @@ the network.
 search results screen cannot be evaluated against that. Load it through the
 admin dashboard — that path exists and exercising it is the point.
 
-**Chapter text rides in the one persisted cache value.** The whole TanStack
-cache persists as a single AsyncStorage value, and every chapter read in the
-last 24 hours is in it. Live chapters reach ~315,000 characters (Man of Ashes
-001 chapters 8–10 and 13). On Android a value past ~2 MB can fail to read back,
-and then the cache fails to restore for every screen. Prompt 24 closes this:
-downloaded text becomes a file, and `shouldPersistQuery()` drops chapter text
-(Decisions — 2026-09-25, "Downloads"). Until then the risk stands. The reader
-also lays a whole chapter out in one `ScrollView`, which has not been tried at
-that length.
+**Chapter text no longer rides in the persisted cache (closed 2026-09-28,
+prompt 24).** The whole TanStack cache persists as a single AsyncStorage
+value, and live chapters reach ~315,000 characters (Man of Ashes 001 chapters
+8–10 and 13); on Android a value past ~2 MB can fail to read back, and then
+the cache fails to restore for every screen. `shouldPersistQuery()` now drops
+every key under `queryKeys.chapters.textAll()` by prefix (the rest of
+`chapters` still persists), and a downloaded chapter's text is a file of its
+own (Decisions — 2026-09-28, "Downloads as built"). Recently read text stays
+in memory for the session. Still open: the reader lays a whole chapter out in
+one `ScrollView`, which has not been tried at that length.
 
 ---
 
@@ -2537,10 +3362,12 @@ only; Decisions — 2026-09-25, "Paywall").
 **Decided 2026-09-24: `audio` stays private** (Decisions — 2026-09-24,
 "Audio"). The app signs each chapter's URL itself, through `createSignedUrl`
 under the reader's Clerk token. Storage signs only what the `audio` read policy
-allows. The deferred setup (§ Deferred setup, before prompt 22) replaces the
-dashboard's `audio_read`, which lets any signed-in user read any object, with
-one that allows a published chapter that is free, or unlocked by this reader.
-No Edge Function and no service-role key are involved.
+allows. Since 2026-09-28 (dashboard migration `20260928140000`) that is
+`is_admin()` or `public.can_play_audio(name)`: a published chapter's current
+file, free by its own access, or unlocked by this reader (never by its
+number since migration `20260930120000`). Until then any
+signed-in user could read any object. No Edge Function and no service-role
+key are involved.
 
 - A signed URL is a bearer credential, and it expires: never persist one.
 - An offline download is a copy made with a fresh signed URL. The file then
@@ -2589,6 +3416,13 @@ It runs only after `chapters_catalog` has returned the same chapter — which
 proves it is published — and never for a chapter that resolves to locked.
 Prompt 18 adds the only other one, `audio_path` for signing
 (`chapterAudioSourceOptions()`), on the same terms.
+
+Since dashboard migration `20260928150000` (prompt 24, 2026-09-28) it also
+carries two sizes for offline downloads, appended at its end:
+`audio_size_bytes` (the size the dashboard records at upload) and
+`text_bytes` (`octet_length(script_text)`, a number, never the text). M4's
+and M9's queries keep their explicit columns; `lib/queries/downloads.ts`
+selects the sizes.
 
 Both views set `security_invoker = on`, so the caller's RLS still applies.
 Drafts are excluded **by construction**: a mobile query that forgets
@@ -2665,9 +3499,11 @@ app. Do not create one.
 - Lock-screen controls, the playback notification and Bluetooth or car buttons all come from `expo-audio`'s media session. None of them exist in Expo Go (its manifest lacks the media service, so `player.ts` skips them there); test them on the development build.
 - Playback pauses when headphones are unplugged or Bluetooth disconnects. On Android that is a patch to `expo-audio` (`patches/expo-audio+57.0.5.patch`, `setHandleAudioBecomingNoisy(true)`), because `expo-audio` 57.0.5 doesn't handle it. It only takes effect because `package.json` lists `expo-audio` under `expo.autolinking.android.buildFromSource`; without that, Gradle uses the module's precompiled copy and ignores the patch. Keep both through every upgrade until `expo-audio` does it itself.
 - Never ask for the notification permission for playback: Android 13+ exempts media-session notifications from `POST_NOTIFICATIONS`.
+- Audio focus on Android is ExoPlayer's (`handleAudioFocus = true`, usage media, content speech), patched into `expo-audio` (2026-09-30): full focus for every way playback starts, so another app's audio pauses the narration for good, a call pauses and resumes it, and a short sound (navigation) pauses rather than ducks it. `expo-audio`'s own module-level request is off in the same patch. Keep both through every upgrade until `expo-audio` does this itself.
 - Narration is AAC in `.m4a`, mono, 64 kbps, with fast start: the dashboard's upload standard (Decisions — 2026-09-25, "Narration format"). This app plays whatever `audio_path` names and never converts audio.
 - Downloads are offline copies, not files the reader owns: app-private storage, tied to the account, checked again online, and valid for 30 days offline. A chapter's audio and its text are two separate files. Implement both (prompt 24; Decisions — 2026-09-25, "Downloads").
 - Auto-bookmark on pause.
+- A loaded chapter the reader may no longer play (locked in the dashboard, unpublished) stops and unloads at the next catalog change or catch-up (`recheckLoaded()`; Decisions — 2026-09-30, "A lock set in the dashboard holds").
 - M5 ↔ M6 handoff preserves position in both directions.
 - Audio plays from signed URLs (private bucket). Never persist one, and never add a cache-busting parameter of your own to media. Each signing is a new URL, so do not count on CDN hits for audio (cached egress ~$0.03/GB against ~$0.09/GB uncached): a cost accepted with the private bucket. Offline downloads keep repeat plays off the network.
 
@@ -2825,7 +3661,7 @@ Use:
 - AsyncStorage for local persistence
 - backend route handlers or Edge Functions for anything needing a service-role key
 
-**Open item — iOS.** The stack lists Apple IAP, but every V1 frame is a 393 × 852dp Android frame. iOS layout, safe areas and App Store review specifics are unspecified. Confirm iOS scope before building for it.
+**iOS is in scope** (decided by the owner on 2026-09-29; Decisions — 2026-09-29, "iOS in scope"). It is built after Android v1, through prompt 28 (an audit and plan, no code) and the iOS series it writes. Until then, what is Android-only stays Android-only: billing, new-chapter alerts, downloads and the `expo-audio` patch. Every V1 frame is a 393 × 852dp Android frame, so iOS layout, safe areas and App Store review specifics are settled in that series, not assumed.
 
 ---
 

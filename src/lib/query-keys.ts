@@ -124,6 +124,14 @@ export const queryKeys = {
     byUser: (userId: string) => ["libraryItems", userId] as const,
   },
 
+  updates: {
+    /** Everything the Updates inbox reads for one account: what catalog sync invalidates. */
+    all: (userId: string) => ["updates", userId] as const,
+    /** Recent chapters of the books on My List — `lib/queries/updates.ts`. */
+    byBooks: (userId: string, bookIds: readonly string[]) =>
+      [...queryKeys.updates.all(userId), "byBooks", [...bookIds].sort()] as const,
+  },
+
   billing: {
     /** Everything RevenueCat answers — never persisted (`shouldPersistQuery()`, lib/query-client.ts). */
     all: () => ["billing"] as const,
@@ -131,6 +139,18 @@ export const queryKeys = {
     entitlement: (userId: string) => [...queryKeys.billing.all(), userId, "entitlement"] as const,
     /** RevenueCat's current offering: M10's plans. Per account, as RevenueCat can target one. */
     offering: (userId: string) => [...queryKeys.billing.all(), userId, "offering"] as const,
+  },
+
+  downloads: {
+    /** Everything offline downloads read — never persisted (`shouldPersistQuery()`, lib/query-client.ts). */
+    all: () => ["downloads"] as const,
+    /** One book's chapters with their sizes, fetched fresh for "Download all" (`lib/queries/downloads.ts`). */
+    rowsByBook: (bookId: string) => [...queryKeys.downloads.all(), "rowsByBook", bookId] as const,
+    /** The downloaded chapters' catalog rows, fetched fresh by the online access check. */
+    rowsByIds: (chapterIds: readonly string[]) =>
+      [...queryKeys.downloads.all(), "rowsByIds", [...chapterIds].sort()] as const,
+    /** One downloaded chapter's text, read from its file. Per account, as the files are. */
+    text: (userId: string, chapterId: string) => [...queryKeys.downloads.all(), userId, "text", chapterId] as const,
   },
 
   audio: {

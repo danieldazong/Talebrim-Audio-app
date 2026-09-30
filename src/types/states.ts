@@ -6,6 +6,13 @@
 // time — there is no "unlocked for this user" column on `chapters`, by
 // design: that is per-user state and lives in the `unlocks` table
 // (`types/reader.ts`, read through `lib/queries/unlocks.ts`).
+//
+// A chapter's own `access` decides whether it is free, never its number
+// (owner, 2026-09-30). `app_settings.free_chapters_at_start` is only the
+// access the dashboard gives a chapter when it is created; the owner can
+// lock any chapter afterwards, chapter 1 included. The audio storage policy
+// (`can_play_audio()`, dashboard migration 20260930120000) applies the same
+// rule on the server.
 import type { Enums } from "@/types/database";
 
 export type ChapterState =
@@ -25,7 +32,9 @@ export type ReaderStatus =
   | "offline"
   | "unavailable"
   | "no-text"
-  | "locked";
+  | "locked"
+  /** A download opened offline more than 30 days after its last online check (prompt 24 step 8). */
+  | "expired";
 
 /**
  * What M6 Now Playing shows (prompt 17 step 11). Exactly one at a time;
@@ -38,20 +47,13 @@ export type PlayerStatus =
   | "offline"
   | "unavailable"
   | "no-audio"
-  | "locked";
+  | "locked"
+  /** A download opened offline more than 30 days after its last online check (prompt 24 step 8). */
+  | "expired";
 
 export interface ResolveChapterStateInput {
   /** `chapters.access` / `chapters_catalog.access` for this chapter. */
   access: Enums<"chapter_access">;
-  /** 1-based position of this chapter within its book (`chapters_catalog.number`). */
-  chapterNumber: number;
-  /**
-   * Live `app_settings.free_chapters_at_start`. Never hardcode this — the
-   * live value governs, and the migration default must not be trusted
-   * (AGENTS.md Data Contract). Callers fetch it via
-   * `lib/queries/app-settings.ts`.
-   */
-  freeChaptersAtStart: number;
   /**
    * True if this chapter is the one the reader is on — the chapter of their
    * most recent `reading_positions` row for this book, or the one open in the
@@ -72,9 +74,9 @@ export interface ResolveChapterStateInput {
    */
   isSubscribed?: boolean;
   /**
-   * True if this chapter's audio and/or text is stored on this device for
-   * offline use. Local-device state, never a table; always `false` until the
-   * download feature (AGENTS.md § Audio Rules) lands.
+   * True if this chapter is downloaded: every part it has is stored on this
+   * device for offline use (the downloads index, `store/downloads-store.ts`).
+   * Local-device state, never a table.
    */
   isDownloaded?: boolean;
 }
@@ -95,17 +97,13 @@ export function resolveChapterState(
 ): ChapterState {
   const {
     access,
-    chapterNumber,
-    freeChaptersAtStart,
     isCurrentlyReading = false,
     isUnlockedByUser = false,
     isSubscribed = false,
     isDownloaded = false,
   } = input;
 
-  const isFreeByPosition = chapterNumber <= freeChaptersAtStart;
-  const isAccessible =
-    access === "free" || isFreeByPosition || isUnlockedByUser || isSubscribed;
+  const isAccessible = access === "free" || isUnlockedByUser || isSubscribed;
 
   if (!isAccessible) {
     return { kind: "locked" };
@@ -131,8 +129,6 @@ export type LockableChapter = {
 };
 
 export type ChapterLockInputs = {
-  /** Live `free_chapters_at_start` from `reader_settings()`. Never hardcoded. */
-  freeChaptersAtStart: number;
   /** Chapter ids from the reader's `unlocks` rows. */
   unlockedChapterIds: ReadonlySet<string>;
   /** The reader's `ad_free` entitlement is active. */
@@ -157,8 +153,6 @@ export function chapterStateFor(
 
   return resolveChapterState({
     access: chapter.access,
-    chapterNumber: chapter.number,
-    freeChaptersAtStart: inputs.freeChaptersAtStart,
     isUnlockedByUser: inputs.unlockedChapterIds.has(chapter.id),
     isSubscribed: inputs.isSubscribed,
     isCurrentlyReading: flags.isCurrentlyReading,
@@ -170,23 +164,21 @@ const NO_UNLOCKS: ReadonlySet<string> = new Set();
 
 /**
  * A chapter's lock state, or null while that can't be told yet. Unlocks and
- * the subscription only ever open a locked chapter, so one that is free by
- * access or by position waits for neither, and either one opens it as soon
+ * the subscription only ever open a locked chapter, so a free one waits for
+ * neither, and either one opens it as soon
  * as it is known to: a subscriber never waits for their unlocks. Undefined
  * is "not known yet", never "no", so a subscriber never sees a paywall flash
  * while the entitlement loads. M5, M6, the player and Library call this.
  */
 export function lockStateFor(
   chapter: LockableChapter,
-  freeChaptersAtStart: number,
   unlockedChapterIds: ReadonlySet<string> | undefined,
   isSubscribed: boolean | undefined,
 ): ChapterState | null {
-  const withNeither = chapterStateFor(chapter, { freeChaptersAtStart, unlockedChapterIds: NO_UNLOCKS, isSubscribed: false });
+  const withNeither = chapterStateFor(chapter, { unlockedChapterIds: NO_UNLOCKS, isSubscribed: false });
   if (withNeither.kind !== "locked") return withNeither;
 
   const opened = chapterStateFor(chapter, {
-    freeChaptersAtStart,
     unlockedChapterIds: unlockedChapterIds ?? NO_UNLOCKS,
     isSubscribed: isSubscribed === true,
   });

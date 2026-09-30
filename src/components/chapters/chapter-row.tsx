@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { ChapterListRow, ChapterRowTrailing } from "@/lib/chapter-list";
+import { chapterRowActions, type ChapterListRow, type ChapterRowAction } from "@/lib/chapter-list";
 import { colors, layout } from "@/theme";
 
 // Measured from material/5.png: a 64dp row, 12dp of padding above and below,
@@ -22,9 +22,26 @@ export function chapterListRowHeight(fontScale: number): number {
   return Math.ceil(ROW_PADDING + (TITLE_LINE + DETAIL_LINE) * Math.min(fontScale, MAX_FONT_SCALE));
 }
 
-/** The right-hand slot, except the headphone, which is a button beside the row. */
-function Trailing({ kind }: { kind: ChapterRowTrailing }) {
-  switch (kind) {
+/** The screen-reader action for each of the row sheet's items. */
+export const ROW_ACTION_LABELS: Record<ChapterRowAction, string> = {
+  listen: "Listen",
+  download: "Download chapter",
+  cancel: "Cancel download",
+  remove: "Remove download",
+};
+
+/** Words in the slot, in `muted`: a chapter in the download queue. */
+function QueueWords({ label }: { label: string }) {
+  return (
+    <Text className="font-ui-medium text-muted text-xs leading-4" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+      {label}
+    </Text>
+  );
+}
+
+/** The right-hand slot, except the headphone and the Downloaded disc, which are buttons beside the row. */
+function Trailing({ row }: { row: ChapterListRow }) {
+  switch (row.trailing) {
     case "reading":
       return (
         <View className="rounded-pill bg-ember/10 px-2.5 py-px">
@@ -33,14 +50,15 @@ function Trailing({ kind }: { kind: ChapterRowTrailing }) {
           </Text>
         </View>
       );
-    case "downloaded":
-      return (
-        <View className="h-5 w-5 items-center justify-center rounded-pill bg-teal">
-          <Ionicons name="arrow-down" size={12} color={colors.ink} />
-        </View>
-      );
+    case "queued":
+      return <QueueWords label="Queued" />;
+    case "progress":
+      return <QueueWords label={`${row.download.kind === "downloading" ? row.download.percent : 0}%`} />;
+    case "failed":
+      return <QueueWords label="Failed" />;
     case "locked":
       return <Ionicons name="lock-closed-outline" size={16} color={colors.muted} />;
+    case "downloaded":
     case "listen":
     case null:
       return null;
@@ -55,6 +73,10 @@ type ChapterRowProps = {
   isLast: boolean;
   onOpen: (row: ChapterListRow) => void;
   onListen: (row: ChapterListRow) => void;
+  /** Long-press, or the Downloaded disc: the row's sheet. */
+  onOpenSheet: (row: ChapterListRow) => void;
+  /** A screen reader's action on the row: the sheet's items, without the sheet. */
+  onAction: (row: ChapterListRow, action: ChapterRowAction) => void;
 };
 
 /**
@@ -62,8 +84,15 @@ type ChapterRowProps = {
  *
  * The row is one screen-reader element, labelled with its title, its audio
  * and its state. An unlocked narrated row's headphone is a separate 44dp
- * button beside it, labelled on its own. A row that opens nothing (Locked,
- * or no text and no narration) is disabled, and its label says why.
+ * button beside it, labelled on its own, and so is a Downloaded row's teal
+ * disc, which opens the row's sheet. A row that opens nothing (Locked, or
+ * no text and no narration) is disabled, and its label says why.
+ *
+ * Downloads (prompt 24 step 12): long-pressing an openable row opens its
+ * sheet, and a screen reader gets the sheet's items as the row's actions.
+ * No per-chapter download button: the owner settled long-press on
+ * 2026-09-25. A chapter in the queue shows "Queued", its percentage or
+ * "Failed" in the slot.
  *
  * Omitted from the frame (AGENTS.md § Decisions, "No UI without data behind
  * it"): "14 min read" (no word-count column), and the Reading row's
@@ -74,11 +103,13 @@ type ChapterRowProps = {
  * `className`: NativeWind drops a function beside a className (AGENTS.md
  * § Style Exception Rules).
  */
-export function ChapterRow({ row, height, isLast, onOpen, onListen }: ChapterRowProps) {
+export function ChapterRow({ row, height, isLast, onOpen, onListen, onOpenSheet, onAction }: ChapterRowProps) {
   const reading = row.state.kind === "reading";
   const locked = row.state.kind === "locked";
   const listen = row.trailing === "listen";
+  const disc = row.trailing === "downloaded";
   const titleColor = locked ? "text-muted" : reading ? "text-champagne" : "text-body";
+  const actions = chapterRowActions(row);
 
   return (
     <View className={`flex-row ${reading ? "bg-surface/40" : ""}`} style={{ height }}>
@@ -88,7 +119,13 @@ export function ChapterRow({ row, height, isLast, onOpen, onListen }: ChapterRow
         accessibilityState={{ disabled: row.opens === null }}
         disabled={row.opens === null}
         onPress={() => onOpen(row)}
-        style={({ pressed }) => [styles.main, listen ? null : styles.mainEnd, { opacity: pressed ? 0.7 : 1 }]}
+        onLongPress={row.hasSheet ? () => onOpenSheet(row) : undefined}
+        accessibilityActions={actions.map((action) => ({ name: action, label: ROW_ACTION_LABELS[action] }))}
+        onAccessibilityAction={(event) => {
+          const action = actions.find((candidate) => candidate === event.nativeEvent.actionName);
+          if (action) onAction(row, action);
+        }}
+        style={({ pressed }) => [styles.main, listen || disc ? null : styles.mainEnd, { opacity: pressed ? 0.7 : 1 }]}
       >
         <View className="flex-1 gap-0.5">
           <Text
@@ -106,7 +143,7 @@ export function ChapterRow({ row, height, isLast, onOpen, onListen }: ChapterRow
             {row.detail}
           </Text>
         </View>
-        <Trailing kind={row.trailing} />
+        <Trailing row={row} />
       </Pressable>
 
       {listen ? (
@@ -117,6 +154,19 @@ export function ChapterRow({ row, height, isLast, onOpen, onListen }: ChapterRow
           style={({ pressed }) => [styles.listen, { opacity: pressed ? 0.6 : 1 }]}
         >
           <Ionicons name="headset-outline" size={16} color={colors.teal} />
+        </Pressable>
+      ) : null}
+
+      {disc ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Chapter ${row.number} is downloaded. Download options`}
+          onPress={() => onOpenSheet(row)}
+          style={({ pressed }) => [styles.listen, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <View className="h-5 w-5 items-center justify-center rounded-pill bg-teal">
+            <Ionicons name="arrow-down" size={12} color={colors.ink} />
+          </View>
         </Pressable>
       ) : null}
 
@@ -139,7 +189,8 @@ const styles = StyleSheet.create({
     paddingRight: layout.screenPadding,
   },
   // A 44dp target whose icon lines up with the 16dp edge the other rows'
-  // icons sit on: (44 - 16) / 2 = 14dp inside, plus 2dp.
+  // icons sit on: (44 - 16) / 2 = 14dp inside, plus 2dp. The Downloaded
+  // disc shares it.
   listen: {
     width: layout.minTouchTarget,
     alignItems: "center",

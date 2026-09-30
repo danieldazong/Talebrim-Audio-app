@@ -3,21 +3,26 @@ import { useRef, useState } from "react";
 import { FlatList, Text, useWindowDimensions, View } from "react-native";
 
 import { BookNotFound } from "@/components/book/book-states";
+import { ChapterActionsSheet } from "@/components/chapters/chapter-actions-sheet";
 import {
   ChapterListHeader,
   ChapterSortBar,
   ChapterSortBarSkeleton,
+  DownloadFailureLine,
 } from "@/components/chapters/chapter-list-header";
 import { ChapterListMessage, ChapterRowsSkeleton } from "@/components/chapters/chapter-list-states";
 import { ChapterRow, chapterListRowHeight } from "@/components/chapters/chapter-row";
 import { Button, Screen } from "@/components/ui";
 import { useChapterList } from "@/hooks/use-chapter-list";
+import { useBookDownloads } from "@/hooks/use-downloads";
 import {
   openingRowIndex,
   sortChapterRows,
   type ChapterListRow,
+  type ChapterRowAction,
   type ChapterSortOrder,
 } from "@/lib/chapter-list";
+import { downloadsAvailable } from "@/lib/downloads/files";
 import { isUuid } from "@/lib/ids";
 import { openPaywall } from "@/lib/paywall";
 
@@ -30,6 +35,10 @@ import { openPaywall } from "@/lib/paywall";
 // Below the list, for a reader who isn't subscribed and has a chapter locked
 // here, the bar with "Unlock all chapters" and the ember "Go Ad-Free"
 // (prompt 22 step 11). The list's measured height is what the bar leaves.
+//
+// Downloads (prompt 24 step 12): "Download all" in the sort bar, the
+// Downloaded disc and the queue's words in the rows, and each openable row's
+// sheet (long-press, or the disc).
 
 function goBack() {
   if (router.canGoBack()) router.back();
@@ -75,8 +84,18 @@ function listenToRow(row: ChapterListRow) {
   router.push({ pathname: "/player/[chapterId]", params: { chapterId: row.id } });
 }
 
+/** The sheet's Listen: any openable narrated row, the Downloaded ones included. */
+function listenFromSheet(row: ChapterListRow) {
+  if (!row.hasSheet || !row.hasAudio) return;
+  router.push({ pathname: "/player/[chapterId]", params: { chapterId: row.id } });
+}
+
 function ChapterList({ bookId }: { bookId: string }) {
   const { view, book, retry } = useChapterList(bookId);
+  const downloads = useBookDownloads(bookId);
+  // The sheet holds its chapter's id; the row itself is read fresh, so its
+  // download state moves while the sheet is open.
+  const [sheetChapterId, setSheetChapterId] = useState<string | null>(null);
   // Screen state, never persisted. Oldest first: reading order, as the frame selects.
   const [order, setOrder] = useState<ChapterSortOrder>("oldest");
   const listRef = useRef<FlatList<ChapterListRow>>(null);
@@ -115,6 +134,28 @@ function ChapterList({ bookId }: { bookId: string }) {
 
   const rows = sortChapterRows(view.rows, order);
   const readingIndex = rows.findIndex((row) => row.state.kind === "reading");
+  const sheetRow = rows.find((row) => row.id === sheetChapterId && row.hasSheet) ?? null;
+  const failure =
+    view.downloadFailure ??
+    (downloads.prepareFailed ? "We couldn't get this story ready to download. Check your connection and try again." : null);
+
+  function act(row: ChapterListRow, action: ChapterRowAction) {
+    setSheetChapterId(null);
+    switch (action) {
+      case "listen":
+        listenFromSheet(row);
+        return;
+      case "download":
+        void downloads.downloadChapter(row.id);
+        return;
+      case "cancel":
+        downloads.cancelChapter(row.id);
+        return;
+      case "remove":
+        downloads.removeChapter(row.id);
+        return;
+    }
+  }
 
   return (
     <Screen>
@@ -123,7 +164,22 @@ function ChapterList({ bookId }: { bookId: string }) {
         book={book}
         counts={{ chapters: view.rows.length, unlocked: view.unlockedCount }}
       />
-      <ChapterSortBar order={order} onChange={changeOrder} />
+      <ChapterSortBar
+        order={order}
+        onChange={changeOrder}
+        download={
+          downloadsAvailable()
+            ? {
+                state: view.downloadAll,
+                online: downloads.online,
+                preparing: downloads.preparing,
+                onDownloadAll: () => void downloads.downloadAll(),
+                onCancel: downloads.cancelAll,
+              }
+            : null
+        }
+      />
+      {failure ? <DownloadFailureLine message={failure} /> : null}
 
       <View className="flex-1" onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}>
         {listHeight === null ? null : (
@@ -138,6 +194,8 @@ function ChapterList({ bookId }: { bookId: string }) {
                 isLast={index === rows.length - 1}
                 onOpen={openRow}
                 onListen={listenToRow}
+                onOpenSheet={downloadsAvailable() ? (row) => setSheetChapterId(row.id) : noSheet}
+                onAction={act}
               />
             )}
             // Every row is one height (`chapterListRowHeight()`), so the list
@@ -154,9 +212,18 @@ function ChapterList({ bookId }: { bookId: string }) {
       </View>
 
       {view.showAdFreeBar ? <AdFreeBar /> : null}
+
+      <ChapterActionsSheet
+        row={sheetRow}
+        online={downloads.online}
+        onAction={act}
+        onClose={() => setSheetChapterId(null)}
+      />
     </Screen>
   );
 }
+
+function noSheet() {}
 
 /**
  * From material/5.png: a `raised` bar above the bottom safe area. "Unlock

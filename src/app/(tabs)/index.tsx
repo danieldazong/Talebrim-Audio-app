@@ -10,6 +10,7 @@ import { DiscoverHeader } from "@/components/discover/discover-header";
 import {
   DiscoverEmptyScreen,
   DiscoverError,
+  DiscoverOffline,
   DiscoverSkeleton,
 } from "@/components/discover/discover-states";
 import { GenreTabStrip, type DiscoverTab } from "@/components/discover/genre-tab-strip";
@@ -17,6 +18,7 @@ import { HeroCarousel } from "@/components/discover/hero-carousel";
 import { ContinueSection } from "@/components/library/continue-card";
 import type { Genre } from "@/data/genres";
 import { openResumeTarget, useContinue, type ContinueView } from "@/hooks/use-continue";
+import { useDownloadEntries } from "@/hooks/use-downloads";
 import { useHeroAutoAdvance, useHeroBooks } from "@/hooks/use-hero-carousel";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { catalogByTabOptions, newAudioReleasesOptions, pickedForYouOptions } from "@/lib/queries/catalog";
@@ -54,6 +56,9 @@ export default function Discover() {
 
   const isPending = tabQuery.isPending;
   const isError = tabQuery.isError;
+  // Offline with nothing cached: the query is paused, not loading (prompt 24).
+  const isOffline = isPending && tabQuery.fetchStatus === "paused";
+  const hasDownloads = useDownloadEntries().length > 0;
   const books = tabQuery.data ?? [];
   // The hero's five, held while Discover is on screen. Null while the list is
   // still the previous tab's placeholder, so a new tab's set waits for its own.
@@ -81,7 +86,9 @@ export default function Discover() {
       <DiscoverHeader onPressSearch={() => router.push("/search")} />
       <GenreTabStrip value={tab} onChange={setTab} />
 
-      {isPending ? (
+      {isOffline ? (
+        <DiscoverOffline onOpenDownloads={hasDownloads ? () => router.push("/downloads") : null} />
+      ) : isPending ? (
         <DiscoverSkeleton />
       ) : isError ? (
         <DiscoverError onRetry={retry} />

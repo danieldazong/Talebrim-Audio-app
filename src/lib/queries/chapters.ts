@@ -193,12 +193,13 @@ export const lastChapterNumberOptions = (bookId: string) =>
  * text never moves under the reader; the refreshed text shows on the next
  * open. The chapter's title (`chapterDetailOptions()`) still updates live.
  *
- * 24-hour `staleTime`: re-opening a chapter read today paints from cache
- * with no request. Safe because catalog sync invalidates the text the moment
- * the dashboard saves it. `gcTime` and the persister's `maxAge` stay at the
- * app's 24 hours (`lib/query-client.ts`): the persisted cache is one
- * AsyncStorage value for every query, so longer-lived text would grow it for
- * the whole app. Long-term offline text belongs to the downloads prompt.
+ * 24-hour `staleTime`: re-opening a chapter read this session paints from
+ * memory with no request. Safe because catalog sync invalidates the text the
+ * moment the dashboard saves it. Never persisted (`shouldPersistQuery()`
+ * drops `textAll()`, prompt 24 step 10): the persisted cache is one
+ * AsyncStorage value that Android can fail to read back past about 2 MB, and
+ * one chapter reached 314,950 characters. Offline reading is what downloads
+ * are for: a downloaded chapter's text is a file (`downloadedTextOptions()`).
  */
 export const chapterTextOptions = (chapterId: string) =>
   queryOptions({

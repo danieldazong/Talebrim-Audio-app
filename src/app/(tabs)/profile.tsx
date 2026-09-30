@@ -8,6 +8,10 @@ export default function Profile() {
   return (
     <Screen className="items-center justify-center gap-4 bg-bg">
       <Text className="text-heading text-2xl">Profile</Text>
+      {/* Every build, not only development: until M11's "Downloads & offline
+          storage" row (prompt 25), this is the way to the Downloads screen,
+          offline included (prompt 24 step 12). */}
+      <Button label="Downloads" variant="outlined" onPress={() => router.push("/downloads")} />
       {__DEV__ ? (
         // DEV-ONLY: /health has no in-app entry point by design (it's a
         // wiring probe, not a real screen) — this is a temporary way in

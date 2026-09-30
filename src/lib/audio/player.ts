@@ -13,12 +13,14 @@
 // background. Screens read the same status from it through
 // `subscribeAudio()` and `getAudioSnapshot()` (`hooks/use-audio.ts`), so M6 and
 // the mini player can never disagree.
+import { onlineManager } from "@tanstack/react-query";
 import { isRunningInExpoGo } from "expo";
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from "expo-audio";
 import { AppState, Platform } from "react-native";
 
 import { track } from "@/lib/analytics";
-import { resolveChapter, resolveNextChapter, type LoadedChapter } from "@/lib/audio/resolve";
+import { checkChapter, resolveChapter, resolveNextChapter, type LoadedChapter } from "@/lib/audio/resolve";
+import { downloadFor, localAudioUri } from "@/lib/downloads/local";
 import {
   chooseDuration,
   playbackStatusOf,
@@ -26,6 +28,7 @@ import {
   type LoadPhase,
   type PlaybackStatus,
 } from "@/lib/audio/rules";
+import { changeTouchesChapter, type CatalogChange } from "@/lib/catalog-sync";
 import { flush, recordPosition } from "@/lib/parity/writer";
 import { chapterAudioSourceOptions, type ChapterAudioSource } from "@/lib/queries/audio";
 import { queryClient } from "@/lib/query-client";
@@ -188,7 +191,10 @@ function ensureAudioMode(): Promise<void> {
     playsInSilentMode: true,
     shouldPlayInBackground: true,
     // Exclusive focus: other apps pause, a call pauses this one, and the
-    // lock screen controls attach to this player.
+    // lock screen controls attach to this player. On Android, ExoPlayer
+    // requests and handles the focus itself, full and for every way play
+    // starts (patches/expo-audio+57.0.5.patch, 2026-09-30); this mode then
+    // matters only on iOS.
     interruptionMode: "doNotMix",
   }).catch((error: unknown) => {
     audioMode = null;
@@ -254,11 +260,15 @@ async function seekVerified(target: AudioPlayer, seconds: number) {
 }
 
 /**
- * The chapter's signed URL, from the cache while it is fresh. `fresh` signs a
- * new one (a re-mint). Offline with nothing fresh cached, the fetch waits
- * for a connection, and the phase says so meanwhile.
+ * What the player loads. A downloaded chapter's own file (prompt 24 step 9):
+ * no signing, no re-mint, and no network for it. Otherwise the chapter's
+ * signed URL, from the cache while it is fresh; `fresh` signs a new one (a
+ * re-mint). Offline with nothing fresh cached, the fetch waits for a
+ * connection, and the phase says so meanwhile.
  */
 async function fetchSource(account: string, chapterId: string, gen: number, fresh: boolean): Promise<ChapterAudioSource> {
+  const local = localAudioUri(account, chapterId);
+  if (local !== null) return { kind: "signed", url: local, path: local };
   const options = chapterAudioSourceOptions(account, chapterId);
   const request = queryClient.fetchQuery(fresh ? { ...options, staleTime: 0 } : options);
   if (queryClient.getQueryState(options.queryKey)?.fetchStatus === "paused") update({ phase: "offline" });
@@ -427,7 +437,10 @@ function onStatus(status: AudioStatus) {
   }
 }
 
-/** Mints the next chapter's URL ahead, once, 90% through. Never for a locked chapter. */
+/**
+ * Mints the next chapter's URL ahead, once, 90% through. Never for a locked
+ * chapter, and never for a downloaded one, which plays from its file.
+ */
 function prefetchNext(chapter: LoadedChapter, status: AudioStatus) {
   if (prefetchedAfter === chapter.chapterId || userId === null) return;
   const duration = chooseDuration(chapter.durationSeconds, status.duration);
@@ -439,6 +452,7 @@ function prefetchNext(chapter: LoadedChapter, status: AudioStatus) {
   resolveNextChapter(account, chapter)
     .then((next) => {
       if (gen !== generation || next?.kind !== "playable") return;
+      if (downloadFor(account, next.chapter.chapterId)?.audio) return;
       void queryClient.prefetchQuery(chapterAudioSourceOptions(account, next.chapter.chapterId));
     })
     .catch((error: unknown) => log("next chapter prefetch failed", error));
@@ -626,6 +640,39 @@ function checkSleepTimer() {
   pausePlayback();
 }
 
+// --- Access ---------------------------------------------------------------
+
+/**
+ * A catalog change that may concern the loaded chapter
+ * (`changeTouchesChapter()`), or a catch-up with no scope: the chapter is
+ * checked again with fresh answers (`checkChapter()`), as M6 checks it.
+ * Locked for this reader since (the owner locked it in the dashboard),
+ * unpublished, or left without narration, it stops: paused and recorded,
+ * then unloaded, so the mini player, the lock screen and the notification
+ * let it go (2026-09-30). Only a definite answer stops it: offline, or after
+ * a failed check, it plays on.
+ */
+export async function recheckLoaded(change: CatalogChange | null): Promise<void> {
+  const chapter = snapshot.chapter;
+  const account = userId;
+  if (chapter === null || account === null || !onlineManager.isOnline()) return;
+  if (change !== null && !changeTouchesChapter(change, chapter.chapterId, chapter.bookId)) return;
+
+  const gen = generation;
+  let checked;
+  try {
+    checked = await checkChapter(account, chapter.chapterId);
+  } catch (error) {
+    log("loaded chapter check failed", error);
+    return;
+  }
+  // Another chapter loaded, or sign-out, while it was checked.
+  if (gen !== generation || checked.kind === "playable") return;
+  log("loaded chapter stopped", checked.kind);
+  pausePlayback();
+  releaseAudio();
+}
+
 // --- Sign-out -------------------------------------------------------------
 
 /**
@@ -638,7 +685,8 @@ export function stopForSignOut(): void {
 
 /**
  * Sign-out, from `clearUserScopedState()`: the next account never hears or
- * sees this one's chapter. In order: pause, clear the lock screen, the sleep
+ * sees this one's chapter. Also `recheckLoaded()`, for a chapter this reader
+ * may no longer play. In order: pause, clear the lock screen, the sleep
  * timer and `currentChapterId`, then release the player. The next play makes
  * a new one.
  */

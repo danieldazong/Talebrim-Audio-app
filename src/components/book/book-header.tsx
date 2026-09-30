@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Fragment } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Badge, Button, Cover } from "@/components/ui";
 import type { ChapterTarget } from "@/hooks/use-book-detail";
+import type { DownloadButton } from "@/lib/downloads/rules";
 import { formatDurationCompact } from "@/lib/format";
 import { genreLabel, maturityLabel } from "@/lib/labels";
 import { colors, layout } from "@/theme";
@@ -25,18 +26,103 @@ export type MyListToggle = {
   onToggle: () => void;
 };
 
+export type BookDownload = {
+  button: DownloadButton;
+  onPress: () => void;
+};
+
 type BookTopBarProps = {
   onBack: () => void;
   /** `null` hides Share — nothing to share until the book has loaded. */
   onShare: (() => void) | null;
   /** `null` hides My List — until the book and My List are both known (`useMyList()`). */
   myList: MyListToggle | null;
+  /** `null` hides the download button, as does its "hidden" state. */
+  download: BookDownload | null;
 };
 
+/** What a screen reader hears for the download button, and whether it takes a tap. */
+function downloadLabel(button: DownloadButton): { label: string; disabled: boolean; busy: boolean } {
+  switch (button.kind) {
+    case "unavailable":
+      return { label: "Download. Downloads work in the Talebrim app for Android. Opens Downloads", disabled: false, busy: false };
+    case "loading":
+      return { label: "Download. Loading chapters", disabled: true, busy: true };
+    case "offline":
+      return { label: "Download. Not available offline", disabled: true, busy: false };
+    case "ready":
+      return {
+        label: button.count === 1 ? "Download 1 chapter" : `Download all ${button.count} chapters`,
+        disabled: false,
+        busy: false,
+      };
+    case "preparing":
+      return { label: "Getting the chapters ready to download", disabled: true, busy: true };
+    case "failed":
+      return { label: "Couldn't get the chapters ready to download. Try again", disabled: false, busy: false };
+    case "running":
+      return {
+        label: `Downloading, ${button.done} of ${button.total} chapters. Opens the chapter list`,
+        disabled: false,
+        busy: true,
+      };
+    case "done":
+      return { label: "All chapters downloaded. Opens Downloads", disabled: false, busy: false };
+    case "hidden":
+      return { label: "", disabled: true, busy: false };
+  }
+}
+
+/** The button's face: the download arrow, a spinner, the Downloaded disc, or a retry mark. */
+function DownloadIcon({ button }: { button: DownloadButton }) {
+  switch (button.kind) {
+    case "preparing":
+    case "running":
+      return <ActivityIndicator size="small" color={colors.teal} />;
+    case "done":
+      // M9's Downloaded disc (`components/chapters/chapter-row.tsx`).
+      return (
+        <View className="h-5 w-5 items-center justify-center rounded-pill bg-teal">
+          <Ionicons name="arrow-down" size={12} color={colors.ink} />
+        </View>
+      );
+    case "failed":
+      return <Ionicons name="alert-circle-outline" size={20} color={colors.muted} />;
+    default:
+      return <Ionicons name="download-outline" size={20} color={colors.teal} />;
+  }
+}
+
 /**
- * M4's round back and share buttons, and the My List pill. They float over
- * the scroll content so Back stays reachable deep in the chapter list;
- * `box-none` lets touches between them reach the content underneath.
+ * M4's download button (Decisions — 2026-09-30): the whole book, as M9's
+ * "Download all" does, confirmed with its size. Outlined like Share, with a
+ * teal icon: download controls are teal or `muted`, never ember (prompt 24
+ * step 14), and Read stays M4's one ember action.
+ */
+function BookDownloadButton({ button, onPress }: BookDownload) {
+  if (button.kind === "hidden") return null;
+  const { label, disabled, busy } = downloadLabel(button);
+  const dimmed = button.kind === "loading" || button.kind === "offline";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, busy }}
+      disabled={disabled}
+      onPress={onPress}
+      // No className beside a `style` function (AGENTS.md § Style Exception Rules).
+      style={({ pressed }) => [styles.round, { opacity: dimmed ? 0.5 : pressed ? 0.7 : 1 }]}
+    >
+      <DownloadIcon button={button} />
+    </Pressable>
+  );
+}
+
+/**
+ * M4's round back, download and share buttons, and the My List pill. They
+ * float over the scroll content so Back stays reachable deep in the chapter
+ * list; `box-none` lets touches between them reach the content underneath.
+ * No frame draws the download button either (Decisions — 2026-09-30).
  *
  * No frame draws My List (AGENTS.md § Decisions — 2026-09-25, "M7"). A bare
  * plus could mean follow, download or anything else, so the pill names the
@@ -45,7 +131,7 @@ type BookTopBarProps = {
  * action, and teal is for audio. No bookmark: M5's bookmark marks a place in
  * a chapter.
  */
-export function BookTopBar({ onBack, onShare, myList }: BookTopBarProps) {
+export function BookTopBar({ onBack, onShare, myList, download }: BookTopBarProps) {
   return (
     <View pointerEvents="box-none" className="absolute inset-x-3 top-3.5 flex-row justify-between">
       <Pressable
@@ -80,6 +166,8 @@ export function BookTopBar({ onBack, onShare, myList }: BookTopBarProps) {
           </Pressable>
         ) : null}
 
+        {download ? <BookDownloadButton {...download} /> : null}
+
         {onShare ? (
           <Pressable
             accessibilityRole="button"
@@ -97,6 +185,17 @@ export function BookTopBar({ onBack, onShare, myList }: BookTopBarProps) {
 }
 
 const styles = StyleSheet.create({
+  /** Back and Share's round outline (`icon-btn icon-btn--round icon-btn--outline`), as a style. */
+  round: {
+    width: layout.minTouchTarget,
+    height: layout.minTouchTarget,
+    borderRadius: layout.minTouchTarget / 2,
+    borderWidth: 1,
+    borderColor: colors.raised,
+    backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   /** Back and Share's outline (`icon-btn--outline`), as a 44dp pill with a label. */
   myList: {
     height: layout.minTouchTarget,

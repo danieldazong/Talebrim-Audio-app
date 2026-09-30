@@ -150,7 +150,6 @@ export function useContinue(segment: LibrarySegment): {
         chapterId: resumeAt.chapterId,
         number: resumeAt.number,
         target: resumeTarget(resumeAt, {
-          freeChaptersAtStart: settings.data?.free_chapters_at_start,
           unlockedChapterIds: unlocks.data ? new Set(unlocks.data.map((unlock) => unlock.chapter_id)) : undefined,
           isSubscribed: entitlement.data?.active,
         }),

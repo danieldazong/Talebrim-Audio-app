@@ -34,8 +34,34 @@ import { Platform } from "react-native";
 import { alertBookId, permissionFrom, type AlertsPermission } from "@/lib/alerts";
 import { supabase } from "@/lib/supabase";
 
+/**
+ * Screens in front that want no alert banner (M5 and M6, through
+ * `useQuietAlertBanners()`). A count, not a flag: in a handoff one replaces
+ * the other, and the new one can come into focus before the old one leaves.
+ */
+let quietScreens = 0;
+
+/** No banner while the caller is in front. Returns the release. */
+export function quietAlertBanners(): () => void {
+  quietScreens += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    quietScreens -= 1;
+  };
+}
+
 /** The channel the server sends on (`notify-new-chapters`). */
-export const ALERTS_CHANNEL_ID = "new-chapters";
+export const ALERTS_CHANNEL_ID = "chapter-alerts";
+
+/**
+ * The first channel, at default importance, which Android shows in the shade
+ * with no banner: the owner's first alerts arrived and went unseen
+ * (2026-09-30). An app can never raise a channel's importance once created,
+ * so it is deleted and `ALERTS_CHANNEL_ID` replaces it.
+ */
+const OLD_ALERTS_CHANNEL_ID = "new-chapters";
 
 const AVAILABLE = typeof window !== "undefined" && Platform.OS === "android" && !isRunningInExpoGo();
 
@@ -67,7 +93,8 @@ function load(): Sdk {
   const loaded = require("expo-notifications") as Sdk;
   loaded.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowBanner: true,
+      // With the app open: a banner, except over a story being read or heard.
+      shouldShowBanner: quietScreens === 0,
       shouldShowList: true,
       shouldPlaySound: false,
       shouldSetBadge: false,
@@ -78,17 +105,20 @@ function load(): Sdk {
 }
 
 /**
- * "New chapters": default importance, and its content hidden on a secure lock
- * screen (every live book is `mature_17`). Creating it again only updates its
- * name and description; the reader's own settings for it stand.
+ * "New chapters": high importance, so an alert pops up on screen with the
+ * phone's notification sound, as a message app's does; its content is hidden
+ * on a secure lock screen (every live book is `mature_17`). Creating it again
+ * only updates its name and description; the reader's own settings for it
+ * stand. The first, default-importance channel is deleted on the way.
  */
-function ensureChannel(client: Sdk): Promise<unknown> {
-  return client.setNotificationChannelAsync(ALERTS_CHANNEL_ID, {
+async function ensureChannel(client: Sdk): Promise<void> {
+  await client.setNotificationChannelAsync(ALERTS_CHANNEL_ID, {
     name: "New chapters",
     description: "New chapters of the stories on your My List.",
-    importance: client.AndroidImportance.DEFAULT,
+    importance: client.AndroidImportance.HIGH,
     lockscreenVisibility: client.AndroidNotificationVisibility.PRIVATE,
   });
+  await client.deleteNotificationChannelAsync(OLD_ALERTS_CHANNEL_ID).catch(() => undefined);
 }
 
 /**

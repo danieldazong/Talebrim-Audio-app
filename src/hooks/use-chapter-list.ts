@@ -1,9 +1,17 @@
 import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { useDownloadEntries, useDownloadQueue, useDownloadsHydrated } from "@/hooks/use-downloads";
 import { useEntitlement } from "@/hooks/use-entitlement";
-import { buildChapterRows, unlockedCount, type ChapterListRow } from "@/lib/chapter-list";
+import {
+  buildChapterRows,
+  downloadAllState,
+  downloadFailureMessage,
+  unlockedCount,
+  type ChapterListRow,
+  type DownloadAllState,
+} from "@/lib/chapter-list";
 import { resolveCoverUrl } from "@/lib/covers";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
@@ -19,6 +27,10 @@ export type ChapterListView =
       unlockedCount: number;
       /** M9's bottom bar: not subscribed, and at least one chapter locked (prompt 22 step 11). */
       showAdFreeBar: boolean;
+      /** The sort bar's "Download all" slot (prompt 24 step 12). */
+      downloadAll: DownloadAllState;
+      /** Why chapters of this book failed to download, in words; null when none did. */
+      downloadFailure: string | null;
     }
   | { status: "loading" | "offline" | "failed" | "unavailable" | "empty" };
 
@@ -33,15 +45,17 @@ function settled(status: "loading" | "unavailable" | "empty"): Resolved {
  * and M6's precedence (prompt 20 step 12).
  *
  * Six queries for a book of any length, never one per row: the book, every
- * chapter's metadata, the settings, the unlocks, the entitlement and the
- * resume target. M4 reads all but the chapter list, so they are usually
- * cached.
+ * chapter's metadata, the settings (for the cover), the unlocks, the
+ * entitlement and the resume target. M4 reads all but the chapter list, so
+ * they are usually cached.
  *
- * The rows wait for the list, the settings, the unlocks and the entitlement,
+ * The rows wait for the list, the unlocks and the entitlement,
  * so a row never shows Unlocked and then turns Locked, and the bottom bar
  * never shows to a subscriber. They wait for the resume target too,
  * so the list opens at the Reading Now row, but only for one answer: failed
  * or offline, it means no Reading Now row. Parity never blocks the list.
+ * And they wait for the downloads index to rehydrate, so a downloaded row
+ * never shows as not downloaded first (prompt 24 step 5).
  */
 export function useChapterList(bookId: string) {
   const { userId } = useAuth();
@@ -72,23 +86,34 @@ export function useChapterList(bookId: string) {
   const [resumeSettled, setResumeSettled] = useState(false);
   if (!resumeSettled && resumeAnswered) setResumeSettled(true);
 
+  // Downloads (prompt 24): the index, once rehydrated, and this book's
+  // chapters in the queue. A refresh of an edited download is never shown.
+  const downloadsHydrated = useDownloadsHydrated();
+  const entries = useDownloadEntries();
+  const queue = useDownloadQueue();
+  const downloaded = useMemo(() => new Set(entries.map((entry) => entry.chapterId)), [entries]);
+  const bookQueue = useMemo(
+    () => queue.filter((item) => item.bookId === bookId && item.kind === "download"),
+    [queue, bookId],
+  );
+
   function resolve(): Resolved {
     // Unpublished, missing or hidden by RLS — including a book the dashboard
     // unpublishes while M9 is open, since catalog sync refetches it.
     if (book.data === null) return settled("unavailable");
-    if (book.data === undefined || list.data === undefined || !settings.data || !unlocks.data || !entitlement.data) {
-      return waitFor([book, list, settings, unlocks, entitlement]);
+    if (book.data === undefined || list.data === undefined || !unlocks.data || !entitlement.data) {
+      return waitFor([book, list, unlocks, entitlement]);
     }
-    if (!resumeSettled) return settled("loading");
+    if (!resumeSettled || !downloadsHydrated) return settled("loading");
 
     const rows = buildChapterRows(
       list.data,
       {
-        freeChaptersAtStart: settings.data.free_chapters_at_start,
         unlockedChapterIds: new Set(unlocks.data.map((unlock) => unlock.chapter_id)),
         isSubscribed: entitlement.data.active,
       },
       resume.data?.chapter_id ?? null,
+      { downloaded, queue: bookQueue },
     );
     if (rows.length === 0) return settled("empty");
     const unlocked = unlockedCount(rows);
@@ -98,6 +123,8 @@ export function useChapterList(bookId: string) {
         rows,
         unlockedCount: unlocked,
         showAdFreeBar: !entitlement.data.active && unlocked < rows.length,
+        downloadAll: downloadAllState(rows, bookQueue),
+        downloadFailure: downloadFailureMessage(bookQueue),
       },
       waitingOn: [],
     };

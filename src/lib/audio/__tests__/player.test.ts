@@ -9,10 +9,11 @@ import {
   pausePlayback,
   playChapter,
   playLoadedFrom,
+  recheckLoaded,
   releaseAudio,
   type LoadedChapter,
 } from "@/lib/audio/player";
-import { resolveNextChapter } from "@/lib/audio/resolve";
+import { checkChapter, resolveNextChapter } from "@/lib/audio/resolve";
 import { clearParityQueue, recordPosition, setParityUser } from "@/lib/parity/writer";
 import { queryClient } from "@/lib/query-client";
 import { useParityStore } from "@/store/parity-store";
@@ -137,9 +138,17 @@ jest.mock("@/lib/queries/audio", () => ({
   }),
 }));
 
+// Nothing downloaded: every chapter signs a URL (downloads have their own
+// tests in `lib/downloads/__tests__/`).
+jest.mock("@/lib/downloads/local", () => ({
+  downloadFor: () => null,
+  localAudioUri: () => null,
+}));
+
 // Autoplay's neighbour lookups are not under test: the end of the book,
 // unless a test says otherwise.
 jest.mock("@/lib/audio/resolve", () => ({
+  checkChapter: jest.fn(),
   resolveChapter: jest.fn(),
   resolveNextChapter: jest.fn(() => Promise.resolve(null)),
 }));
@@ -317,4 +326,54 @@ it("stops at the end before a locked chapter and reports it, for M6 to open M5a"
   } finally {
     unsubscribe();
   }
+});
+
+describe("a chapter the owner locks while it is loaded (2026-09-30)", () => {
+  const LOCKED = { kind: "locked", chapterId: "chapter-4" } as const;
+
+  it("stops: paused, its place recorded and sent, then unloaded, so the mini player lets it go", async () => {
+    jest.mocked(checkChapter).mockResolvedValueOnce(LOCKED);
+    await playChapter4();
+    player().progressTo(40);
+    await settle();
+
+    await recheckLoaded({ bookIds: ["book-1"], chapterIds: ["chapter-4"] });
+    await settle();
+
+    expect(checkChapter).toHaveBeenCalledWith(USER, "chapter-4");
+    expect(getAudioSnapshot().chapter).toBeNull();
+    expect(upsertsFor("chapter-4").at(-1)).toMatchObject({ audio_ms: 40_000, last_mode: "audio" });
+  });
+
+  it("checks after a catch-up with no scope too", async () => {
+    jest.mocked(checkChapter).mockResolvedValueOnce(LOCKED);
+    await playChapter4();
+    await recheckLoaded(null);
+    expect(getAudioSnapshot().chapter).toBeNull();
+  });
+
+  it("plays on for a change elsewhere, a chapter still playable, a failed check, or offline", async () => {
+    await playChapter4();
+    const checks = jest.mocked(checkChapter);
+    checks.mockClear();
+
+    // Another chapter of the book changed: nothing to check.
+    await recheckLoaded({ bookIds: ["book-1"], chapterIds: ["chapter-7"] });
+    expect(checks).not.toHaveBeenCalled();
+
+    // Its title changed, and it is still this reader's to play.
+    checks.mockResolvedValueOnce({ kind: "playable" } as Awaited<ReturnType<typeof checkChapter>>);
+    await recheckLoaded({ bookIds: ["book-1"], chapterIds: ["chapter-4"] });
+
+    // No definite answer changes nothing.
+    checks.mockRejectedValueOnce(new Error("offline mid-check"));
+    await recheckLoaded({ bookIds: ["book-1"], chapterIds: ["chapter-4"] });
+
+    onlineManager.setOnline(false);
+    await recheckLoaded({ bookIds: ["book-1"], chapterIds: ["chapter-4"] });
+    expect(checks).toHaveBeenCalledTimes(2);
+
+    expect(getAudioSnapshot().chapter).toEqual(CHAPTER_4);
+    expect(player().playing).toBe(true);
+  });
 });

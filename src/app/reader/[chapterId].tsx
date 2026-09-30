@@ -23,6 +23,7 @@ import {
 } from "@/components/reader/reader-toolbar";
 import { ReaderTopBar } from "@/components/reader/reader-top-bar";
 import { Screen } from "@/components/ui";
+import { useQuietAlertBanners } from "@/hooks/use-alerts";
 import { useChapterReader, type ChapterReaderView, type ReadyChapter } from "@/hooks/use-chapter-reader";
 import { useHandoffNotice } from "@/hooks/use-handoff-notice";
 import { useReaderChrome } from "@/hooks/use-reader-chrome";
@@ -88,6 +89,8 @@ function noop() {}
 
 export default function ReaderRoute() {
   const { chapterId } = useLocalSearchParams<{ chapterId: string }>();
+  // A new-chapter alert never covers the page (2026-09-30).
+  useQuietAlertBanners();
 
   // A stale or hand-typed link is simply not available: there is nothing to
   // fetch and nothing a retry could fix.
@@ -268,7 +271,8 @@ function ReadingView({
   useKeepAwake();
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, nextLocked, restore } = chapter;
+  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, nextLocked, restore, openedOffline } =
+    chapter;
   const position = useReadingPosition({
     chapterId: id,
     bookId,
@@ -317,8 +321,9 @@ function ReadingView({
     if (opened.current) return;
     opened.current = true;
     track("chapter_opened", { book_id: bookId, chapter_id: id, number, mode: "text" });
+    if (openedOffline) track("offline_chapter_opened", { mode: "text" });
     trackHandoffLanded(id, "text", openedMapped);
-  }, [bookId, id, number, openedMapped]);
+  }, [bookId, id, number, openedMapped, openedOffline]);
 
   const finished = position.percent >= FINISHED_AT_PERCENT;
   const finishSent = useRef(false);

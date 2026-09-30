@@ -18,6 +18,7 @@ import {
   type NowPlayingView,
   type PlayingChapter,
 } from "@/hooks/use-now-playing";
+import { useQuietAlertBanners } from "@/hooks/use-alerts";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import { useHandoffNotice } from "@/hooks/use-handoff-notice";
 import { track, trackHandoffLanded, trackHandoffStart } from "@/lib/analytics";
@@ -85,6 +86,8 @@ function noop() {}
 
 export default function PlayerRoute() {
   const { chapterId, play } = useLocalSearchParams<{ chapterId: string; play?: string }>();
+  // A new-chapter alert never covers Now Playing (2026-09-30).
+  useQuietAlertBanners();
 
   // Android back pops the player like the chevron does. With nothing to go
   // back to (a deep link), it goes home instead of leaving the app.
@@ -256,8 +259,9 @@ function PlayingView({ chapter, meta, autoplay, onAutoplay }: PlayingViewProps) 
       number: chapter.number,
       mode: "audio",
     });
+    if (chapter.openedOffline) track("offline_chapter_opened", { mode: "audio" });
     trackHandoffLanded(chapter.chapterId, "audio", openedMapped);
-  }, [chapter.bookId, chapter.chapterId, chapter.number, openedMapped]);
+  }, [chapter.bookId, chapter.chapterId, chapter.number, chapter.openedOffline, openedMapped]);
 
   // M5's Listen: the chapter starts at its restore point, as Play would.
   // Only from paused: a chapter already playing or loading carries on.

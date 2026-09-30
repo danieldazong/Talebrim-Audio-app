@@ -47,7 +47,20 @@ export function mergeCatalogChanges(a: CatalogChange, b: CatalogChange): Catalog
   };
 }
 
+/**
+ * Whether a change may concern one chapter: it names the chapter, or it names
+ * its book with no chapters listed. That is a change to the book itself
+ * (published → draft included, which the triggers send that way) or too many
+ * chapters to list. The downloads check and the player's loaded chapter use
+ * it.
+ */
+export function changeTouchesChapter(change: CatalogChange, chapterId: string, bookId: string): boolean {
+  if (change.chapterIds?.includes(chapterId)) return true;
+  return change.bookIds.includes(bookId) && (change.chapterIds === null || change.chapterIds.length === 0);
+}
+
 const [LIBRARY_ITEMS_ROOT] = queryKeys.libraryItems.byUser("");
+const [UPDATES_ROOT] = queryKeys.updates.all("");
 const [POSITION_ROOT, , RECENT_POSITIONS] = queryKeys.readingPosition.recent("");
 
 /**
@@ -61,10 +74,19 @@ export function isLibraryQuery(query: Pick<Query, "queryKey">): boolean {
 }
 
 /**
+ * The Updates inbox, for every account: a chapter added to any published
+ * book may belong on it, and Discover's bell counts it (2026-09-30).
+ */
+export function isUpdatesQuery(query: Pick<Query, "queryKey">): boolean {
+  return query.queryKey[0] === UPDATES_ROOT;
+}
+
+/**
  * Marks everything a change could affect as stale: queries on screen refetch
- * now, the rest when their screen next mounts. Lists, search and Library
- * always go — a title, cover or chapter count can appear in any of them, and
- * an unpublished book must leave Library.
+ * now, the rest when their screen next mounts. Lists, search, Library and
+ * Updates always go — a title, cover or chapter count can appear in any of
+ * them, an unpublished book must leave Library, and a new chapter must reach
+ * the bell's dot at once.
  *
  * `null` means the scope is unknown (events may have been missed while
  * unsubscribed), so everything catalog-derived is refreshed, settings too.
@@ -92,6 +114,6 @@ export async function invalidateCatalog(
 
   await Promise.all([
     ...keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-    queryClient.invalidateQueries({ predicate: isLibraryQuery }),
+    queryClient.invalidateQueries({ predicate: (query) => isLibraryQuery(query) || isUpdatesQuery(query) }),
   ]);
 }

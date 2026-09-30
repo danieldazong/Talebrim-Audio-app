@@ -1,8 +1,8 @@
 import { useAuth } from "@clerk/expo";
 import { Stack } from "expo-router";
 
+import { useOnboardingComplete } from "@/hooks/use-onboarding";
 import { colors } from "@/theme";
-import { useOnboardingStore } from "@/store/onboarding-store";
 import { useSplashStore } from "@/store/splash-store";
 
 /**
@@ -27,9 +27,7 @@ import { useSplashStore } from "@/store/splash-store";
  */
 export default function AuthLayout() {
   const { isSignedIn } = useAuth();
-  const hasCompletedOnboarding = useOnboardingStore(
-    (state) => state.hasCompletedOnboarding,
-  );
+  const hasCompletedOnboarding = useOnboardingComplete();
   const hasSeenSplash = useSplashStore((state) => state.hasSeenSplash);
 
   return (

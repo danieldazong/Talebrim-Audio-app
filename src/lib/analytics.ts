@@ -14,6 +14,7 @@ import PostHog, { PostHogPersistedProperty, type PostHogOptions } from "posthog-
 
 import type { AlertsFrom } from "@/lib/alerts";
 import type { PurchaseFailure } from "@/lib/billing";
+import type { DownloadFailure } from "@/lib/downloads/queue";
 import { isUuid } from "@/lib/ids";
 import type { RestorePoint } from "@/lib/parity/convert";
 import type { PaywallFrom } from "@/lib/paywall";
@@ -60,6 +61,18 @@ type AnalyticsEvents = {
   alerts_turned_off: Record<string, never>;
   /** A tap on an alert opened M4. */
   notification_opened: { book_id: string };
+  // Offline downloads (prompt 24). Ids, counts and fixed words only.
+  /** Chapters queued: M9's "Download all", or one row's "Download chapter". */
+  download_requested: { book_id: string; chapters: number; from: "download_all" | "row" };
+  /** One chapter the reader asked for failed. */
+  download_failed: { kind: DownloadFailure };
+  /** The reader removed downloads: one chapter, one book, or all. */
+  download_removed: { scope: "chapter" | "book" | "all" };
+  /** M5 or M6 opened a downloaded chapter with no network. */
+  offline_chapter_opened: { mode: ParitySourceMode };
+  // The Updates inbox (2026-09-30). Counts only.
+  /** Updates opened from Discover's bell, with how many chapters were new. */
+  updates_opened: { new_chapters: number };
 };
 
 const KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY ?? "";

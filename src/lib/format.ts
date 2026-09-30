@@ -89,3 +89,26 @@ export function formatDurationCompact(seconds: number | null): string {
 export function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
 }
+
+const KB = 1000;
+const MB = 1000 * 1000;
+const GB = 1000 * 1000 * 1000;
+
+/**
+ * A size on disk, in the decimal units Android's own storage screens use:
+ * "350 KB", "4.8 MB", "48 MB", "1.2 GB".
+ */
+export function formatBytes(bytes: number): string {
+  const value = Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+  if (value >= GB) return `${(value / GB).toFixed(1)} GB`;
+  if (value >= MB) {
+    const megabytes = value / MB;
+    return megabytes < 9.95 ? `${megabytes.toFixed(1)} MB` : `${Math.round(megabytes)} MB`;
+  }
+  return `${Math.max(value > 0 ? 1 : 0, Math.round(value / KB))} KB`;
+}
+
+/** `formatBytes()` for a screen reader: "48 megabytes", where "MB" reads badly aloud. */
+export function formatBytesSpoken(bytes: number): string {
+  return formatBytes(bytes).replace(/ KB$/, " kilobytes").replace(/ MB$/, " megabytes").replace(/ GB$/, " gigabytes");
+}

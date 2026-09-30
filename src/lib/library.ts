@@ -177,8 +177,6 @@ export type ResumeTarget =
   | { kind: "none" };
 
 export type ResumeLockInputs = {
-  /** Live `free_chapters_at_start`; undefined while settings load. */
-  freeChaptersAtStart: number | undefined;
   /** Chapter ids from the reader's unlocks; undefined while they load. */
   unlockedChapterIds: ReadonlySet<string> | undefined;
   /** The reader's `ad_free` entitlement is active; undefined while it loads. */
@@ -189,14 +187,12 @@ export type ResumeLockInputs = {
  * Resumes in the mode the reader left, or the other one when the chapter no
  * longer has that side: never a round trip to an empty state. The lock is
  * `lockStateFor()`'s, as on M5 and M6, the subscription included, so a
- * chapter free by access or by position waits for neither the unlocks nor
- * the entitlement.
+ * chapter free by its own access waits for neither the unlocks nor the
+ * entitlement.
  */
 export function resumeTarget(position: LibraryPosition, inputs: ResumeLockInputs): ResumeTarget {
-  if (inputs.freeChaptersAtStart === undefined) return { kind: "pending" };
   const lock = lockStateFor(
     { id: position.chapterId, number: position.number, access: position.access },
-    inputs.freeChaptersAtStart,
     inputs.unlockedChapterIds,
     inputs.isSubscribed,
   );

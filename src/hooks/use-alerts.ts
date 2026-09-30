@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/expo";
-import { router, useNavigation } from "expo-router";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AppState, Linking } from "react-native";
 
@@ -10,6 +10,7 @@ import {
   onAlertOpened,
   onPushTokenChange,
   pushAvailable,
+  quietAlertBanners,
   requestAlerts,
   syncAlerts,
   turnOffAlerts,
@@ -49,17 +50,15 @@ export type AlertsSheet = {
  * answer closes it through `close`. Closing it any other way while it asks
  * (the scrim, Android back) counts as "Not now".
  */
-export function useAlertsSheet(from: AlertsFrom, close: () => void): AlertsSheet {
-  const navigation = useNavigation();
+/**
+ * Alerts on this phone for this account: what the sheet shows, and the
+ * Updates screen's alerts row. The system's permission is read now, and again
+ * when the reader comes back from Android's settings.
+ */
+export function useAlertsStatus(): AlertsView {
   const enabled = useNotificationsStore((state) => state.enabled);
   const [permission, setPermission] = useState<AlertsPermission | null>(null);
-  const [requesting, setRequesting] = useState(false);
-  /** The reader answered: a close after it is no "Not now". */
-  const answered = useRef(false);
-  /** The ask was shown, once per open. */
-  const asked = useRef(false);
 
-  // Read now, and again when the reader comes back from Android's settings.
   useEffect(() => {
     if (!pushAvailable()) return;
     let live = true;
@@ -77,7 +76,7 @@ export function useAlertsSheet(from: AlertsFrom, close: () => void): AlertsSheet
     };
   }, []);
 
-  const view: AlertsView = !pushAvailable()
+  return !pushAvailable()
     ? { status: "unavailable" }
     : permission === null
       ? { status: "loading" }
@@ -86,6 +85,16 @@ export function useAlertsSheet(from: AlertsFrom, close: () => void): AlertsSheet
         : enabled && permission === "granted"
           ? { status: "on" }
           : { status: "off" };
+}
+
+export function useAlertsSheet(from: AlertsFrom, close: () => void): AlertsSheet {
+  const navigation = useNavigation();
+  const view = useAlertsStatus();
+  const [requesting, setRequesting] = useState(false);
+  /** The reader answered: a close after it is no "Not now". */
+  const answered = useRef(false);
+  /** The ask was shown, once per open. */
+  const asked = useRef(false);
 
   useEffect(() => {
     if (view.status !== "off" || asked.current) return;
@@ -219,6 +228,15 @@ export function useAlertsSync(): void {
       syncAlerts(true).catch((error: unknown) => log("token change failed", error));
     });
   }, [userId]);
+}
+
+/**
+ * No alert banner while this screen is in front: M5 and M6, so a new chapter
+ * never covers the story being read or heard. The alert still goes to the
+ * shade, and Discover's bell shows it (2026-09-30).
+ */
+export function useQuietAlertBanners(): void {
+  useFocusEffect(useCallback(() => quietAlertBanners(), []));
 }
 
 /**

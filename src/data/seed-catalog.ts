@@ -138,6 +138,8 @@ export const seedChapters: ChapterCatalogRow[] = [
     audio_duration_source: "detected",
     created_at: "2026-01-10T00:00:00Z",
     updated_at: "2026-01-10T00:00:00Z",
+    audio_size_bytes: null,
+    text_bytes: null,
   },
   {
     id: "10000000-0000-0000-0000-000000000002",
@@ -151,6 +153,8 @@ export const seedChapters: ChapterCatalogRow[] = [
     audio_duration_source: "detected",
     created_at: "2026-01-11T00:00:00Z",
     updated_at: "2026-01-11T00:00:00Z",
+    audio_size_bytes: null,
+    text_bytes: null,
   },
   {
     id: "10000000-0000-0000-0000-000000000003",
@@ -164,6 +168,8 @@ export const seedChapters: ChapterCatalogRow[] = [
     audio_duration_source: "detected",
     created_at: "2026-01-12T00:00:00Z",
     updated_at: "2026-01-12T00:00:00Z",
+    audio_size_bytes: null,
+    text_bytes: null,
   },
   {
     id: "10000000-0000-0000-0000-000000000004",
@@ -178,5 +184,7 @@ export const seedChapters: ChapterCatalogRow[] = [
     audio_duration_source: null,
     created_at: "2026-01-13T00:00:00Z",
     updated_at: "2026-01-13T00:00:00Z",
+    audio_size_bytes: null,
+    text_bytes: null,
   },
 ];

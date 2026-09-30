@@ -2,12 +2,14 @@ import { useAuth } from "@clerk/expo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import { useDownloadEntry, useIsOnline, useVerifyOnOpen } from "@/hooks/use-downloads";
 import { useEntitlement } from "@/hooks/use-entitlement";
+import { useRowCheck } from "@/hooks/use-row-check";
 import { parseChapterText, unsupportedMarks, type ReaderBlock } from "@/lib/chapter-text";
+import { withinOfflineWindow } from "@/lib/downloads/rules";
 import { textRestoreOffset, type RestorePoint } from "@/lib/parity/convert";
 import { fromServerRow, reconcile } from "@/lib/parity/reconcile";
 import { adoptServerPosition } from "@/lib/parity/writer";
-import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
 import {
   chapterDetailOptions,
@@ -15,9 +17,11 @@ import {
   chapterTextOptions,
   lastChapterNumberOptions,
 } from "@/lib/queries/chapters";
+import { downloadedTextOptions } from "@/lib/queries/downloads";
 import { readingPositionByChapterOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
+import type { DownloadEntry } from "@/store/downloads-store";
 import { useParityStore } from "@/store/parity-store";
 import type { ChapterDetailRow, ChapterTargetRow } from "@/types/catalog";
 import { lockStateFor, type LockableChapter, type ReaderStatus } from "@/types/states";
@@ -47,11 +51,20 @@ export type ReadyChapter = {
    * from listening (prompt 19 step 8); null opens at the top.
    */
   restore: RestorePoint | null;
+  /** Opened from its download with no network (prompt 24 step 9). */
+  openedOffline: boolean;
 };
 
 export type ChapterReaderView =
   | { status: "ready"; chapter: ReadyChapter }
   | { status: Exclude<ReaderStatus, "ready"> };
+
+/**
+ * How this open reads the chapter. `copy` is the download it opens from with
+ * no network, once the phone is seen offline, and then for the rest of the
+ * open; null reads it as always, through the queries.
+ */
+type Opening = { copy: DownloadEntry | null };
 
 /** The open chapter, once its id, book id and number are known to be set. */
 type OpenChapter = LockableChapter & {
@@ -82,37 +95,81 @@ function toOpenChapter(row: ChapterDetailRow | null): OpenChapter | null {
   };
 }
 
+/**
+ * The open chapter from its download's index entry, for a cold start with no
+ * network and nothing cached. `access` is never read: the download's last
+ * online check stands in for the lock check.
+ */
+function fromDownload(entry: DownloadEntry): OpenChapter {
+  return {
+    id: entry.chapterId,
+    bookId: entry.book.id,
+    number: entry.number,
+    title: entry.title,
+    access: null,
+    hasText: entry.text !== null,
+    // Listen goes to M6, which offline has only what was downloaded.
+    hasAudio: entry.audio !== null,
+    durationSeconds: entry.durationSeconds,
+  };
+}
+
 function toNeighbour(row: ChapterTargetRow | null | undefined): LockableChapter | null {
   if (!row || row.id === null || row.number === null) return null;
   return { id: row.id, number: row.number, access: row.access };
 }
 
-function settled(status: "unavailable" | "locked" | "no-text"): Resolved {
+function settled(status: "unavailable" | "locked" | "no-text" | "expired"): Resolved {
   return { view: { status }, waitingOn: [] };
 }
 
 /**
  * Everything M5 reads for one chapter, and the state it resolves to.
  *
- * The chapter row, settings and unlocks start together; the book, the
+ * The chapter row and unlocks start together; the book, the
  * neighbours and the last chapter number follow the row, and the text
  * follows the lock check. Each check waits only for what it needs, so only a
  * query the screen is waiting on can fail it. The neighbours and the last
  * chapter number never hold up the ready state.
+ *
+ * A downloaded chapter reads its text from its file, with no network wait.
+ * Offline, it opens from its index entry alone (prompt 24 step 9), or says
+ * to connect once past its 30 days.
  */
 export function useChapterReader(chapterId: string) {
   const { userId } = useAuth();
   const queryClient = useQueryClient();
 
+  // Downloads (prompt 24 step 9). Undefined until the index has rehydrated,
+  // which the whole screen waits for, so a cold start offline never shows a
+  // downloaded chapter as missing. Offline, a download opens from its index
+  // entry and its file: its last online check, within its 30 days, stands in
+  // for the lock check. Taken the moment the phone is seen offline (NetInfo
+  // can report a moment after launch), then held, so a connection coming
+  // back never sends an open chapter back to loading.
+  const download = useDownloadEntry(chapterId);
+  const online = useIsOnline();
+  const [openedAt] = useState(() => Date.now());
+  const [opening, setOpening] = useState<Opening>({ copy: null });
+  if (opening.copy === null && download && !online) setOpening({ copy: download });
+  const copy = opening.copy;
+  const copyExpired = copy !== null && !withinOfflineWindow(copy.verifiedAt, openedAt);
+  // Online, a download is checked again as it opens, never waited on.
+  useVerifyOnOpen(chapterId, download);
+
   const chapter = useQuery(chapterDetailOptions(chapterId));
-  const open = chapter.data === undefined ? undefined : toOpenChapter(chapter.data);
+  // A cached row can be from before the owner locked the chapter: it decides
+  // nothing until it is current (fetched again when stale) or the phone is
+  // offline (2026-09-30).
+  const chapterCheck = useRowCheck(chapter);
+  const rowUsable = chapterCheck === "current" || chapterCheck === "cached";
+  const open = copy ? fromDownload(copy) : chapter.data === undefined ? undefined : toOpenChapter(chapter.data);
   const bookId = open?.bookId ?? null;
 
   // Usually cached already by M4.
   const book = useQuery({ ...bookDetailOptions(bookId ?? ""), enabled: bookId !== null });
-  const settings = useQuery(appSettingsOptions());
   // Signed-in route, so `userId` is set. Runs alongside the rest, but only a
-  // chapter that is free neither by access nor by position waits for it.
+  // chapter that isn't free by its own access waits for it.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
   // The subscription, waited for on the same terms as the unlocks.
   const entitlement = useEntitlement();
@@ -122,16 +179,13 @@ export function useChapterReader(chapterId: string) {
     ...chapterNeighboursOptions(bookId ?? "", open?.number ?? 0),
     enabled: open != null,
   });
+  const neighboursCheck = useRowCheck(neighbours);
 
-  const freeChaptersAtStart = settings.data?.free_chapters_at_start;
   const unlockedChapterIds = useMemo(
     () => (unlocks.data ? new Set(unlocks.data.map((unlock) => unlock.chapter_id)) : undefined),
     [unlocks.data],
   );
-  const lockState =
-    open && freeChaptersAtStart !== undefined
-      ? lockStateFor(open, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
-      : null;
+  const lockState = open && rowUsable ? lockStateFor(open, unlockedChapterIds, isSubscribed) : null;
 
   // The text is fetched only for a published chapter (its catalog row came
   // back) that does not resolve to locked. This keeps the app honest; it is
@@ -139,16 +193,28 @@ export function useChapterReader(chapterId: string) {
   // for a locked chapter directly. Closing that is a pre-launch task
   // (AGENTS.md § Before production). A subscription opens the chapter the
   // moment its entitlement lands, and this query starts by itself.
-  const textEnabled =
-    open != null && lockState !== null && lockState.kind !== "locked" && open.hasText !== false;
-  const text = useQuery({ ...chapterTextOptions(chapterId), enabled: textEnabled });
+  //
+  // A downloaded chapter's text comes from its file instead, online or off,
+  // with no network wait: offline from the start, online once the lock check
+  // above says open. Online, a file that can't be read falls back to the
+  // network; offline, it fails.
+  const unlockedNow = lockState !== null && lockState.kind !== "locked";
+  const fileTextReady = (copy ?? download)?.text != null && (copy !== null ? !copyExpired : unlockedNow);
+  const fileText = useQuery({
+    ...downloadedTextOptions(userId ?? "", chapterId),
+    enabled: fileTextReady && Boolean(userId),
+  });
+  const fromFile = fileTextReady && (copy !== null || !fileText.isError);
+  const textEnabled = !fromFile && copy === null && open != null && unlockedNow && open.hasText !== false;
+  const networkText = useQuery({ ...chapterTextOptions(chapterId), enabled: textEnabled });
+  const text = fromFile ? fileText : networkText;
 
   // The first text this screen receives stays for as long as it is mounted.
   // A dashboard edit refetches the query, but the new text waits for the
   // next open rather than moving under the reader. Only an enabled query
   // counts: a disabled one still hands back whatever the cache holds.
   const [shownText, setShownText] = useState<{ value: string | null } | null>(null);
-  if (shownText === null && textEnabled && text.data !== undefined) {
+  if (shownText === null && (fromFile || textEnabled) && text.data !== undefined) {
     setShownText({ value: text.data });
   }
   const blocks = useMemo(
@@ -198,21 +264,31 @@ export function useChapterReader(chapterId: string) {
   }, [chapterId, serverPosition.data]);
 
   const next = toNeighbour(neighbours.data?.next);
-  const nextLockState =
-    next && freeChaptersAtStart !== undefined
-      ? lockStateFor(next, freeChaptersAtStart, unlockedChapterIds, isSubscribed)
-      : null;
+  const nextLockState = next ? lockStateFor(next, unlockedChapterIds, isSubscribed) : null;
   // One chapter ahead, and never a locked one or one whose lock state is
-  // still unknown: prefetching a locked chapter is fetching locked text.
-  const prefetchId = next && nextLockState && nextLockState.kind !== "locked" ? next.id : null;
+  // still unknown: prefetching a locked chapter is fetching locked text. The
+  // neighbours' row must be current too, as the chapter's own is.
+  const prefetchId =
+    next && neighboursCheck === "current" && nextLockState && nextLockState.kind !== "locked" ? next.id : null;
 
   function resolve(): Resolved {
+    // The downloads index is still rehydrating.
+    if (download === undefined) return { view: { status: "loading" }, waitingOn: [] };
     if (open === undefined) return waitFor([chapter]);
-    // Missing, unpublished, hidden by RLS, or unpublished while open.
-    if (open === null || book.data === null) return settled("unavailable");
-    if (book.data === undefined || freeChaptersAtStart === undefined) return waitFor([book, settings]);
-    if (lockState === null) return waitFor([unlocks, entitlement]);
-    if (lockState.kind === "locked") return settled("locked");
+    if (copy === null) {
+      // Missing, unpublished, hidden by RLS, or unpublished while open.
+      if (open === null || book.data === null) return settled("unavailable");
+      if (book.data === undefined) return waitFor([book]);
+      // The cached row is being fetched again, or that failed: it decides nothing yet.
+      if (chapterCheck === "checking") return { view: { status: "loading" }, waitingOn: [] };
+      if (chapterCheck === "failed") return { view: { status: "failed" }, waitingOn: [chapter] };
+      if (lockState === null) return waitFor([unlocks, entitlement]);
+      if (lockState.kind === "locked") return settled("locked");
+    } else if (copyExpired) {
+      // Offline past its 30 days: the next online check restores or deletes it.
+      return settled("expired");
+    }
+    if (open === null) return settled("unavailable");
     if (shownText === null) return open.hasText === false ? settled("no-text") : waitFor([text]);
     // Null, empty or whitespace-only text parses to no blocks.
     if (blocks.length === 0) return settled("no-text");
@@ -236,7 +312,7 @@ export function useChapterReader(chapterId: string) {
           // Never below this chapter's number, so the label can't read
           // "5 of 3" while the last number loads, after it fails, or from a
           // stale cache.
-          lastChapterNumber: Math.max(lastNumber.data ?? book.data.chapter_count ?? 0, open.number),
+          lastChapterNumber: Math.max(lastNumber.data ?? book.data?.chapter_count ?? 0, open.number),
           previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
           nextId: next?.id ?? null,
           nextLocked: nextLockState?.kind === "locked",
@@ -247,6 +323,7 @@ export function useChapterReader(chapterId: string) {
                 durationSeconds: open.durationSeconds,
               })
             : null,
+          openedOffline: copy !== null,
         },
       },
       waitingOn: [],
@@ -268,7 +345,7 @@ export function useChapterReader(chapterId: string) {
   return {
     view,
     /** The top bar's lines, shown whenever they are known, in any state. */
-    bookTitle: book.data?.title ?? null,
+    bookTitle: copy?.book.title ?? book.data?.title ?? null,
     chapterNumber: open?.number ?? null,
     /** The chapter has narration to hand off to. A null `has_audio` has none. */
     hasAudio: open?.hasAudio === true,

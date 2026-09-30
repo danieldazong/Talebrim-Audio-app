@@ -1,6 +1,8 @@
 import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
+import { useDownloadEntries } from "@/hooks/use-downloads";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { bookDetailOptions } from "@/lib/queries/book";
@@ -51,10 +53,10 @@ function hasFailed(query: { isError: boolean; isFetching: boolean }): boolean {
 /**
  * Everything M4 reads, and the per-user lock state derived from it.
  *
- * The book, the preview rows, the settings, the unlocks and the reader's
- * latest position in the book run in parallel. The Listen target waits for
- * the book, because it runs only when `audio_count > 0`. Rows and targets
- * resolve only once the settings, the unlocks AND the entitlement have
+ * The book, the preview rows, the settings (for the cover), the unlocks
+ * and the reader's latest position in the book run in parallel. The Listen
+ * target waits for the book, because it runs only when `audio_count > 0`.
+ * Rows and targets resolve only once the unlocks AND the entitlement have
  * loaded, so a chapter never renders locked and then opens, and a failed
  * read never falls through to free.
  */
@@ -82,16 +84,21 @@ export function useBookDetail(bookId: string) {
     enabled: resumeChapterId !== null,
   });
 
+  // Downloaded chapters get M9's teal disc on their preview row (Decisions —
+  // 2026-09-30). Empty until the downloads index rehydrates, which only
+  // delays the disc.
+  const downloadEntries = useDownloadEntries();
+  const downloaded = useMemo(() => new Set(downloadEntries.map((entry) => entry.chapterId)), [downloadEntries]);
+
   const lockInputs: ChapterLockInputs | null =
-    settings.data && unlocks.data && entitlement.data
+    unlocks.data && entitlement.data
       ? {
-          freeChaptersAtStart: settings.data.free_chapters_at_start,
           unlockedChapterIds: new Set(unlocks.data.map((unlock) => unlock.chapter_id)),
           isSubscribed: entitlement.data.active,
         }
       : null;
 
-  const sectionQueries = [preview, settings, unlocks, entitlement];
+  const sectionQueries = [preview, unlocks, entitlement];
   let chapters: ChaptersSection;
   if (preview.data && lockInputs) {
     chapters = {
@@ -106,7 +113,10 @@ export function useBookDetail(bookId: string) {
             title: row.title,
             hasAudio: row.has_audio === true,
             audioDurationSeconds: row.audio_duration_seconds,
-            state: chapterStateFor({ id, number, access: row.access }, lockInputs),
+            // Locked beats Downloaded, as on M9.
+            state: chapterStateFor({ id, number, access: row.access }, lockInputs, {
+              isDownloaded: downloaded.has(id),
+            }),
           },
         ];
       }),
@@ -175,7 +185,7 @@ export function useBookDetail(bookId: string) {
   } else if (resumeListening) {
     listen = { kind: "ready", chapterId: resumeListening.id, number: resumeListening.number, locked: false };
   } else if (target === undefined || lockInputs === null) {
-    listen = [firstAudio, settings, unlocks, entitlement].some(hasFailed) ? { kind: "failed" } : { kind: "pending" };
+    listen = [firstAudio, unlocks, entitlement].some(hasFailed) ? { kind: "failed" } : { kind: "pending" };
   } else if (target === null || target.id === null || target.number === null) {
     listen = { kind: "none" };
   } else {

@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import type { ParitySourceMode } from "@/store/parity-store";
 
 /** Where M5a was opened from: analytics' `from` on `paywall_shown`. */
-export const PAYWALL_FROM = ["reader_end", "player", "book", "chapter_list", "continue", "locked_screen"] as const;
+export const PAYWALL_FROM = ["reader_end", "player", "book", "chapter_list", "continue", "locked_screen", "updates"] as const;
 export type PaywallFrom = (typeof PAYWALL_FROM)[number];
 
 export function isPaywallFrom(value: unknown): value is PaywallFrom {

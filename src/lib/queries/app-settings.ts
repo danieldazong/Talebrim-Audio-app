@@ -14,8 +14,9 @@ import { supabase } from "@/lib/supabase";
  * purpose — surface it, never fall back to invented defaults (AGENTS.md
  * § Storage and the CDN).
  *
- * `resolveChapterState()` (types/states.ts) needs `free_chapters_at_start`
- * from here; never hardcode 3.
+ * Onboarding's "Start with N free chapters" reads `free_chapters_at_start`
+ * from here; never hardcode 3. The lock rule does not: a chapter's own
+ * `access` decides (types/states.ts, 2026-09-30).
  */
 export const appSettingsOptions = () =>
   queryOptions({

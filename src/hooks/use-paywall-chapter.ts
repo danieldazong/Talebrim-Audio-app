@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { useEntitlement } from "@/hooks/use-entitlement";
-import { appSettingsOptions } from "@/lib/queries/app-settings";
+import { useRowCheck } from "@/hooks/use-row-check";
 import { chapterDetailOptions } from "@/lib/queries/chapters";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
@@ -32,7 +32,10 @@ type Resolved = { view: PaywallView; waitingOn: NeededQuery[] };
 export function usePaywallChapter(chapterId: string) {
   const { userId } = useAuth();
   const chapter = useQuery(chapterDetailOptions(chapterId));
-  const settings = useQuery(appSettingsOptions());
+  // A cached row can be from before the owner locked or freed the chapter:
+  // the sheet decides nothing until it is current, or the phone is offline
+  // (2026-09-30).
+  const chapterCheck = useRowCheck(chapter);
   // Signed-in route, so `userId` is set.
   const unlocks = useQuery({ ...unlocksByUserOptions(userId ?? ""), enabled: Boolean(userId) });
   const entitlement = useEntitlement();
@@ -49,11 +52,10 @@ export function usePaywallChapter(chapterId: string) {
     if (row === null || row.id === null || row.book_id === null || row.number === null) {
       return { view: { status: "unavailable" }, waitingOn: [] };
     }
-    if (settings.data === undefined) return waitFor([settings]);
-
+    if (chapterCheck === "checking") return { view: { status: "loading" }, waitingOn: [] };
+    if (chapterCheck === "failed") return { view: { status: "failed" }, waitingOn: [chapter] };
     const lock = lockStateFor(
       { id: row.id, number: row.number, access: row.access },
-      settings.data.free_chapters_at_start,
       unlockedChapterIds,
       entitlement.data?.active,
     );

@@ -11,8 +11,12 @@ import {
 import { BookSynopsis } from "@/components/book/book-synopsis";
 import { Screen } from "@/components/ui";
 import { useBookDetail, type ChapterTarget, type PreviewChapter } from "@/hooks/use-book-detail";
+import { useChapterList } from "@/hooks/use-chapter-list";
+import { useBookDownloads } from "@/hooks/use-downloads";
 import { useMyList } from "@/hooks/use-my-list";
 import { resolveCoverUrl } from "@/lib/covers";
+import { downloadsAvailable } from "@/lib/downloads/files";
+import { downloadButton, type DownloadButton } from "@/lib/downloads/rules";
 import { isUuid } from "@/lib/ids";
 import { openPaywall } from "@/lib/paywall";
 import type { BookDetailRow } from "@/types/catalog";
@@ -48,7 +52,7 @@ export default function BookDetailRoute() {
     return (
       <Screen>
         <BookNotFound onBack={goBack} />
-        <BookTopBar onBack={goBack} onShare={null} myList={null} />
+        <BookTopBar onBack={goBack} onShare={null} myList={null} download={null} />
       </Screen>
     );
   }
@@ -62,6 +66,39 @@ function BookDetail({ bookId }: { bookId: string }) {
   const myList = useMyList(bookId, data);
   // Hidden when both are null (or empty).
   const synopsis = data?.synopsis || data?.short_description || null;
+
+  // The download button (Decisions — 2026-09-30) reads M9's own list and
+  // its "Download all" state, under the same query keys, so opening M9 from
+  // here is instant.
+  const chapterList = useChapterList(bookId);
+  const downloads = useBookDownloads(bookId);
+  const download = downloadButton({
+    available: downloadsAvailable(),
+    state: chapterList.view.status === "ready" ? chapterList.view.downloadAll : null,
+    online: downloads.online,
+    preparing: downloads.preparing,
+    prepareFailed: downloads.prepareFailed,
+  });
+
+  function pressDownload(button: DownloadButton) {
+    switch (button.kind) {
+      case "ready":
+      case "failed":
+        void downloads.downloadAll();
+        return;
+      // Progress and Cancel live on M9.
+      case "running":
+        router.push({ pathname: "/chapters/[bookId]", params: { bookId } });
+        return;
+      // Downloads lists what is downloaded; off Android it says where downloads work.
+      case "done":
+      case "unavailable":
+        router.push("/downloads");
+        return;
+      default:
+        return;
+    }
+  }
 
   // A locked chapter opens M5a, never the reader or the player. Every path
   // pushes, so back returns here.
@@ -127,6 +164,7 @@ function BookDetail({ bookId }: { bookId: string }) {
             ? { title: data.title ?? "Untitled", isOnList: myList.isOnList, onToggle: myList.toggle }
             : null
         }
+        download={data ? { button: download, onPress: () => pressDownload(download) } : null}
       />
     </Screen>
   );

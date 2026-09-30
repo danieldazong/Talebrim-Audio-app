@@ -18,15 +18,18 @@ type ChapterPreviewRowProps = {
  * One M4 preview row: "{number}. {title}", plus the audio length when the
  * chapter has narration.
  *
- * Lock is the only per-user state drawn here. A chapter opened by an unlock
- * looks exactly like a free one; M9 gives Unlocked, Downloaded and Reading
- * their own visuals.
+ * Two per-user states are drawn here: Locked, and Downloaded (M9's teal
+ * disc, Decisions — 2026-09-30), which Locked beats. A chapter opened by an
+ * unlock looks exactly like a free one; M9 gives Unlocked and Reading their
+ * own visuals. The disc is part of the row, not a button: the row opens the
+ * chapter, and downloads are managed on M9 and the Downloads screen.
  *
  * Omitted from the frame: "8 min read" (there is no word-count column) and
  * the check mark with its "Read" label (a finished state nothing records).
  */
 export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
   const locked = chapter.state.kind === "locked";
+  const downloaded = chapter.state.kind === "downloaded";
   const heading = chapter.title
     ? `${chapter.number}. ${chapter.title}`
     : `Chapter ${chapter.number}`;
@@ -45,6 +48,7 @@ export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
         chapter.title ? `Chapter ${chapter.number}: ${chapter.title}` : heading,
         audio ?? "Text only",
         locked ? "Locked" : null,
+        downloaded ? "Downloaded" : null,
       ]
         .filter((part) => part !== null)
         .join(". ")}
@@ -72,6 +76,11 @@ export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
       </View>
 
       {locked ? <Ionicons name="lock-closed-outline" size={20} color={colors.muted} /> : null}
+      {downloaded ? (
+        <View className="h-5 w-5 items-center justify-center rounded-pill bg-teal">
+          <Ionicons name="arrow-down" size={12} color={colors.ink} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }

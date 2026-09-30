@@ -23,8 +23,12 @@ export const SIGNED_URL_TTL_SECONDS = __DEV__ && DEV_FORCE_EXPIRY ? 60 : TTL_SEC
 const SOURCE_FRESH_MS = Math.max(0, SIGNED_URL_TTL_SECONDS - 60 * 60) * 1000;
 
 export type ChapterAudioSource =
-  /** A URL to play, valid for `SIGNED_URL_TTL_SECONDS` from when it was signed. */
-  | { kind: "signed"; url: string }
+  /**
+   * A URL to play, valid for `SIGNED_URL_TTL_SECONDS` from when it was
+   * signed, and the `audio_path` it signs: a download records the path, to
+   * notice a replaced recording (prompt 24 step 8).
+   */
+  | { kind: "signed"; url: string; path: string }
   /** No `audio_path` (the row changed after `has_audio` was read), or no row: not available. */
   | { kind: "unavailable" }
   /** Storage would not sign it. The screen re-checks the lock rule before saying why. */
@@ -74,7 +78,7 @@ export const chapterAudioSourceOptions = (userId: string, chapterId: string) =>
         if (isRefusal(signed.error)) return { kind: "refused" };
         throw signed.error;
       }
-      return { kind: "signed", url: signed.data.signedUrl };
+      return { kind: "signed", url: signed.data.signedUrl, path };
     },
     staleTime: SOURCE_FRESH_MS,
     gcTime: SOURCE_FRESH_MS,

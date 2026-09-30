@@ -11,7 +11,10 @@ import {
   parseCatalogChange,
   type CatalogChange,
 } from "@/lib/catalog-sync";
+import { recheckLoaded } from "@/lib/audio/player";
+import { checkChangedDownloads } from "@/lib/downloads/manage";
 import { refreshRealtimeAuth, supabase } from "@/lib/supabase";
+import { useDownloadsStore } from "@/store/downloads-store";
 
 /** Collects a burst of broadcasts into one round of refetches. */
 const FLUSH_DELAY_MS = 750;
@@ -68,7 +71,13 @@ export function useCatalogSync(enabled: boolean): void {
       const change = refreshEverything ? null : queued;
       queued = null;
       refreshEverything = false;
-      void invalidateCatalog(queryClient, change);
+      // Then the chapter loaded in the player, once its row is marked
+      // changed: one the owner has since locked stops playing.
+      void invalidateCatalog(queryClient, change).then(() => recheckLoaded(change));
+      // Downloads it names are checked now, not at the next daily check
+      // (prompt 24 step 8). The index holds only the signed-in account's.
+      const owner = useDownloadsStore.getState().userId;
+      if (owner !== null) checkChangedDownloads(owner, change);
     }
 
     function enqueue(change: CatalogChange | null) {

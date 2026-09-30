@@ -4,7 +4,7 @@
 import { isUuid } from "@/lib/ids";
 
 /** Where the alerts sheet was opened from: analytics' `from`. */
-export const ALERTS_FROM = ["my_list", "bell"] as const;
+export const ALERTS_FROM = ["my_list", "bell", "updates"] as const;
 export type AlertsFrom = (typeof ALERTS_FROM)[number];
 
 export function isAlertsFrom(value: unknown): value is AlertsFrom {
