@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CoverCollage } from "@/components/onboarding/cover-collage";
@@ -31,7 +31,15 @@ export default function Onboarding() {
   const freeChapters = useQuery(appSettingsOptions()).data?.free_chapters_at_start ?? null;
 
   return (
-    <View className="flex-1 bg-bg">
+    // Scrolls only when the content is taller than the screen: the spacers
+    // below fill a tall screen as before, and on a short one (or at 1.3×
+    // text) the last lines stay reachable instead of falling off the bottom.
+    <ScrollView
+      className="flex-1 bg-bg"
+      contentContainerStyle={styles.content}
+      bounces={false}
+      showsVerticalScrollIndicator={false}
+    >
       <CoverCollage />
 
       <View className="flex-1 px-6">
@@ -195,6 +203,10 @@ export default function Onboarding() {
           You must be 18+ to use Talebrim.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { flexGrow: 1 },
+});

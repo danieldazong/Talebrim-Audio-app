@@ -1,363 +1,270 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
 
-> **Reviewed 2026-09-25 against the code, AGENTS.md and `material/`.** This
-> rewrite folds in the three earlier notes (prompt 18's entitlement mirror,
-> prompt 20's M9 bottom bar, the owner's retention decisions of 2026-09-25)
-> and records the review's decisions in AGENTS.md § Decisions —
-> 2026-09-25, "Paywall (prompt 22 review)". What changed, and the calls the
-> owner may want to flip:
-> - **Frames.** `@prompt_material/12-paywall.png` never existed. M10 is
->   `material/11.png`; M9's bottom bar is in `material/5.png`. No frame
->   draws M5a, so the sheet follows AGENTS.md § M5a.
-> - **"Unlock all chapters" is a caption, not a purchase.** In
->   `material/5.png` it is plain muted text beside the ember "Go Ad-Free"
->   pill: it says what the subscription does. There is no per-book product.
->   *(Flip: a real per-book purchase would need a store product per book.)*
-> - **M5a has no plan cards.** Its "Go Ad-Free" opens M10, which is the one
->   place plans are chosen and bought. *(Flip: buy from the sheet.)*
-> - **Until prompt 23, M5a has no ember button.** "Unlock free" and "Watch ad
->   & continue" are code positions marked `TODO(unlocks)`, never visible
->   placeholders (AGENTS.md § Decisions — 2026-09-23, "No UI without data
->   behind it"), as M9 had no ember until this prompt.
-> - **The entitlement mirror is prompt 22a, not this prompt.** Subscribers
->   reach Postgres through the server only: RevenueCat → an Edge Function →
->   an additive `entitlements` table, in the dashboard repo, written after
->   this prompt is built. Until then a subscriber's *locked* chapter plays no
->   audio once the audio storage policy is live (§ Deferred setup, step 8).
->   That is a known gap; this prompt never works around it in the client.
-> - **Android only.** iOS scope is still open (AGENTS.md § Important
->   Constraints), so no App Store products, keys or sandbox accounts.
-> - **Store setup is split around a build.** Google Play won't let the owner
->   create subscriptions until a build with billing is uploaded, so this
->   prompt adds an EAS `production` profile, stops for the owner's store
->   setup (step 17), then runs the sandbox tests.
-> - **Fixed references:** the development build comes from the deferred
->   setup, not "prompt 19"; markers read `TODO(paywall)` (14 of them, listed
->   in step 12), not `TODO(23)`; rewarded ads are prompt 23's, not 24's; the
->   rule against subscription rows in `unlocks` is AGENTS.md § Data
->   Contract's, not "prompt 14"'s; tokens are `bg`, `surface`, `raised` (no
->   `plum-*`), and raw hex lives only in `src/global.css`'s `@theme` (there
->   is no `tailwind.config.js`).
-> - **Carried over from the analytics fixes (prompt 21a):** nothing billing
->   runs in the web build's server render (no `window`), and the one client
->   is created once.
-> - **Other calls:** entitlement id `ad_free`; M10 preselects the "Best
->   value" plan for a non-subscriber; M10 keeps AGENTS.md's muted cancel link
->   though the frame doesn't draw it; Terms and Privacy render only once
->   their URLs exist (none do yet).
+> **Reviewed again 2026-10-01** against the code (prompts 01–25, 21a, 23a
+> and 24, with the fixes of 2026-09-30 and 2026-10-01), AGENTS.md,
+> `material/11.png`, `material/5.png` and the owner's phone. The calls are
+> recorded in AGENTS.md § Decisions — 2026-10-01, "Prompt 22 (second
+> review)". What changed, and the calls the owner may want to flip:
+> - **Parts A and B are built.** The SDK, identity, the lock rule, M5a, M10,
+>   M9's bar and every locked path were built on 2026-09-25 (AGENTS.md §
+>   Decisions — 2026-09-25, "Paywall as built"). This run is **Part C**, the
+>   store setup and the sandbox tests, and **Part D**, one small catch-up.
+>   Step 0 checks that A and B still hold; never rebuild them.
+> - **No new development build.** Build `9235ee79`, on the phone since
+>   2026-10-01, already holds `react-native-purchases` 10.10.2: its manifest
+>   has `com.android.vending.BILLING`, granted.
+> - **The lock rule has no "free by position"** since 2026-09-30 (AGENTS.md §
+>   Decisions — 2026-09-30, "A chapter's own access decides"). A chapter is
+>   open when it is free by its own access, unlocked, or the reader
+>   subscribes. The old step 6's wording is gone.
+> - **M11 is built** (prompt 25). Its plan pill, the "See plans" upsell,
+>   Manage subscription, Restore (`usePurchase("profile")`) and Delete
+>   account's warning to a renewing subscriber all read this entitlement, so
+>   step 18 tests them too.
+> - **Everything renders at full size** since NativeWind's rem fix
+>   (2026-10-01). M5a, M10 and M9's bar were built while rem-based classes
+>   drew at 87.5%, so step 18 looks at them again beside the frames.
+> - **Terms and Privacy have URLs** (`constants/legal.ts`, talebrim.com's
+>   pages from the dashboard repo). M10 links them; they work once the owner
+>   approves publishing them (AGENTS.md § Owner reminders, "Review
+>   talebrim.com's pages").
+> - **Play setup, recommended shape:** one subscription, "Ad-Free", with
+>   three auto-renewing base plans (weekly, monthly, yearly). M10 names each
+>   card by its period and the status card by the subscription's name, and a
+>   plan switch is then a base-plan change. *(Flip: three subscriptions, if
+>   the owner wants the status card to read "Ad-Free Weekly" as the frame
+>   draws it.)*
+> - **New, Part D:** a subscription that lapses stops a locked chapter that
+>   is playing, as a lock set in the dashboard already does (AGENTS.md §
+>   Decisions — 2026-09-30, "A lock set in the dashboard holds"). *(Flip:
+>   leave it to the next catalog change or app start.)*
+> - **Prompt 22a comes straight after this one.** It is the entitlement
+>   mirror (RevenueCat's webhook → an Edge Function → an `entitlements`
+>   table), and with it the audio storage policy's subscriber branch. It also
+>   brings deleting the reader's RevenueCat customer when they delete their
+>   account (`delete-account`'s `TODO(paywall)`), since both need RevenueCat's
+>   secret key on the server. Until 22a, a subscriber's locked chapter can't
+>   play its narration or be downloaded. Step 18 reports that and never
+>   patches it. *(Flip: the customer deletion here.)*
+> - **Unchanged from the first review (2026-09-25):**
+>   - "Unlock all chapters" is M9's caption, not a purchase.
+>   - M5a has no plan cards: its "Go Ad-Free" opens M10.
+>   - M5a has no ember action until prompt 23 (two `TODO(unlocks)`
+>     positions).
+>   - Android only, until the iOS series (AGENTS.md § Decisions —
+>     2026-09-29).
+>   - The entitlement id is `ad_free`.
+>   - M10 preselects "Best value" for a non-subscriber and keeps the muted
+>     "Cancel subscription" link.
 
 **BEFORE THIS PROMPT — STOP until all of these are true:**
-1. AGENTS.md § Deferred setup is done: the development build is installed on
-   the owner's phone, Google sign-in works on it, the audio storage policy is
-   live, and the device checks have passed.
-2. **Owner, Google Play:** a Google Play developer account, and an app
-   created in Play Console for package `com.talebrim.app`. Its
-   subscriptions come later, at step 17.
-3. **Owner, RevenueCat:** an account and a project; an Android app in it for
-   `com.talebrim.app`, connected to Play with a Google service-account key
-   (RevenueCat's Play setup guide); an entitlement with identifier
-   `ad_free`; and the project's **public** Android SDK key (`goog_…`) in
-   `.env.local` as `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`. The RevenueCat
-   secret key and the service-account key never enter this repo.
+1. **The development build** `9235ee79` (or later) is on the owner's phone,
+   with Google sign-in working on it (AGENTS.md § Deferred setup, steps 3
+   and 7; the owner confirms). The audio storage policy is live. The rest of
+   step 9 (a phone call, Bluetooth buttons, the screen-off checks) doesn't
+   block this prompt.
+2. **Owner, Google Play:** a Google Play developer account, with its
+   identity verified, and an app created in Play Console for package
+   `com.talebrim.app`, as a free app (in-app purchases don't make it paid).
+   - Play Console's App content asks for a privacy policy URL:
+     `https://talebrim.com/privacy`, once the owner approves publishing it.
+   - Its subscriptions come later, at step 17.
+3. **Owner, RevenueCat:** an account and a project, with an Android app in
+   it for `com.talebrim.app`.
+   - Connect it to Play with Google service credentials: a service account
+     with the Play Console permissions that RevenueCat's Google Play setup
+     guide lists. RevenueCat may take up to a day or more to accept them;
+     its dashboard shows when they are valid.
+   - Create an entitlement with identifier `ad_free`.
+   - Put the project's **public** Android SDK key (`goog_…`) in `.env.local`
+     as `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`, then restart Metro with its
+     cache cleared (`npx expo start -c`). Public variables are built into
+     the bundle.
+   - The RevenueCat secret key and the service-account key never enter this
+     repo, an `EXPO_PUBLIC_` variable or the app.
 
-Design material: `material/11.png` (M10, "Your plan", as a subscriber sees
-it) and `material/5.png` (M9's bottom bar). View both before building. M5a
-has no frame: build it from AGENTS.md § M5a and this page. The frames'
-prices, dates, plan names and savings are placeholder (AGENTS.md § What is
-NOT binding): every one of them comes from RevenueCat.
+**Design material:** `material/11.png` (M10, "Your plan", as a subscriber
+sees it) and `material/5.png` (M9's bottom bar). View both before step 18.
+M5a has no frame: AGENTS.md § M5a and the first review's decisions define
+it. Every price, date, plan name and saving in the frames is placeholder
+(AGENTS.md § What is NOT binding): each comes from RevenueCat.
 
-## Part A — the SDK, identity and the lock rule
+## Built on 2026-09-25: Parts A and B (reference only, never rebuild)
 
-1. **Install** `react-native-purchases` with `npx expo install` (RevenueCat
-   is in AGENTS.md § Tech Stack), and add its config plugin to `app.json` if
-   the installed version has one. It is native code: rebuild the development
-   build (`EAS_NO_VCS=1 npx eas-cli build --profile development --platform
-   android`, AGENTS.md § Decisions — 2026-09-25, "Development build") and
-   install it before testing anything below. Report the version installed.
-2. **Check the installed SDK before writing code.** Open it in
-   `node_modules` and confirm, at that version: `configure`, `logIn`,
-   `logOut`, `getAppUserID`, `getCustomerInfo`,
-   `addCustomerInfoUpdateListener` (and how to remove it), `getOfferings`,
-   `purchasePackage` with a Google product change (for a plan switch),
-   `restorePurchases`, the error codes (`PURCHASES_ERROR_CODE` or its
-   successor), each product's localized price string and per-period price
-   strings, and what the SDK does in Expo Go and on the web. Report the
-   surface you will use.
-3. **One client, in `lib/revenuecat.ts`** (no React, AGENTS.md § lib/):
-   - Configured once, with `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`. The secret
-     key never appears in the bundle, an `EXPO_PUBLIC_` variable or this repo.
-   - Never configured in the web build's server render (`typeof window ===
-     "undefined"`: the same trap prompt 21a's analytics fell into), on the
-     web, in Expo Go if the installed SDK can't work there, or without a key.
-     In each of those, `billingAvailable()` is false and every call is a
-     no-op, so the web preview, Expo Go and tests keep running.
-   - The entitlement id is one constant, `ENTITLEMENT_ID = "ad_free"`: the
-     owner's RevenueCat identifier. Nothing else names it.
-4. **Identity: the App User ID is the Clerk user id.** `logIn(userId)` sits
-   beside `identifyReader()` in `components/providers.tsx`, in the effect on
-   `userId`, so entitlement, every `unlocks` row and every reader table key
-   off one id. `logOut` goes in `clearUserScopedState()` (`lib/session.ts`)
-   with the other per-account state, catching the error the SDK raises for an
-   anonymous user, so the next account on the device never inherits a
-   subscription. Before any purchase or restore, confirm `getAppUserID()` is
-   the signed-in Clerk id, and `logIn` first if it isn't: never buy under an
-   anonymous id.
-5. **Entitlement is server state, read from `customerInfo` only**
-   (AGENTS.md § State Management: TanStack Query owns entitlements):
-   - `entitlementOptions(userId)` under a new key in `lib/query-keys.ts`.
-     Its query calls `getCustomerInfo()` and returns what the app needs: is
-     `ad_free` active, its expiry, whether it will renew, its product id, its
-     store, and the management URL.
-   - `addCustomerInfoUpdateListener` writes each update into that query with
-     `setQueryData`: no polling.
-   - Not persisted by TanStack (`shouldPersistQuery()` returns false for it):
-     the SDK keeps its own copy on the device, which is what serves a
-     subscriber on a plane, and sign-out must leave no copy behind. State the
-     offline behaviour you observe: how long the SDK's cached entitlement
-     holds with no network.
-   - Never written into `unlocks` (AGENTS.md § Data Contract: "A
-     subscription never writes here"), so a lapsed subscriber needs no
-     revocation job.
-6. **The lock rule gains the subscription**, in `types/states.ts`, still in
-   one place:
-   - `ResolveChapterStateInput` gains `isSubscribed`: a subscribed reader's
-     chapters are all accessible. `ChapterLockInputs` carries it.
-   - `lockStateFor()` treats an entitlement not yet known as it treats
-     unlocks not yet known: `null` ("can't tell yet") for a chapter free
-     neither by access nor by position. It is never "locked", so a subscriber
-     never sees a paywall flash while the entitlement loads.
-   - Thread it through every caller: `hooks/use-book-detail.ts`,
-     `hooks/use-chapter-reader.ts` (the open chapter and its next),
-     `hooks/use-now-playing.ts`, `lib/audio/resolve.ts` (reading the query
-     through `queryClient`, as it reads the unlocks), `lib/chapter-list.ts`
-     and `lib/library.ts`.
-   - Add `src/types/__tests__/states.test.ts`: free by access, free by
-     position, unlocked, subscribed, subscription unknown, and a null
-     `access`. The rule has no direct tests today.
-   - When the reader subscribes, every locked chapter opens at once, with no
-     refetch. M5's text query, gated on the lock, starts by itself.
+AGENTS.md § Decisions — 2026-09-25, "Paywall as built", holds the detail.
+In short:
 
-## Part B — the surfaces
+- **The SDK and identity:**
+  - `react-native-purchases` 10.10.2, with no config plugin.
+  - `lib/revenuecat.ts` is the one client: `billingAvailable()`,
+    `ENTITLEMENT_ID = "ad_free"`, and the App User ID is the Clerk user id.
+    `logIn` happens beside `identifyReader()`, and `logOut` in
+    `clearUserScopedState()`.
+  - Nothing runs in the server render, on the web, in Expo Go or without a
+    key.
+- **The entitlement:** `entitlementOptions()` (`lib/queries/billing.ts`),
+  read from `customerInfo` only and never persisted by TanStack. The SDK's
+  listener writes updates into it (`components/providers.tsx`).
+- **The lock rule:** `isSubscribed` in `types/states.ts`, tested. An
+  entitlement not yet known is "can't tell yet", never "locked". Since
+  2026-09-30 the rule is: free by the chapter's own access, unlocked, or
+  subscribed.
+- **One purchase path:** `hooks/use-purchase.ts`, with the pure parts in
+  `lib/billing.ts`, tested. M10 buys and restores; M5a and M11 restore.
+  Outcomes come from the SDK's error codes; a cancel shows nothing.
+- **M5a** (`app/paywall/[chapterId].tsx`), **M10** (`app/subscription.tsx`
+  with `hooks/use-plans.ts` and `components/subscription/`) and **M9's bar**
+  (`AdFreeBar` in `app/chapters/[bookId].tsx`).
+  - Plans come from the current offering, ordered by period, with "Save N%"
+    and "Best value" computed from the store's own per-week prices.
+  - A plan switch passes `{ oldProductIdentifier }` with the SDK's default
+    replacement mode.
+- **Every locked path opens M5a.** All 14 `TODO(paywall)` markers were
+  replaced (none are left in `src`). Two `TODO(unlocks)` positions in M5a
+  wait for prompt 23.
+- **Analytics:** `paywall_shown`, `plan_selected`, `purchase_started`,
+  `purchase_completed`, `purchase_cancelled`, `purchase_failed` (`kind`),
+  `restore_tapped` (`from`: `paywall`, `subscription` or `profile`) and
+  `restore_completed`. Ids and fixed words only, never a price.
+- **`eas.json`** has the `production` profile: Node 24.15.0, `environment:
+  production`, `autoIncrement`, an Android `app-bundle`.
 
-7. **One purchase module**, `hooks/use-purchase.ts`, used by M5a and M10.
-   There is no second purchase path. Its pure parts go in `lib/billing.ts`,
-   tested in `lib/__tests__/billing.test.ts`:
-   - `offeringsOptions()`: the current offering, not persisted.
-   - `purchase(pkg)` and `restore()`, each returning one outcome: success,
-     cancelled (not an error: nothing is shown), pending (for example a
-     parent's approval), already owned, store unavailable, network, or other.
-     Classify them from the SDK's error codes, never from message text.
-   - The button never spins forever, and a raw store code is never shown.
-     No `Alert.alert` and no toast.
-8. **Every price, period and saving comes from the offering** (AGENTS.md §
-   Billing Rules):
-   - Plans are the current offering's packages, whatever they are, ordered
-     by period, shortest first. Never a hardcoded list of three.
-   - Savings are computed in `lib/billing.ts` against the shortest-period
-     plan, per week of access. A plan that saves gets a blush "Save N%"
-     badge, and the one that saves most gets "Best value" instead. No saving,
-     no badge.
-   - The sublines ("Billed every 7 days", "Save $4.97 vs weekly",
-     "$1.73/week · Save 65%" in the frame) are built from the SDK's
-     localized price and per-period strings. Never format a currency by hand
-     if the SDK gives the string.
-9. **M5a, the paywall sheet**, as a route: `app/paywall/[chapterId].tsx`,
-   with `mode` (`text` or `audio`: where the tap was going) and `from`, shown
-   over the current screen as a bottom sheet (`presentation:
-   "transparentModal"`, a scrim, and the sheet on `raised`).
-   - From the top: a lock icon; a Fraunces headline naming the chapter
-     ("Chapter 12: The Moon Rises", or "Chapter 12" untitled); one line
-     stating the ad-free value proposition (AGENTS.md § M5a); teal outlined
-     "Go Ad-Free", which opens M10 carrying `chapterId` and `mode`.
-   - Muted "Restore purchases". A restore that finds `ad_free` active goes
-     straight to the chapter (step 10's return).
-   - Muted "Manage subscription" only when `customerInfo` has a management
-     URL, meaning the reader had a subscription. It opens that URL.
-   - "Unlock free" and "Watch ad & continue" are `TODO(unlocks)` positions
-     for prompt 23, above "Go Ad-Free". Nothing visible stands in for them,
-     so the sheet has no ember element until then.
-   - Never shown for a chapter that isn't locked. On mount it checks the
-     lock rule, and a chapter that turns out open (a subscription, an unlock)
-     replaces the sheet with that chapter.
-   - States: loading shows a skeleton headline on the sheet, not a spinner.
-     Failed and offline show a message with Retry or Back.
-   - `paywall_shown` (step 13), once per open.
-10. **M10, the subscription screen**: `app/subscription.tsx`, a pushed stack
-    route (no tab bar, no mini player), per `material/11.png`:
-    - The header: back chevron and a Fraunces "Your plan".
-    - **Subscriber:** a status card with a check disc, the plan's name (the
-      store product's title; check how Android renders it, since Play appends
-      the app name), and a teal "Active" pill. Under a hairline: "Renews
-      {date} · {price}/{period}", or "Ends {date}" when it won't renew; then
-      "Billed through Google Play". Below it, "Switch plan" and the plan
-      cards.
-    - **Not subscribed:** no status card. A heading and the plan cards, with
-      the "Best value" plan preselected.
-    - **Plan cards**, one per package: on `surface` with a hairline border.
-      The selected card has an ember border and a filled ember radio: a
-      selection mark, as M6's cover rim is a decorative edge. Each card shows
-      the name with its blush badge, the price in Fraunces, and the subline.
-    - **The one ember action**, with an `ink` label: "Confirm change" for a
-      subscriber (disabled while the selection is the current plan), or the
-      subscribe label for everyone else. A switch uses the SDK's Google
-      product change, with its default replacement mode; report which that
-      is. While a purchase runs, the button is disabled and keeps its label
-      and width.
-    - Teal outlined "Restore purchase", and teal outlined "Manage in Google
-      Play" (the management URL, or Play's subscriptions page).
-    - For a subscriber, a muted "Cancel subscription" link to the same Play
-      page. It is in AGENTS.md § M10 though the frame doesn't draw it, and
-      cancelling happens in Play.
-    - One factual line under the button stating the renewal from the
-      selected package's period ("Renews every month until you cancel in
-      Google Play").
-    - **Terms and Privacy** render only from URLs in `constants/legal.ts`.
-      None exist yet, so both are omitted and reported as a launch blocker
-      (the Play listing needs a privacy policy too).
-    - **After a purchase or restore succeeds:** the entitlement updates from
-      the returned `customerInfo` or the listener. Opened from M5a, M10
-      replaces itself with the chapter tapped, in its mode (M5 for `text`, M6
-      for `audio`, at that chapter's saved place), and back from there returns
-      to where the paywall was opened, not to M10 or M5a. Opened any other
-      way, it stays and shows the subscriber layout.
-    - **States:**
-      - Offerings loading: skeleton plan cards on `bg`, not a spinner.
-      - Offerings failed: a message and Retry, never empty cards.
-      - Offline: a message, with a subscriber's cached status card still
-        shown.
-      - `billingAvailable()` false (web, Expo Go, no key): one message that
-        subscriptions are available in the Android app.
-      - Pending: a message that Google Play is still confirming.
-    - **Accessibility:** each plan card is one radio whose label reads its
-      name, full price, period and badge as one sentence. The status pill is
-      announced. Every target is at least 44dp, and Restore is clearly
-      labelled.
-11. **M9's bottom bar**, per `material/5.png`: a `raised` bar over the
-    bottom safe area. On the left, the muted caption "Unlock all chapters",
-    which is text and not a control. On the right, the ember pill "Go
-    Ad-Free", opening M10 with no chapter; back returns to M9.
-    - Shown only when the reader isn't subscribed and at least one chapter
-      of this book is locked for them. Hidden while the entitlement is
-      unknown.
-    - The route measures the list's height before mounting it
-      (`openingRowIndex()`), so the bar's height comes out of that
-      measurement.
-12. **Every locked path opens M5a.** Replace the 14 `TODO(paywall)` markers
-    and list each in your report:
-    - M4: a locked Read or Listen target (`app/book/[id].tsx:67`), and a
-      locked preview row (`components/book/chapter-preview-row.tsx:41`),
-      with `from: "book"`.
-    - M9: a locked row (`app/chapters/[bookId].tsx:57`,
-      `lib/chapter-list.ts:104`), with `from: "chapter_list"`; the bottom bar
-      (`app/chapters/[bookId].tsx:29`) is step 11.
-    - Continue, on M3 and M7: a locked chapter
-      (`hooks/use-continue.ts:183`), with `from: "continue"`.
-    - M5, at the end of a chapter: when the next chapter is locked, "Next
-      chapter" opens M5a for it (`from: "reader_end"`, `mode: "text"`)
-      instead of navigating. M5 already works out the next chapter's lock
-      (`hooks/use-chapter-reader.ts:193`).
-    - M6: next on a locked neighbour opens M5a for it (`from: "player"`,
-      `mode: "audio"`). M6 works out its next chapter's lock as M5 does.
-    - Autoplay (`lib/audio/player.ts:452`): the player reports that it
-      stopped before a locked chapter. M6, if it is on screen and the app is
-      in front, opens M5a for that chapter, once. Otherwise nothing opens by
-      itself: never a sheet over another screen, or one arriving from the
-      background.
-    - The locked states of M5 and M6 (`components/reader/reader-states.tsx:149`,
-      `components/player/player-states.tsx:96`): an outlined button that
-      opens M5a (`from: "locked_screen"`). They never open it by themselves:
-      a dismissed sheet must not come straight back.
-    - The entitlement markers (`hooks/use-chapter-reader.ts:131`,
-      `hooks/use-now-playing.ts:131`, `lib/audio/resolve.ts:79`,
-      `lib/chapter-list.ts:69`, `lib/library.ts:190`) are step 6.
-    - A locked chapter never opens M5 or M6: that would be a paywall bypass.
-      Every one of these paths is a push, so back returns where it was.
-13. **Analytics** (prompt 21a): add each event to `AnalyticsEvents` in
-    `lib/analytics.ts`, with ids and fixed words only (no price, no email):
-    - `paywall_shown`: `book_id`, `chapter_id`, and `from` (`reader_end`,
-      `player`, `book`, `chapter_list`, `continue` or `locked_screen`).
-    - `plan_selected`, `purchase_started`, `purchase_completed` and
-      `purchase_cancelled`: each with `package_id`.
-    - `purchase_failed`: `package_id`, and `kind` (step 7's outcome).
-    - `restore_tapped` (`from`: `paywall` or `subscription`), and
-      `restore_completed` (`entitled`).
+0. **Check that it still holds** before anything else, without changing
+   code:
+   - `npm run typecheck`, `npm run lint` and `npm test` pass.
+   - `grep -rn "TODO(paywall)" src` finds nothing.
+   - `eas.json`'s `production` profile is as above.
+   - `package.json` still pins `react-native-purchases` 10.10.2.
+   - Report anything that differs before going on.
 
-    RevenueCat reports revenue; PostHog never sees a price.
-14. **Visual rules:**
-    - M5a's sheet is `raised`. M10 sits on `bg`. Cards are `surface`.
-    - Exactly one ember action per screen: M10's button, M9's "Go Ad-Free",
-      and none on M5a until prompt 23.
-    - Ember labels are `ink`. Blush appears only as badge labels. "Active" is
-      a teal labelled pill.
-    - No gradient, and no raw hex outside the `@theme` block in
-      `src/global.css` (with its `src/theme/colors.ts` mirror for props that
-      take no className).
-    - Use `Button`. Never give a Pressable both a `className` and a `style`
-      function (AGENTS.md § Style Exception Rules).
-15. **Copy.** AGENTS.md specifies no paywall strings:
-    - Use the frame's own labels as drawn: "Your plan", "Active", "Billed
-      through Google Play", "Switch plan", "Confirm change", "Restore
-      purchase", "Manage in Google Play", "Go Ad-Free", "Unlock all chapters".
-    - Every other string is plain and flagged for the owner in one list in
-      your report: the sheet's value proposition, the non-subscriber heading
-      and button, the renewal line, and the pending, failed and unavailable
-      messages. No marketing language.
-16. **Tests** in `lib/__tests__/billing.test.ts`:
-    - ordering by period
-    - "Save N%" and "Best value", including a single plan and a plan that
-      saves nothing
-    - outcome classification, cancelled included
-    - the per-week subline
+## Part C — the store setup and the sandbox tests
 
-    Plus the lock-rule tests of step 6.
+17. **The build Google Play needs, and the products:**
+    - **Production variables.** The build embeds its JavaScript, so create
+      the public variables for EAS's `production` environment, from
+      `.env.local` (`eas env:create`, plain-text visibility: every one is
+      public). There are six:
+      - `EXPO_PUBLIC_SUPABASE_URL`
+      - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+      - `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
+      - `EXPO_PUBLIC_POSTHOG_KEY`
+      - `EXPO_PUBLIC_POSTHOG_HOST`
+      - `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`
 
-## Part C — store setup and sandbox tests
+      Never `EXPO_PUBLIC_POSTHOG_DEBUG`, and never a secret. The Clerk key
+      stays the development instance's (`pk_test_…`), the dashboard's
+      instance (AGENTS.md rule 5): the production cutover is deferred. List
+      the names you created in the report.
+    - **The build.** The owner runs it, or asks the agent to:
+      `EAS_NO_VCS=1 npx eas-cli build --profile production --platform
+      android` (AGENTS.md § Decisions — 2026-09-25, "Development build",
+      for why `EAS_NO_VCS`). Report the build id and its versionCode.
+    - **The upload (owner).**
+      - Upload the app bundle to Play's **internal testing** track. Play App
+        Signing stays on, and the EAS keystore is the upload key.
+      - Add the testers' Google accounts to the internal testers list and to
+        Play Console's license testing. Each tester opens the opt-in link
+        with that account, and the phone's Play Store is signed in with it.
+      - Only then does Play Console allow subscriptions.
+    - **Never install the Play build over the development build.** Play
+      signs it with Google's key, so Android refuses it as an update. The
+      sandbox tests run on the development build.
+    - **The subscriptions (owner).**
+      - Recommended: one subscription named "Ad-Free" (the product id is the
+        owner's choice), with three auto-renewing base plans: weekly,
+        monthly and yearly.
+      - The owner sets every price (AGENTS.md: never invent one) and
+        activates each base plan.
+    - **RevenueCat (owner).**
+      - Import the products, attach all three to the `ad_free` entitlement,
+        and put them in the `default` offering, marked current, as its
+        weekly, monthly and annual packages.
+      - Recommended: Google's real-time developer notifications, set up per
+        RevenueCat's guide, so renewals and cancellations reach RevenueCat
+        at once (prompt 22a's webhook relies on that too).
+    - **STOP here until the owner confirms the offering shows its packages
+      with prices.** New products can take a few hours to appear.
+18. **Sandbox tests,** on the development build, signed in to the app as a
+    reader, with the phone's Play Store on a license tester's account. Google
+    shortens test subscriptions to minutes and ends them after a few
+    renewals: note what it does here, without relying on exact figures.
+    - **M5a's path:** a purchase from a locked chapter's sheet opens exactly
+      that chapter, in its mode. Back returns where the sheet was opened.
+    - **A cancelled purchase** shows no error.
+    - **M10**, opened from M11's "See plans":
+      - "Best value" is preselected.
+      - The cards' names, prices, badges and sublines, and the renewal line,
+        come from the store.
+      - After buying, the subscriber layout shows the status card: "Active",
+        the renewal line and "Billed through Google Play".
+    - **A plan switch** with "Confirm change". Report the replacement mode
+      the SDK used.
+    - **M11 after subscribing:**
+      - The plan pill reads "Ad-Free", and the upsell card is gone, so
+        Profile has no ember.
+      - Manage subscription opens M10's subscriber layout.
+      - M11's Restore says "Your Ad-Free subscription is restored." On an
+        account that never bought, it says M10's "No active subscription
+        was found…".
+    - **Restore after reinstalling,** from M5a, M10 and M11.
+    - **Sign out, then sign in as another account:** no subscription comes
+      with it. The pill reads "Free plan", and locked chapters are locked.
+    - **Offline after subscribing:** a locked chapter's text still opens
+      from the SDK's cached entitlement. Report how long that cache holds.
+    - **Delete account as a throwaway subscriber:** the confirmation says
+      the subscription isn't cancelled by it. Cancel in Google Play first,
+      or the test subscription runs out on its own.
+    - **A lapse:** cancel in Google Play. Once the test subscription ends,
+      locked chapters lock again on M4, M9 and M5, and the pill reads "Free
+      plan". A locked chapter that was playing stops (step 19).
+    - **Report, never patch, the gaps until prompt 22a:**
+      - The storage policy refuses a subscriber's locked narration. Report
+        what M6 shows.
+      - Such a chapter can't be downloaded.
+    - **At full size:** M10 beside `material/11.png`, M9's bar beside
+      `material/5.png`, and M5a on the phone. They were built at 87.5%: fix
+      what no longer matches, within each screen's own classes.
+    - **Web and Expo Go** show the unavailable message, and don't crash.
 
-17. **The build Google Play needs:**
-    - Add a `production` profile to `eas.json`: `"node": "24.15.0"` as
-      `development` has, `autoIncrement: true`, and an Android
-      `app-bundle`.
-    - That build embeds its JavaScript, so first create the five
-      `EXPO_PUBLIC_` variables for the `production` environment on EAS
-      (`eas env:create`), public values only.
-    - The owner builds it (`EAS_NO_VCS=1 npx eas-cli build --profile
-      production --platform android`) and uploads it to Play's internal
-      testing track, adding their test Google accounts as license testers.
-      Only then does Play Console allow subscriptions.
-    - The owner then creates the subscriptions (for example weekly, monthly
-      and yearly, with prices they choose), imports them into RevenueCat,
-      attaches them to `ad_free`, and puts them in the `default` offering.
-    - **STOP here until the owner confirms the offering shows its packages.**
-18. **Sandbox tests**, on the development build with a license tester:
-    - a purchase from M5a's path opens exactly the chapter tapped, in its
-      mode
-    - a cancelled purchase shows no error
-    - a plan switch on M10
-    - Restore after reinstalling
-    - sign-out, then sign-in as another account, shows no inherited
-      subscription
-    - offline after subscribing, a locked chapter's text still opens
-    - web and Expo Go show the unavailable message and don't crash
+## Part D — one catch-up since the build
 
-    Audio for a subscriber's locked chapter waits for prompt 22a: report it,
-    don't patch around it.
+19. **A subscription that lapses stops a locked chapter that is playing.**
+    - In `components/providers.tsx`, when the entitlement listener's update
+      turns `ad_free` from active to inactive, run `recheckLoaded(null)`
+      (`lib/audio/player.ts`), as a catalog change does. A chapter now
+      locked pauses, records its place, and unloads.
+    - Offline, or after a failed check, it plays on.
+    - The turn is a pure helper in `lib/billing.ts`
+      (`entitlementLapsed(previous, next)`), tested. A first answer that is
+      inactive is no lapse.
+    - Nothing else in the listener changes.
 
-Do not: hardcode any price, currency, period, saving or plan list; put a
-RevenueCat secret or service-account key in the app, an `EXPO_PUBLIC_`
-variable or this repo; write a subscription into `unlocks`; grant access
-from anything but `customerInfo`; alter any table, policy or view (the
-mirror is prompt 22a's); build the entitlement mirror, rewarded ads or
-wait-for-free (prompt 23); add iOS products; auto-open M5a on a locked
-screen; add a gradient, a second ember action or raw hex; invent legal,
-pricing or marketing copy.
+Do not:
+- rebuild Parts A or B, or make a new development build for this prompt;
+- hardcode any price, currency, period, saving or plan list;
+- put the RevenueCat secret key or the service-account key in the app, an
+  `EXPO_PUBLIC_` variable or this repo;
+- write a subscription into `unlocks`, or grant access from anything but
+  `customerInfo`;
+- alter any table, policy or view;
+- build prompt 22a's mirror, the RevenueCat customer deletion, rewarded ads
+  or wait-for-free (prompt 23);
+- add iOS products;
+- auto-open M5a on a locked screen;
+- install the Play build over the development build;
+- add a gradient, a second ember action or raw hex;
+- invent legal, pricing or marketing copy.
 
 Finish by running `npm run typecheck`, `npm run lint` and `npm test`. Then
 report:
-- the SDK version and the surface used
-- confirmation that the App User ID is the Clerk user id
-- the 14 markers replaced, and the new `TODO(unlocks)` positions
-- the offline entitlement behaviour
-- the plan-switch replacement mode
-- the flagged copy list
-- the missing legal URLs
-- step 18's results
+- step 0's check;
+- the EAS variable names, the production build id and its versionCode;
+- the Play and RevenueCat setup as the owner made it: the product and base
+  plan ids, and the offering's packages, never a price;
+- step 18's results, with the plan-switch replacement mode, how long the
+  offline entitlement holds, and what M6 shows for a subscriber's locked
+  narration;
+- step 19 and its tests;
+- what changed on M5a, M10 or M9's bar at full size, with any copy flagged
+  for the owner;
+- § Owner reminders' open items (AGENTS.md).

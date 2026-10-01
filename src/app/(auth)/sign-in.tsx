@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body, Button, Heading, Screen } from "@/components/ui";
+import { LEGAL_URLS } from "@/constants/legal";
 import {
   isIdentifierAlreadyExists,
   isSessionExists,
@@ -47,6 +49,24 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       ),
     ),
   ]);
+}
+
+/**
+ * "Terms" or "Privacy Policy" in the legal line, opening talebrim.com's page
+ * (`constants/legal.ts`). Teal, as this screen's other link. Plain words while
+ * its URL is unset: never a link to nowhere.
+ */
+function LegalLink({ label, url }: { label: string; url: string | null }) {
+  if (url === null) return label;
+  return (
+    <Text
+      accessibilityRole="link"
+      onPress={() => Linking.openURL(url).catch(() => {})}
+      className="font-ui-medium text-teal"
+    >
+      {label}
+    </Text>
+  );
 }
 
 export default function SignIn() {
@@ -314,8 +334,9 @@ export default function SignIn() {
               className="font-ui text-muted text-center text-sm"
               style={{ paddingBottom: Math.max(insets.bottom, 12) }}
             >
-              You must be 18+ to use talebrim. By continuing you agree to our
-              Terms and Privacy Policy.
+              You must be 18+ to use talebrim. By continuing you agree to our{" "}
+              <LegalLink label="Terms" url={LEGAL_URLS.terms} /> and{" "}
+              <LegalLink label="Privacy Policy" url={LEGAL_URLS.privacy} />.
             </Text>
 
             {/* Clerk's bot protection mounts its widget here. It MUST exist in

@@ -13,7 +13,7 @@ import { colors } from "@/theme";
 // A transparent modal over whatever opened it, with `from`: `my_list` when
 // the app asks after the first My List add (once per account), `updates`
 // from the Updates screen's alerts row (Discover's bell opens Updates since
-// 2026-09-30), and `bell` for a hand-typed link. On `raised`, from the top: the
+// 2026-09-30), `profile` from M11's row, and `bell` for a hand-typed link. On `raised`, from the top: the
 // state's icon, its headline or line, and its actions. Tapping the scrim or
 // Android back closes it; while it asks, that counts as "Not now".
 //

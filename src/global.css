@@ -71,9 +71,12 @@
 
 /* No --spacing override on purpose. Tailwind v4 ships --spacing: 0.25rem and
    every numeric spacing utility is calc(var(--spacing) * N), so `p-4` is
-   already 16dp and the 4/8/12/16 scale IS the 8pt grid AGENTS.md § Layout
-   asks for. Overriding it would silently rescale every existing utility.
-   The 56dp mini player is `h-14` (14 * 4 = 56). */
+   16dp and the 4/8/12/16 scale IS the 8pt grid AGENTS.md § Layout asks for.
+   Overriding it would silently rescale every existing utility. The 56dp mini
+   player is `h-14` (14 * 4 = 56).
+   That holds on native only because metro.config.js sets `inlineRem: 16`:
+   react-native-css's own default is 14, which shrank every rem-based class
+   to 87.5% on the phone until 2026-10-01. */
 
 /* ---------------------------------------------------------------------
    Component utilities — AGENTS.md § Styling Rules (BEM).

@@ -4,7 +4,7 @@
 import { isUuid } from "@/lib/ids";
 
 /** Where the alerts sheet was opened from: analytics' `from`. */
-export const ALERTS_FROM = ["my_list", "bell", "updates"] as const;
+export const ALERTS_FROM = ["my_list", "bell", "updates", "profile"] as const;
 export type AlertsFrom = (typeof ALERTS_FROM)[number];
 
 export function isAlertsFrom(value: unknown): value is AlertsFrom {
@@ -21,6 +21,28 @@ export type AlertsPermission = "granted" | "can_ask" | "blocked";
 export function permissionFrom(status: { granted: boolean; canAskAgain: boolean }): AlertsPermission {
   if (status.granted) return "granted";
   return status.canAskAgain ? "can_ask" : "blocked";
+}
+
+/** Alerts on this phone for this account, as `useAlertsStatus()` reads them. */
+export type AlertsStatus = "unavailable" | "loading" | "off" | "on" | "blocked";
+
+/**
+ * The alerts rows' words, on Updates and M11 (2026-10-01). Nothing while
+ * the system's permission is still being read.
+ */
+export function alertsStatusWords(status: AlertsStatus): string {
+  switch (status) {
+    case "on":
+      return "On";
+    case "off":
+      return "Off";
+    case "blocked":
+      return "Off in Android settings";
+    case "unavailable":
+      return "In the Talebrim app for Android";
+    case "loading":
+      return "";
+  }
 }
 
 /**

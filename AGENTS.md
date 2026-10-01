@@ -56,6 +56,62 @@ would not exist to the dashboard, and vice versa.
 
 ---
 
+## Owner reminders — repeat them at the end of every feature
+
+The owner has put these off on purpose and asked to be reminded (2026-10-01).
+**Whenever you finish a feature, end your report with every item below that is
+still open, one line each.** A feature here means a prompt, a fix, or any
+change the owner asked for. Remove an item only when the owner says it is
+done, and date it in the entry it points to.
+
+1. **For prompt 22, next: Google Play and RevenueCat** (prompt 22's BEFORE
+   list; Decisions — 2026-10-01, "Prompt 22 (second review)").
+   - A Google Play developer account, and an app for `com.talebrim.app` in
+     Play Console. Identity checks take days, and a personal account must
+     also run a 14-day closed test with 12 testers before production.
+   - A RevenueCat project with an Android app for `com.talebrim.app`, Google
+     service credentials connected, an `ad_free` entitlement, and its public
+     `goog_…` key in `.env.local` as `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`.
+   - Then, at prompt 22's step 17: the internal testing upload, license
+     testers, the subscriptions and the `default` offering.
+   - Until then billing stays off, and every reader is "not subscribed".
+2. **Create the `support@talebrim.com` mailbox**, or forwarding to a mailbox
+   the owner reads. Item 3, replies to readers and every page on talebrim.com
+   need it.
+3. **Sign up at resend.com using `support@talebrim.com`.**
+   - Create an API key with Sending access.
+   - Add `RESEND_API_KEY=<key>` to the dashboard's `.env`, and tell the
+     agent. The agent sets the secret without printing it, then proves that a
+     real message arrives.
+   - Until then M11's Help form can't deliver: every message ends in
+     "Couldn't send your message" (Decisions — 2026-10-01, "Help is a message
+     to support").
+4. **Create a PostHog personal API key** (Person: Write, the `Talebrim_app`
+   project only).
+   - Add `POSTHOG_PERSONAL_API_KEY=<key>` to the dashboard's `.env`, and tell
+     the agent.
+   - Until then `delete-account`'s PostHog step stays undeployed, and
+     deleting an account leaves the reader's analytics behind (Decisions —
+     2026-10-01, "Legal pages, support and analytics deletion").
+5. **Review talebrim.com's pages: Terms, Privacy, Help and account
+   deletion.**
+   - Supply the operator's legal name, country and governing law.
+   - Confirm two promises: an emailed deletion request is handled within 30
+     days, and the backups wording.
+   - Then approve publishing the dashboard. Until then the app's Terms and
+     Privacy links show a 404 (same entry).
+6. **Before launch:**
+   - Verify talebrim.com in Resend (DNS records), so the agent can move
+     `SUPPORT_EMAIL_FROM` off `onboarding@resend.dev`.
+   - In Play Console, set the privacy policy (`https://talebrim.com/privacy`)
+     and the account deletion URL (`https://talebrim.com/delete-account`).
+7. **Older owner steps, where they were decided:**
+   - § Deferred setup: steps 3 and 7 (Google sign-in on the development
+     build; prompt 22 needs it confirmed) and the rest of step 9.
+   - The Apple Developer Program (Decisions — 2026-09-29).
+
+---
+
 ## Project Overview
 
 We are building **Talebrim**, a read-and-listen mobile app for serialized romance, werewolf, vampire and fantasy fiction.
@@ -329,7 +385,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet, lock icon, headline naming the next chapter. Ember `Watch ad & continue`. Teal outlined `Go Ad-Free`. Muted restore-purchases and manage-subscription links. States the ad-free value proposition before any purchase. Never shown for an already-unlocked chapter. Its ember is "Unlock free" while the reader's free unlock for the book is available, otherwise `Watch ad & continue` (Decisions — 2026-09-25, "Retention and revenue"); both arrive with prompt 23, so prompt 22's sheet has no ember. `Go Ad-Free` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall").
 
-**Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; Updates' alerts row always opens it (the Discover bell did until 2026-09-30). Built by prompt 23a (Decisions — 2026-09-28).
+**Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; Updates' alerts row always opens it, and so will M11's (prompt 25). The Discover bell opened it until 2026-09-30. Built by prompt 23a (Decisions — 2026-09-28).
 
 **M6 · Now Playing** — The app's only full-screen gradient. Dismiss chevron. Large square cover with a thin ember rim. Title, author, chapter. Scrub bar with ember track and thumb, elapsed and remaining labels. Transport row: back-15, previous, 72dp ember play/pause with a `#1A1420` icon, next, forward-15. Secondary teal controls: speed, `Sleep timer`, `Read instead` — hands back to M5 at the equivalent position.
 
@@ -341,7 +397,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.**
 
-**M11 · Profile & Settings** — Avatar card with name and plan badge. Upsell card with ember `See plans`. Three grouped sections as 56dp rows: Reading (text size, theme, Atkinson Hyperlegible toggle), Account (restore purchases, manage subscription), Support (help, contact). Sign-out link in `#C9705F`. Version string. Mini player above bottom nav. This is the Profile bottom-nav destination.
+**M11 · Profile & Settings** — Frame: `material/10.png`, which stops below "Restore purchase". Fraunces "Profile". Account card: the account's own photo in a `raised` circle, or its initials when it has none (Decisions — 2026-10-01, "M11's avatar is the account's photo"), name and email, and a `blush` plan pill ("Free plan" or "Ad-Free"). Upsell card (`raised`) with ember `See plans`, hidden for a subscriber. Grouped 56dp rows: Reading (Reading preferences, Font and Theme, each opening M5's reading settings sheet, then Downloads & offline storage), Account (Manage subscription, Restore purchase, New chapter alerts, Usage analytics), Support (Help, which opens the in-app message form, `app/support.tsx`: Decisions — 2026-10-01, "Help is a message to support"). `Sign out` and `Delete account` links in `destructive` (`#C9705F`), then Terms and Privacy (once their URLs exist) and the version string. Mini player above bottom nav. This is the Profile bottom-nav destination. Reviewed 2026-10-01 (Decisions — 2026-10-01, "M11 (prompt 25 review)"); built by prompt 25 the same day ("M11 as built"). Account deletion runs through the `delete-account` Edge Function, live since 2026-10-01.
 
 ---
 
@@ -401,6 +457,10 @@ Before implementing styling or NativeWind-related code:
 - Follow the syntax, setup, and patterns supported by that exact version
 - Do not use APIs, config patterns, or examples from a different NativeWind version
 - Do not upgrade NativeWind unless the user explicitly approves it
+- Keep `inlineRem: 16` in `metro.config.js`. Without it, react-native-css
+  converts `rem` at 14 on native, so every Tailwind size renders at 87.5% on
+  the phone while the web preview uses 16 (Decisions — 2026-10-01). After a
+  change there, restart Metro with `npx expo start -c`.
 
 Refer to this for more info: https://www.nativewind.dev/v5/llms-full.txt
 
@@ -640,6 +700,7 @@ lib/
   revenuecat.ts  the one billing client; billing.ts its pure parts; paywall.ts every way into M5a
   push.ts       the one push client (new-chapter alerts); alerts.ts its pure parts
   updates.ts    the Updates inbox's pure parts (what shows, what is new, "seen")
+  profile.ts    M11's pure parts; confirm.ts its two confirmations
   downloads/    offline downloads (prompt 24): files.ts the only expo-file-system
                 code, queue.ts the one queue, manage.ts the checks and removals,
                 local.ts "is it downloaded", rules.ts the pure parts
@@ -2548,7 +2609,9 @@ under § Clerk Rules.
     `expo-audio@57.0.5 ✔`, `:expo-audio:compileDebugKotlin` executed (so
     the patched sources were compiled, through `buildFromSource`) and
     `BUILD SUCCESSFUL`.
-  - **Not yet seen on the phone.**
+  - **Passed on the phone on 2026-10-01:** build `9235ee79` installed over
+    USB (`adb -d install -r`, which keeps the app's data), and the owner
+    confirmed a YouTube video now pauses the narration.
 - **New-chapter alerts: the first real one didn't show.** Reported by the
   owner on 2026-09-30 (prompt 23a's check "a new chapter arrives"): nothing
   after 15 minutes.
@@ -2784,6 +2847,539 @@ under § Clerk Rules.
     unloads; a catch-up checks it; a change elsewhere, a playable answer, a
     failed check and offline leave it playing).
 
+## Decisions — 2026-10-01
+
+- **M11 (prompt 25 review).** Settled on 2026-10-01 while reviewing prompt 25
+  against the code, `material/10.png`, the live database and the Clerk
+  development instance. The prompt carries the detail; the owner may flip any
+  of these before it is built.
+  - **The frame is `material/10.png`.** The prompt cited
+    `prompt_material/13-profile.png`, which never existed. The frame stops
+    below "Restore purchase"; the rest follows § M11.
+  - **Measured:** the account card is `surface`, with a 48dp `raised`
+    initials circle (a 1dp `teal/20` ring) and a `blush/15` plan pill; the
+    upsell card is `raised`, with the ember "See plans"; rows are 56dp in
+    `surface` cards; section headings are small Fraunces capitals; "Profile"
+    is about 26px.
+  - **The reading rows** ("Reading preferences", "Font: …", "Theme: …") all
+    open M5's `ReaderSettingsSheet`, reused as it is on the `reader` slice.
+    The Atkinson switch has worked since prompt 14, so the prompt's
+    `TODO(28)` is gone.
+  - **Dropped:** a default playback speed (the `playback` slice isn't
+    persisted, and M6 owns speed) and a "clear cache" row (chapter text left
+    the cache in prompt 24, and downloads have their own screen).
+  - **Added:** "New chapter alerts", a row that opens the alerts sheet as
+    Updates' row does (`from: "profile"`), and "Usage analytics", the switch
+    prompt 21a promised, on PostHog's opt-out, which belongs to the device.
+  - **Initials only**, even where Clerk has a Google photo (5 of the 6
+    development accounts do). Email-code readers have no name either, so
+    their email is the card's title.
+  - **Sign-out** is `useSignOut()`, whose order is already right; its
+    confirmation says how many downloaded chapters it removes.
+  - **Account deletion is an Edge Function, `delete-account`,** in the
+    dashboard repo. It verifies the reader's Clerk session token itself
+    (JWKS, issuer, expiry), refuses an admin (403), deletes the reader's
+    `push_tickets`, `push_tokens`, `reading_positions`, `library_items` and
+    `unlocks` rows with the project's secret key, then deletes the Clerk user
+    through the Backend API (a 404 counts as done, so a retry finishes the
+    job). It needs two new function secrets, `CLERK_SECRET_KEY` (the
+    development instance's) and `CLERK_ISSUER`; both change at the production
+    Clerk cutover. No migration.
+    - Chosen over Clerk's client `user.delete()`: every development account
+      has `delete_self_enabled`, but Clerk can demand a reverification first,
+      and a native app has to build that screen itself. Chosen over a Clerk
+      webhook: a missed delivery leaves the rows behind. The function can
+      also be proven over HTTP without the phone.
+    - The owner's yes comes before it is deployed or its secrets are set.
+    - PostHog holds only the Clerk id, so once the Clerk user is gone it
+      names nobody. Deleting the PostHog person too is the owner's call.
+      Once RevenueCat exists, the function also deletes its customer.
+  - **Analytics:** `restore_tapped` gains `from: "profile"`, `ALERTS_FROM`
+    gains `profile`, and two events are new: `signed_out` and
+    `account_deleted`.
+  - **Missing, for the owner:** the Terms and Privacy URLs, a support email,
+    a help page, and Google Play's web page for deletion requests (§ Before
+    production).
+  - **Also corrected in this file:** the live `free_chapters_at_start` (1),
+    the alerts job's schedule (every minute) and its 53 checks, and the
+    status line.
+  - **Prompts 26 and 27** still name `danger`, `tailwind.config.js` and a
+    `TODO(28)` for the Atkinson switch, and 26 cites "prompt 25" for
+    downloads (24). Fix them at their reviews.
+- **M11 as built (prompt 25).** Built on 2026-10-01 as reviewed (previous
+  entry). The app side is done and was seen on the owner's phone the same
+  night. The `delete-account` function was deployed the same night with the
+  owner's yes, its two secrets set without being printed, and proven over
+  HTTP (below).
+  - `app/(tabs)/profile.tsx` is one `ScrollView`: the title, the account
+    card, the upsell, then Reading, Account and Support (only once a target
+    exists), then the footer. Its parts are in `components/profile/`
+    (`AccountCard`, `UpsellCard`, and `SettingsRow` with `SettingsGroup` and
+    `SettingsHeading`). Its pure parts are in `lib/profile.ts`, tested in
+    `lib/__tests__/profile.test.ts`. The placeholder's Downloads button is
+    gone.
+  - **The account card** reads `useUser()`'s names and email only.
+    - The title is the first and last names, trimmed. With no name, the email
+      is the title, with no second line.
+    - The initials are the first letters of the first and last names, or
+      else the email's first letter.
+    - The plan pill comes from `planState()`: "Ad-Free", "Free plan", a
+      `raised` skeleton while loading, or nothing once the entitlement
+      failed.
+    - Screen readers hear one element. The card is a `surface` skeleton
+      until Clerk has loaded.
+  - **The upsell** shows only once the entitlement is known not to be active.
+    "See plans" pushes M10. It is the screen's one ember action, so a
+    subscriber's screen has none.
+  - **`SettingsRow`** is a `Pressable` whose whole style comes from a `style`
+    function.
+    - Size: at least 56dp, with 8dp of vertical padding so it grows with the
+      text.
+    - Contents: an 18dp teal icon, a 15px `body` label, an optional `muted`
+      13px second line, then a 16dp `muted` chevron, a spinner or a switch.
+    - A switch row is one control (role `switch`): the whole row toggles. The
+      `Switch` inside only shows the state. It takes no touches, and screen
+      readers skip it.
+  - **Reading.** Three rows open M5's `ReaderSettingsSheet`, bound to the
+    `reader` slice as M5 binds it. Downloads opens `/downloads`.
+  - **Account.**
+    - Manage subscription pushes M10.
+    - Restore runs `usePurchase("profile").restore()`. A spinner takes the
+      chevron's place while it runs. Its result is one line under the card:
+      M10's messages, or "Your Ad-Free subscription is restored." Without
+      billing it shows M10's "Subscriptions are available in the Talebrim app
+      for Android."
+    - New chapter alerts opens `/alerts` with `from: "profile"`. The alerts
+      state is the row's second line, from `alertsStatusWords()`
+      (`lib/alerts.ts`), which Updates' row now uses too.
+    - Usage analytics is a switch over PostHog's opt-out, read once at
+      mount.
+  - **Support** reads `constants/support.ts`. `HELP_URL` and `SUPPORT_EMAIL`
+    are both null, so neither the rows nor the heading show.
+  - **The footer**, in order:
+    - Sign out and Delete account, as `destructive` `TextLink`s.
+    - Terms and Privacy, once `LEGAL_URLS` has them. Neither does.
+    - The version from `expo-application`. Build `9235ee79` shows "Version
+      1.0.0 (1)"; the web shows "Web preview".
+    - In development only, a `muted` "Development: health probe" link.
+  - **Sign-out** is `useSignOut()`. First a confirmation that counts the
+    downloaded chapters it removes, then `signed_out`. The link reads
+    "Signing out…" while it runs, so a second tap can't start a second one.
+  - **Deletion** is `hooks/use-delete-account.ts`.
+    - Offline, nothing starts, and "Connect to the internet to delete your
+      account." shows until the phone reconnects.
+    - Online, a confirmation first. A subscriber whose plan renews also reads
+      the Google Play line.
+    - Then `stopForSignOut()`, `flushWithin(2_000)`, `clearParityQueue()`
+      and `releaseAudio()`, and `supabase.functions.invoke("delete-account")`.
+      That call carries the Clerk token as the bearer, through the client's
+      `accessToken`.
+    - A 2xx answer: `account_deleted`, Clerk's `signOut()` (a failure is
+      ignored), then `clearUserScopedState()` in a `finally`.
+    - A 403: "This account is managed from the Talebrim dashboard." Anything
+      else: "Couldn't delete your account. Check your connection and try
+      again."
+  - **The two confirmations go through `confirmDestructive()`**
+    (`lib/confirm.ts`). It uses `Alert.alert` on a phone and the browser's
+    `confirm` on the web preview, where react-native-web's `Alert.alert`
+    does nothing and both links would otherwise be dead.
+  - **`TextLink` gained `tone`**: `muted`, the default, or `destructive`.
+  - **The function** is `supabase/functions/delete-account/index.ts` in the
+    dashboard repo, with `verify_jwt = false` in its `config.toml`.
+    - `jose` 6 verifies the token against
+      `{CLERK_ISSUER}/.well-known/jwks.json`: RS256, the issuer, with `exp`
+      and `sub` required. It allows 5 seconds of clock skew, as Clerk's own
+      SDK does.
+    - `sub` must look like a Clerk user id. `metadata.role === "admin"` gets
+      403.
+    - The rows are deleted with the project's secret key, in the prompt's
+      order. Any failure answers 500 and leaves the Clerk user alone.
+    - Then Clerk's `DELETE /v1/users/{id}`: a 404 counts as done, anything
+      else answers 502. Success answers 200 with the counts.
+    - CORS uses supabase-js's own `corsHeaders`. The log holds counts and
+      error codes only.
+    - `deno check` passes. So do the dashboard's three gates (`lint`: its 4
+      existing warnings).
+  - **Proven over HTTP on 2026-10-01**, against the deployed function:
+    - A CORS preflight answered 200 with the headers, and a `GET` 405. No
+      token, a garbage token, and a forged token naming reader B each got
+      401.
+    - Two throwaway readers were made through Clerk's Backend API
+      (`talebrim.delete.t1+clerk_test@example.com` and `…t2…`). Each was
+      seeded as the server would: a reading position, a My List book, an
+      unlock, a push token and a push ticket.
+    - T1, with a freshly minted token: 200 with one row from each table and
+      `clerk_user: "deleted"`. Clerk then answered 404, and its rows were
+      gone from all five tables.
+    - T2, with a token left to expire (75 seconds): 401, and nothing
+      deleted. Then T2 was deleted in Clerk first, and a fresh token got 200
+      with `clerk_user: "already_gone"`, so a retry after a half-way failure
+      finishes the job.
+    - An admin, with the owner's yes (`skywavehost.teams@gmail.com`): the
+      token was decoded first and carried `role: authenticated` and
+      `metadata.role: admin`. The function answered 403 `admin_account`, the
+      session was revoked, and nothing changed.
+    - Every other reader's rows were fingerprinted (count and md5 of their
+      ids) before and after: unchanged. That covers 19 positions, 4 My List
+      rows, 1 push token, no unlocks and no tickets.
+  - **Deviations from the prompt:**
+    - The plan pill is `blush/10`, not `blush/15`. The frame measures
+      #33243F on `surface`, which is blush at 10%. The review's "#3D2B46
+      measured" was blush/15 computed, not measured.
+    - Row labels are 15px, not 16. The frame's labels fit Inter Regular at
+      15.1px by width. Updates' row and M5's sheet rows are 15px too.
+    - The frame's text below 14px is built as M7's was (§ Typography). The
+      email and the upsell line (13px in the frame) are 14px, and the pill
+      (11px) is 12px.
+    - The Font row's icon is Ionicons `text-outline` ("Aa", M5's own way
+      into this sheet). The frame's three left-aligned lines have no Ionicons
+      match, and the nearest, `reorder-three-outline`, reads as a menu.
+    - The alerts state is the row's second line, as Android's own settings
+      show a state, not a value at the row's end. "Off in Android settings"
+      doesn't fit beside the label at 393dp.
+    - "See plans" is `Button`'s 44dp, where the frame draws about 34dp. The
+      footer links take no hit slop: `TextLink` is already 44dp. (On the
+      phone both were 38.5dp until "NativeWind's rem is 14 on native", below,
+      was fixed.)
+    - The web confirmation above.
+    - For one chapter, sign-out's confirmation says "You can download it
+      again", not "them".
+  - **Copy, flagged for the owner:**
+    - Upsell and pill: "Go Ad-Free", "Unlimited chapters, no
+      interruptions", "See plans", "Ad-Free", "Free plan".
+    - Rows: "Reading preferences", "Font: Literata" or "Font: Atkinson
+      Hyperlegible", "Theme: Light", "Downloads & offline storage", "Manage
+      subscription", "Restore purchase", "New chapter alerts", "Usage
+      analytics" over "Helps us improve Talebrim.", "Help" and "Contact us".
+    - Restore: "Your Ad-Free subscription is restored."
+    - Sign-out: "Sign out?", with "You can sign back in at any time." or
+      "The {N} downloaded chapters on this phone will be removed. You can
+      download them again after you sign in." While it runs, "Signing out…".
+    - Deletion: "Delete your account?", with "Your account, reading places,
+      My List and unlocked chapters are deleted, and downloads are removed
+      from this phone. This can't be undone." A subscriber also reads "Your
+      Ad-Free subscription isn't cancelled by this: cancel it in Google Play
+      first." While it runs, "Deleting…". Its three lines are above.
+    - The footer: "Version {version} ({build})", "Web preview" and
+      "Development: health probe".
+    - Screen readers: "Opens reading settings", "Opens Downloads", "Opens
+      your plan", "Opens the alert settings", "Signs you out of Talebrim on
+      this phone. Asks first." and "Deletes your Talebrim account and
+      everything saved to it. Asks first."
+    - Not in any frame, so for design review: the rows below "Restore
+      purchase", the footer, the confirmations and the deletion lines.
+  - **Seen on the phone** (the owner's itel, over USB and Metro, signed in
+    as the owner): the screen beside `material/10.png`. The Theme row
+    followed the sheet live (Sepia, then back to the owner's Light), and
+    Android back closed the sheet. Restore showed the no-billing line. The
+    alerts row opened the sheet's "on" state. Manage subscription and
+    Downloads opened, and both came back to Profile. The version read
+    "Version 1.0.0 (1)".
+  - **Not yet seen:** sign-out and deletion on the phone, which need a
+    throwaway account signed in there and the phone online (it was
+    offline), and analytics off and on reaching PostHog.
+  - **Tests:** 300 pass, 24 of them new in `profile.test.ts`.
+- **NativeWind's rem is 14 on native, not 16.** Found while measuring M11 on
+  the phone on 2026-10-01. It applied to every screen, not M11 alone. Fixed
+  the same day at the owner's request (below, "Fixed").
+  - **The cause:** react-native-css (NativeWind v5's engine) turns `rem`
+    into dp at build time. Its README ("Inline REM units") says it uses 14
+    on native unless `inlineRem` is passed to it. It also reads a CSS
+    `:root { font-size: Npx }` (`compiler.js`, `effectiveRem`).
+  - **What it does:** every rem-based class renders at 87.5% on Android.
+    - `p-4` is 14dp and `h-14` (the tab bar) 49dp.
+    - `min-h-11`, the `btn` minimum, is 38.5dp, so buttons fall below
+      § UI Quality Bar's 44dp.
+    - `text-sm` is 12.25px and `text-base` 14px.
+    - Arbitrary px (`text-[15px]`) and `StyleSheet` numbers are exact, so a
+      screen that mixes both is out of proportion.
+    - The web preview uses the browser's 16, so it differs from the phone.
+  - **Measured** with `adb` screenshots at density 288: the tab bar 48.9dp,
+    M11's "See plans" 38.3dp, M11's account card 71dp, where nominal is 82.
+    M11's rows, sized in `StyleSheet`, measured exactly 56dp.
+  - **global.css's own comment** said `p-4` "is already 16dp". That was
+    true on the web only.
+  - **Fixed:** `metro.config.js` passes `inlineRem: 16` to `withNativewind`,
+    the option the README documents, rather than a `:root` rule the compiler
+    finds by pattern. Keep it through every NativeWind upgrade. A change to
+    it needs Metro restarted with its cache cleared (`npx expo start -c`).
+    `global.css`'s comment now says so.
+    - **Proven in the compiled Android stylesheet** that Metro serves:
+      `min-h-11` is 44, `h-14` 56, `h-12` 48, `p-4` 16, `text-sm` 14 and
+      `leading-5` 20. They were 38.5, 49, 42, 14, 12.25 and 17.5.
+    - **The code was written for 16,** so the fix makes it exact rather than
+      moving it, checked screen by screen:
+      - M9's rows (`chapterListRowHeight()`, 12 + 20 + 2 + 18 + 12 = 64)
+        assume `leading-5` is 20. So do M7's reserved grid titles
+        (`GRID_TITLE_LINE_HEIGHT`), and M5's text clearing the `h-14`
+        toolbar (`TOOLBAR_HEIGHT` 56).
+      - M4's `BOOK_CONTENT_TOP` is 14 (`top-3.5`) + 44 + 8. Back and Share
+        (`icon-btn`, `h-11`) were 38.5dp beside the 44dp My List pill sized
+        in `StyleSheet`; all three are 44 now.
+      - M3's tab underline (`pb-2`) now meets its divider (`bottom-[7px]`)
+        as its comment says. The hero's no-cover placeholder (`h-80`) now
+        matches the 320dp image.
+      - M4's preview rows and M8's results already held their measured
+        heights.
+      - M6's cover measures the space left (`onLayout`), and the tab shell
+        measures its bar (`useBottomTabBarHeight()`).
+    - **Two screens would not fit.** The welcome screen (`(auth)/
+      onboarding.tsx`) and M2 (`(auth)/genres.tsx`) were fixed layouts with
+      no scroll.
+      - At 16 the welcome screen needs about 892 of the owner's 895dp, and
+        M2 about 890dp on a 360 × 740 phone. M2 already overflowed that phone
+        by about 40dp at 14.
+      - Both now sit in a `ScrollView` whose content grows to the screen
+        (`flexGrow: 1`). Their spacers lay out a tall screen as before, and
+        a short one scrolls instead of losing Start Reading, Sign in or the
+        18+ line.
+    - **Not yet seen on the phone,** which was locked: every screen needs a
+      look at the new size, the touch targets included (prompt 27 checks
+      them again).
+- **The alerts sync looped while offline.** Found on the owner's phone on
+  2026-10-01, which was offline. Fixed the same day at the owner's request
+  (below, "Fixed").
+  - **The log:** `[alerts] token change failed` 33,794 times in 12 minutes,
+    about 45 a second, from 01:09:57. That was before this session touched
+    the phone.
+  - **The cause:** `expo-notifications` 57.0.21's native
+    `getDevicePushTokenAsync` emits the token to `addPushTokenListener`
+    each time it is called (`onNewToken(token)` after resolving), and
+    `getExpoPushTokenAsync` calls it. So `onPushTokenChange()`'s listener in
+    `lib/push.ts` clears `phoneToken` and calls `syncAlerts(true)`. That
+    asks `getExpoPushTokenAsync` again, which emits again.
+  - **Online it stops** after one more round, because the first call caches
+    the token. **Offline** every call fails, so it never stops. It runs as
+    long as the app is open offline with alerts on, which is exactly how
+    downloads are read: wasted CPU and battery, and a flooded log.
+  - **Fixed** in `lib/push.ts`, in two parts:
+    - `onPushTokenChange()` remembers the device token (`deviceToken`) and
+      ignores a report of the one it already knows. A token Firebase really
+      rotates still registers again.
+    - `getPhoneToken()` fetches the device token itself, records it, and
+      hands it to `getExpoPushTokenAsync({ devicePushToken })`. The Expo
+      token is then made from exactly that token, and the report the fetch
+      sets off is known as no change before it arrives.
+  - **Tests:** `lib/__tests__/push.test.ts`, four tests, with a fake
+    `expo-notifications` that reports the token after every fetch, as
+    57.0.21 does.
+    - Offline: one attempt, then it stops. When the report lands before the
+      fetch answers, at most two.
+    - Online: one `set_push_token`, with the Expo token made from the
+      fetched device token.
+    - A rotated token: one more registration.
+    - **Control:** against the old `lib/push.ts`, the first test saw 51
+      attempts in 50 ticks, where the fix makes 1. With the report landing
+      first, the old code looped in microtasks until Jest ran out of memory
+      (a 4 GB heap) after 3 minutes.
+  - **Not yet seen on the phone,** which was locked: the log should show one
+    `[alerts] token change failed` offline, not a stream.
+- **Legal pages, support and analytics deletion.** Decided by the owner on
+  2026-10-01, after M11 was built:
+  - The pages are public on talebrim.com, served by the dashboard repo.
+  - The support address is `support@talebrim.com`.
+  - Account deletion also deletes the reader's PostHog person and events.
+  - **The pages:** `/terms`, `/privacy`, `/help` and `/delete-account`, in
+    the dashboard's `(public)` route group, which needs no sign-in. Their
+    text is typed data in the dashboard's `src/data/public-pages.ts`, and the
+    dashboard's AGENTS.md (Screen Inventory, "Public pages") holds the
+    detail.
+    - Drafted from what the app does: Clerk, Supabase (reading places, My
+      List, unlocks, the push token), PostHog (the events, and the device
+      details PostHog really stores), Expo and Firebase push, and Google Play
+      and RevenueCat for purchases.
+    - The deletion page meets Google Play's rules for one: the app's name,
+      the steps in the app and by email, and what is deleted and kept.
+  - **The owner reviews the pages before they are published.** They are on
+    the dashboard's dev server, and talebrim.com shows them only after the
+    dashboard is deployed. They name no operator and no governing law: those
+    wait for the owner's details, never placeholders. The owner also confirms
+    two promises: an emailed deletion request is handled within 30 days, and
+    copies "can remain in our providers' backups for a limited time".
+  - **The app links to them now.**
+    - `constants/legal.ts` holds the Terms and Privacy URLs, and
+      `constants/support.ts` holds `support@talebrim.com`.
+    - M11 shows Terms and Privacy, and so does M10. M11's Help opened the web
+      help page until the same day: it now opens the in-app form ("Help is a
+      message to support", below).
+    - M1's "By continuing you agree to our Terms and Privacy Policy." links
+      both words, in teal like the screen's other link (`LegalLink` in
+      `(auth)/sign-in.tsx`), as plain words while a URL is unset.
+    - Until the dashboard is deployed, every one of them opens its 404.
+  - **PostHog deletion:** `delete-account` gains a step between the rows and
+    Clerk. It calls PostHog's `persons/bulk_delete` with the Clerk id,
+    deleting events and recordings, and a failure answers 502 while the
+    reader can still retry.
+    - In the app, `useDeleteAccount()` flushes PostHog's queue
+      (`flushAnalyticsWithin()`) beside the parity flush before the call.
+    - After a 2xx it calls `resetAnalytics()` before sending
+      `account_deleted`. An event under the deleted id would make the
+      person again.
+    - **Not deployed:** it needs a PostHog personal API key with person write
+      access (owner). The key reaches the function's secrets from the
+      dashboard's `.env`, unprinted, as the Clerk key did. Then the deploy,
+      and a proof over HTTP with a throwaway reader who has a PostHog person.
+  - **Not in the pages yet, by design:** rewarded ads. Prompt 23 adds AdMob,
+    and the privacy policy must change in the same change.
+- **Help is a message to support.** Asked for by the owner on 2026-10-01,
+  after M11's Help opened `talebrim.com/help` on the phone and got the
+  dashboard's 404, since the pages aren't deployed. Help now opens a form in
+  the app whose messages reach `support@talebrim.com` by email. It needs no
+  website, and the reader never leaves the app.
+  - **The app:**
+    - `app/support.tsx` ("Contact support", registered in the signed-in
+      stack) holds the topic chips (Account, Reading & listening,
+      Downloads, Subscription, Something else; none chosen is "Something
+      else"), the message (up to 4000 characters, with a counter from
+      3500) and the line saying where it goes, then the ember "Send
+      message".
+    - **The screen names Talebrim's address, never the reader's own** (the
+      owner, the same day). The line reads "Your message goes to
+      support@talebrim.com, with the app's version and your phone's model.
+      We'll reply to the email on your account." (`destinationLine()`).
+      Sent: "Message sent", "It's on its way to support@talebrim.com. We'll
+      reply to the email on your account." (`sentLine()`), and "Done".
+    - The first build showed the signed-in account's own address ("We'll
+      reply to {email}"), and offered "Or email support@talebrim.com" under
+      Send. The owner, signed in with a personal account, saw their personal
+      address there. Both were removed: the reply still goes to the account's
+      email, and the screen says so without showing it.
+    - Offline, Send is off and the draft stays. A failure or a refusal
+      keeps the draft, with a line saying why.
+    - `hooks/use-contact-support.ts` sends it with
+      `supabase.functions.invoke("contact-support")`. The pure parts are in
+      `lib/support.ts`, tested in `lib/__tests__/support.test.ts`.
+    - M11's Help row has the second line "Send us a message". "Contact us"
+      (`mailto:`) is gone, since the form names the address.
+      `constants/support.ts` holds only `SUPPORT_EMAIL`, and `HELP_URL` was
+      removed: nothing in the app links to the web help page any more.
+    - Analytics: `support_message_sent` (`topic`), never the message.
+  - **The function:** `contact-support` in the dashboard repo, deployed
+    2026-10-01, with `verify_jwt = false` in its `config.toml`. It verifies
+    the Clerk token as `delete-account` does.
+    - It accepts a known topic, a message of 1 to 4000 characters and short
+      context strings: the app's version, the platform and its version, and
+      the phone's model.
+    - It reads the account's primary email (the Reply-To) and name from
+      Clerk's Backend API, never from the request.
+    - It allows 5 messages an hour per account, remembered in the account's
+      Clerk private metadata (`support.sent`), so no table is needed.
+      Beyond that it answers 429 with Retry-After.
+    - It sends plain text through Resend's API: the message, then who sent
+      it and from what. It stores nothing in the database. The log holds
+      outcomes and codes only.
+  - **Settings:** `SUPPORT_EMAIL_TO` (`support@talebrim.com`) and
+    `SUPPORT_EMAIL_FROM` (`Talebrim app <onboarding@resend.dev>`) are set.
+    Until talebrim.com is verified in Resend, Resend's own sender delivers
+    only to the address the Resend account signed up with, which must be
+    `support@talebrim.com`. **`RESEND_API_KEY` waits for the owner.** Until
+    then the function answers 500 `not_configured` at the send, and the app
+    shows "Couldn't send your message…" above Send, with the address named in
+    the line under the message.
+  - **Proven over HTTP so far:** a CORS preflight answered 200 and a `GET`
+    405, and no token or a garbage token 401. A throwaway reader's real
+    token got 400 for an unknown topic, an empty message, a 4001-character
+    message and no body, and 500 `not_configured` for a valid message. The
+    reader was then deleted.
+  - **Still to prove** once the key is set: a message arrives at
+    `support@talebrim.com`, with Reply-To the reader's address, and the
+    sixth in an hour gets 429. Then the form on the phone.
+  - **The pages say so:** the privacy policy names Resend and what a
+    message carries, Help points to Profile → Help, and the deletion page
+    keeps conversations "from the app or by email".
+  - **No frame:** for design review, as is the copy. That covers the
+    intro, "What's it about?", "Your message", the placeholder "What
+    happened, and on which story or chapter?", the line saying where it
+    goes, "Send message", the three problem lines, and "Message sent" with
+    its line.
+- **M11's avatar is the account's photo.** Asked for by the owner on
+  2026-10-01: a reader who signs in with Google sees their Google photo on
+  the account card, not their initials. It flips "Initials only" in "M11
+  (prompt 25 review)", which had named this flip.
+  - **The photo is Clerk's `imageUrl`, only when `hasImage` is true.**
+    `accountIdentity()` (`lib/profile.ts`) gives it as `photoUrl`. Without a
+    photo, Clerk still gives an `imageUrl`, for a picture it generates; that
+    is never shown (§ Image Generation Rules), and the initials stay.
+    - Checked on the development instance: every Google sign-in has
+      `has_image` true, and reader B (an email code) has it false.
+    - The images come from `img.clerk.com`, Clerk's CDN for the account's
+      own image. That is the auth provider's, not the third-party hotlink
+      § Image Rule forbids for covers.
+  - **The card** (`Avatar` in `components/profile/account-card.tsx`): the
+    photo fills the 48dp circle inside its `teal/20` ring (`expo-image`,
+    `contentFit="cover"`, decorative).
+    - The initials show until the photo has loaded, and again if it can't
+      (offline on a cold start, a failed fetch). They are hidden once it has:
+      the owner's Google photo is a cut-out with a transparent background,
+      and on the phone the initials showed through it.
+    - `cachePolicy="memory"`: a reader's photo never stays on the phone's
+      disk, so it can't outlive their sign-out. It is small to fetch again
+      on the next start.
+  - **The privacy policy says so:** "The app shows that photo on your
+    Profile, or your initials if your account has none" replaces "only your
+    initials, never your photo".
+  - **Seen on the owner's phone** the same day (signed in with Google): the
+    photo in the ring, with nothing showing through after the fix.
+  - **Tests:** four new in `profile.test.ts`: the photo, a photo with no
+    name, Clerk's generated picture never shown, and a missing or blank URL.
+- **Prompt 22 (second review).** Settled on 2026-10-01 while reviewing prompt
+  22 again, at the owner's request, against the code as built through
+  prompt 25, today's fixes, `material/11.png`, `material/5.png` and the
+  owner's phone. The prompt carries the detail; the owner may flip any of
+  these before it is built.
+  - **Only Part C (the store setup and the sandbox tests) and a new Part D
+    are left.** Parts A and B were built on 2026-09-25 ("Paywall as built")
+    and become a reference section with a step 0 that checks they still
+    hold.
+  - **No new development build:** `9235ee79` already holds
+    `react-native-purchases` 10.10.2. Its manifest has
+    `com.android.vending.BILLING`, granted (read with `dumpsys package`).
+    `eas.json`'s `production` profile already exists. All 14
+    `TODO(paywall)` markers in `src` are gone, and two `TODO(unlocks)` wait
+    for prompt 23.
+  - **Corrected in the prompt:**
+    - The lock rule has no "free by position" (Decisions — 2026-09-30).
+    - Terms and Privacy have URLs.
+    - `restore_tapped`'s `from` includes `profile`.
+    - "While iOS scope is open" becomes "until the iOS series".
+    - The stale frame name `prompt_material/12-paywall.png` is gone. The
+      frames are `material/11.png` (M10) and `material/5.png` (M9's bar).
+  - **The production build needs six public variables:**
+    - The five from before, plus `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`.
+    - Never `EXPO_PUBLIC_POSTHOG_DEBUG`.
+    - The Clerk key stays the development instance's (rule 5).
+  - **Never install the Play build over the development build:** Play
+    re-signs it, so Android refuses it as an update. The sandbox tests run
+    on the development build.
+  - **Recommended Play shape:** one subscription, "Ad-Free", with weekly,
+    monthly and yearly base plans. M10 names its cards by period and the
+    status card by the subscription's name. Three subscriptions remain the
+    flip.
+  - **The sandbox tests now cover:**
+    - M11: the pill, the upsell, Manage subscription and Restore.
+    - Delete account's warning to a renewing subscriber.
+    - A lapse.
+    - M5a, M10 and M9's bar at full size, since all three were built while
+      the rem was 14.
+    - Reporting the gaps that wait for 22a.
+  - **Part D:** a lapse runs `recheckLoaded(null)`, so a locked chapter that
+    is playing stops, as a dashboard lock already makes it. The turn is
+    detected by a tested `entitlementLapsed()` in `lib/billing.ts`.
+  - **Prompt 22a comes straight after.** It holds:
+    - the entitlement mirror (RevenueCat's webhook, an Edge Function, an
+      `entitlements` table);
+    - the audio policy's subscriber branch;
+    - server-side protection of locked text (§ Before production);
+    - deleting the reader's RevenueCat customer, and their `entitlements`
+      row, in `delete-account`, whose `TODO(paywall)` waits for it.
+
+    All of it needs RevenueCat's secret key on the server. Until 22a, a
+    subscriber's locked chapter can't play its narration or be downloaded:
+    a launch blocker.
+  - **Owner reminders** gained "For prompt 22, next", the Google Play and
+    RevenueCat setup, as item 1. The Google Play account moved there from
+    "older owner steps".
+
 ---
 
 ## Build order — what to build, and what is blocked
@@ -2867,11 +3463,27 @@ same evening, with the `chapters_catalog` size columns live (Decisions —
 2026-09-28, "Downloads as built"); their device checks wait for the
 development build made after them, `fd1773bc` (finished the same night),
 which also carries 23a.
-**Next:** installing build `fd1773bc` on the phone and the device checks of
-23a and 24, the rest of the deferred setup (§ Deferred setup), then prompt
-25; RevenueCat and prompt 23 come after it, and the passes 26 and 27 last
-(Decisions — 2026-09-25, "Build order from here"). Each prompt
-is reviewed against the code before it is built. Open before M5 ships:
+**Status, 2026-10-01.** Build `fd1773bc` reached the phone on 2026-09-30,
+and the owner's device checks of 23a and 24 found five failures, all fixed
+that day (Decisions — 2026-09-30). Build `9235ee79`, with the audio-focus
+fix, is on the phone since 2026-10-01. The owner has confirmed alerts pop
+up, locks set in the dashboard hold, and YouTube pauses the narration; the
+download that carries on after leaving the app, and M2 staying away after a
+sign-out round trip, are still to be re-checked. M11 Profile (25) was built
+the same day and seen on the phone (Decisions — 2026-10-01, "M11 as built").
+Its `delete-account` function is deployed and proven over HTTP; sign-out and
+deletion on the phone are still to be checked. Measuring M11 found
+NativeWind's rem was 14 on native, which shrank every screen, and an alerts
+loop while offline. Both were fixed the same day; each still needs a look on
+the phone, which was locked (Decisions — 2026-10-01).
+**Next:** prompt 22's Part C (the store setup and the sandbox tests) and Part
+D, reviewed again on 2026-10-01 and waiting on the owner's Google Play and
+RevenueCat accounts (Decisions — 2026-10-01, "Prompt 22 (second review)").
+Then prompt 22a (the entitlement mirror), prompt 23, and the passes 26 and 27
+last (Decisions — 2026-09-25, "Build order from here"). The rest of the
+deferred setup (steps 3, 7 and part of 9) is still open. Each prompt is
+reviewed against the code before it is built.
+Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
   legal line is enough.
@@ -2918,6 +3530,12 @@ chapter locked inside the free run staying open, M2 showing again after
 signing back in, another app's audio playing over the narration, and the
 first real alert not showing. The audio fix is native: EAS build `9235ee79`
 replaces `fd1773bc` on the phone.
+
+**Progress, 2026-10-01:** `9235ee79` was installed over USB (`adb -d install
+-r`, which keeps the app's data), and the owner confirmed that a YouTube
+video now pauses the narration. Still open: steps 3 and 7 (Google sign-in on
+the development build), and of step 9 the phone call, the Bluetooth buttons,
+the screen-off checks and connectivity lost mid-stream.
 
 **Owner, before anything else:**
 
@@ -3029,9 +3647,10 @@ replaces `fd1773bc` on the phone.
      as built"): accept them, or decide otherwise
    - a phone call pauses and then resumes; another app taking audio focus
      pauses without resuming. **Failed on 2026-09-30** (YouTube played over
-     the narration); fixed in the `expo-audio` patch, waiting for build
-     `9235ee79` (Decisions — 2026-09-30, "Another app's audio pauses the
-     narration")
+     the narration); fixed in the `expo-audio` patch, and **the YouTube half
+     passed on 2026-10-01** with build `9235ee79` (Decisions — 2026-09-30,
+     "Another app's audio pauses the narration"). The phone call is still
+     to check
    - with the screen off: the sleep timer pausing on time, autoplay into the
      next chapter, and a re-mint after the URL expires (`DEV_FORCE_EXPIRY`
      in `lib/queries/audio.ts` signs for 60 seconds)
@@ -3081,7 +3700,7 @@ that day. See Data Contract for what exists.
 Read/listen parity becomes implementable at this point and not before: steps
 2–4 of its algorithm write to `reading_positions`.
 
-### Before production — four things to plan for now
+### Before production — five things to plan for now
 
 **Locked chapter text is not protected server-side.** RLS lets any signed-in
 reader select `chapters.script_text` for any published chapter, locked or not
@@ -3119,6 +3738,19 @@ own (Decisions — 2026-09-28, "Downloads as built"). Recently read text stays
 in memory for the session. Still open: the reader lays a whole chapter out in
 one `ScrollView`, which has not been tried at that length.
 
+**The store listings' pages exist; the owner still has three steps.** Since
+2026-10-01, talebrim.com serves Terms, Privacy, Help and an account-deletion
+page from the dashboard repo, and the app links to them (Decisions —
+2026-10-01, "Legal pages, support and analytics deletion"). Before launch:
+- The owner reviews the pages and supplies the operator's legal name and
+  country and the governing law. Then the dashboard is deployed.
+- The owner creates the `support@talebrim.com` mailbox.
+- In Play Console, the privacy policy is
+  `https://talebrim.com/privacy`, and the account deletion URL in the Data
+  safety form is `https://talebrim.com/delete-account`.
+Keep the pages true as the app changes: rewarded ads (prompt 23) need the
+privacy policy updated first.
+
 ---
 
 ## Connecting — project, keys and instances
@@ -3155,14 +3787,37 @@ against the old format will fail confusingly (AGENTS.md, prompt 16). The
 mobile app does not upload, so it is unaffected — noted only so the format is
 not mistaken for a misconfiguration.
 
-**Edge Functions.** One exists, `notify-new-chapters` (prompt 23a; Decisions —
-2026-09-28), in the dashboard repo's `supabase/functions/`, where every
-function lives, beside the only migration history. It is called by `pg_cron`,
-never by this app. Its secrets (`NOTIFY_CRON_SECRET`, `EXPO_ACCESS_TOKEN`,
-and the project's own secret key, which Supabase injects) live only in the
-function's environment. Under the `sb_` keys a function not called with a
-user's token is deployed with `verify_jwt` off and checks its own credential
-(Supabase's docs); deploy it with `--no-verify-jwt --use-api`.
+**Edge Functions.** Every function lives in the dashboard repo's
+`supabase/functions/`, beside the only migration history. Each is deployed
+with `verify_jwt` off and checks its own credential, since none is called
+with a Supabase token (Supabase's docs for the `sb_` keys). Deploy with
+`--no-verify-jwt --use-api`.
+
+- **`notify-new-chapters`** (prompt 23a; Decisions — 2026-09-28) is called
+  by `pg_cron`, never by this app. Its secrets (`NOTIFY_CRON_SECRET`,
+  `EXPO_ACCESS_TOKEN`, and the project's own secret key, which Supabase
+  injects) live only in the function's environment.
+- **`delete-account`** (prompt 25; Decisions — 2026-10-01, "M11 as built")
+  is called by this app, only from `hooks/use-delete-account.ts`, with the
+  reader's Clerk session token as the bearer. The function verifies that
+  token against Clerk's JWKS itself. Its secrets are `CLERK_SECRET_KEY` (the
+  development instance's) and `CLERK_ISSUER`
+  (`https://cheerful-walleye-3066.clerk.accounts.dev`), plus the project's
+  own secret key. **At the production Clerk cutover, change both Clerk
+  secrets together**, or every deletion fails as an unverified token.
+  Deployed on 2026-10-01 with the owner's yes, and proven over HTTP
+  (Decisions — 2026-10-01, "M11 as built"). Its PostHog step is written and
+  not yet deployed. That step needs `POSTHOG_PERSONAL_API_KEY`,
+  `POSTHOG_HOST` and `POSTHOG_PROJECT_ID` (Decisions — 2026-10-01, "Legal
+  pages, support and analytics deletion").
+- **`contact-support`** (Decisions — 2026-10-01, "Help is a message to
+  support") is called by this app, only from
+  `hooks/use-contact-support.ts`, with the reader's Clerk token. It emails
+  M11's Help form to `support@talebrim.com` through Resend.
+  - Its secrets are the two Clerk ones (change them with `delete-account`'s
+    at the cutover), plus `RESEND_API_KEY`, `SUPPORT_EMAIL_TO` and
+    `SUPPORT_EMAIL_FROM`.
+  - Deployed 2026-10-01. `RESEND_API_KEY` waits for the owner.
 
 ### Clerk
 
@@ -3215,7 +3870,7 @@ read it rather than hardcoding:
 | `public_cdn_domain`      | `https://fwjrdzzdtshbqrfkgivd.supabase.co` |
 | `bucket_name`            | `novelnow-media`                           |
 | `storage_provider`       | `supabase_storage`                         |
-| `free_chapters_at_start` | `3`                                        |
+| `free_chapters_at_start` | `1` (set by the owner on 2026-09-30)       |
 | `default_chapter_access` | `locked`                                   |
 
 Cover URLs are built as
@@ -3296,7 +3951,9 @@ history (see Phase 2).
   on them. Each foreign key is indexed, so the cascade never scans.
 - Writers: `reading_positions` only through `lib/parity/writer.ts`;
   `library_items` only through M4's `+ My List` pill (`hooks/use-my-list.ts`,
-  with `addToMyList()` and `removeFromMyList()`); `unlocks` never.
+  with `addToMyList()` and `removeFromMyList()`); `unlocks` never. A reader's
+  rows in all three, and in `push_tokens`, are deleted only by the
+  `delete-account` Edge Function, at the reader's request (M11).
 - Verified by `supabase/verify/reader_tables_rls.sql` in the dashboard repo:
   40 impersonation checks covering readers A and B, `anon`, and an admin, all
   passing on the live tables. It rolls back everything it seeds, so re-run it
@@ -3317,11 +3974,13 @@ Applied 2026-09-28 from the dashboard repo, additive, with prompt 23a
 
 - Writer: `push_tokens` only through `lib/push.ts`, and only by calling
   `set_push_token()`. Nothing else in the app touches these objects.
-- The Edge Function `notify-new-chapters` (dashboard repo) runs every 5
-  minutes from `pg_cron` through `pg_net`, with a shared secret from Vault.
+- The Edge Function `notify-new-chapters` (dashboard repo) runs every minute
+  from `pg_cron` through `pg_net`, with a shared secret from Vault (every 5
+  minutes until migration `20260930130000`; Decisions — 2026-09-30, "Alerts
+  go out right away").
 - Verified by `supabase/verify/new_chapter_alerts_rls.sql` in the dashboard
-  repo: 57 checks, the job's steps included, all passing. Re-run it after any
-  change to these objects.
+  repo: 53 checks since 2026-09-30, the job's steps included, all passing.
+  Re-run it after any change to these objects.
 
 **Still does not exist:** `bookmarks` (M5's bookmark button is omitted until
 it does) and any entitlement mirror (planned as prompt 22a: RevenueCat → an
@@ -3546,7 +4205,7 @@ Refactor only when needed.
 
 Only create reusable components when necessary. Ask if unsure.
 
-Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `ProgressBar` (prompt 21), `Screen`, `SegmentedControl`, `Sheet` (a sheet route's scrim and frame, prompt 23a), `TextLink` (prompt 22) and the `Body`/`Heading` type helpers. Add others there when a screen first needs them.
+Check `components/ui/` first. Today it holds `Badge`, `Button`, `Chip`, `Cover`, `ProgressBar` (prompt 21), `Screen`, `SegmentedControl`, `Sheet` (a sheet route's scrim and frame, prompt 23a), `TextLink` (prompt 22; its `tone` is `muted` by default, or `destructive` for M11's Sign out and Delete account, prompt 25) and the `Body`/`Heading` type helpers. Add others there when a screen first needs them.
 
 Components take data via props and do not fetch. Fetching lives in `hooks/`.
 
@@ -3646,6 +4305,8 @@ Flag deviations from this file explicitly, with the source that justifies them. 
 
 No progress narration. No restating the request. No summarising work visible in the diff.
 
+When a feature is finished, end the report with § Owner reminders' open items, one line each.
+
 ---
 
 ## Important Constraints
@@ -3675,6 +4336,9 @@ Before every feature implementation:
 - Replicate UI exactly when designs are provided
 - Treat placeholder content as data, never as constants
 - Protect read/listen parity above all else
+
+After every feature: end the report with § Owner reminders' open items. The
+owner asked to be reminded of them every time.
 
 And the five non-negotiables from the top of this file, restated because this
 is the section most likely to be re-read on its own:

@@ -5,8 +5,9 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { UpdateRow } from "@/components/updates/update-row";
 import { Button, Screen } from "@/components/ui";
-import { useAlertsStatus, type AlertsView } from "@/hooks/use-alerts";
+import { useAlertsStatus } from "@/hooks/use-alerts";
 import { useUpdatesScreen } from "@/hooks/use-updates";
+import { alertsStatusWords } from "@/lib/alerts";
 import { resolveCoverUrl } from "@/lib/covers";
 import { openPaywall } from "@/lib/paywall";
 import type { UpdateItem } from "@/lib/updates";
@@ -114,21 +115,13 @@ export default function UpdatesRoute() {
   );
 }
 
-const ALERTS_STATUS: Record<AlertsView["status"], string> = {
-  on: "On",
-  off: "Off",
-  blocked: "Off in Android settings",
-  unavailable: "In the Talebrim app for Android",
-  loading: "",
-};
-
 /**
  * New-chapter alerts, on or off: the bell's job until Updates took it. Opens
  * the alerts sheet, which turns them on or off, or explains why it can't.
  */
 function AlertsRow() {
   const alerts = useAlertsStatus();
-  const status = ALERTS_STATUS[alerts.status];
+  const status = alertsStatusWords(alerts.status);
 
   return (
     <Pressable

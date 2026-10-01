@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CoverCollage } from "@/components/onboarding/cover-collage";
 import { Body, Button, Chip, Heading, Screen } from "@/components/ui";
@@ -55,64 +55,77 @@ export default function Genres() {
 
   return (
     <Screen edges={["bottom"]}>
-      <CoverCollage />
+      {/* Scrolls only when the content is taller than the screen: the spacer
+          keeps Start Reading at the bottom of a tall screen, and on a short
+          one (or at 1.3× text) it stays reachable. */}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <CoverCollage />
 
-      <View className="flex-1 px-6">
-        <View className="mt-6 flex-row items-center justify-center gap-2">
-          {Array.from({ length: STEP_COUNT }).map((_, index) => (
-            <View
-              key={index}
-              className={`h-1.5 rounded-pill ${
-                index === CURRENT_STEP_INDEX
-                  ? "bg-ember w-6"
-                  : "bg-raised w-1.5"
-              }`}
-            />
-          ))}
+        <View className="flex-1 px-6">
+          <View className="mt-6 flex-row items-center justify-center gap-2">
+            {Array.from({ length: STEP_COUNT }).map((_, index) => (
+              <View
+                key={index}
+                className={`h-1.5 rounded-pill ${
+                  index === CURRENT_STEP_INDEX
+                    ? "bg-ember w-6"
+                    : "bg-raised w-1.5"
+                }`}
+              />
+            ))}
+          </View>
+
+          <Heading className="mt-6">What you love to read</Heading>
+          <Body className="mt-2">
+            Pick the genres that pull you in — we&apos;ll use them to recommend
+            stories.
+          </Body>
+
+          <View
+            className="mt-6 flex-row flex-wrap gap-3"
+            accessibilityLabel="Genre selection"
+          >
+            {GENRES.map((genre) => {
+              const isSelected = selected.has(genre.value);
+              return (
+                <View key={genre.value} className="min-h-11 justify-center">
+                  <Chip
+                    label={genre.label}
+                    selected={isSelected}
+                    onPress={() => toggle(genre.value)}
+                  />
+                </View>
+              );
+            })}
+          </View>
+
+          <View className="min-h-6 flex-1" />
+
+          <Button
+            label="Start Reading"
+            variant="primary"
+            className="h-14 w-full"
+            onPress={onSubmit}
+          />
+
+          <Text
+            onPress={onSkip}
+            accessibilityRole="button"
+            accessibilityLabel="Skip"
+            className="font-ui text-muted mt-4 min-h-11 text-center text-[15px] leading-[44px]"
+          >
+            Skip
+          </Text>
         </View>
-
-        <Heading className="mt-6">What you love to read</Heading>
-        <Body className="mt-2">
-          Pick the genres that pull you in — we&apos;ll use them to recommend
-          stories.
-        </Body>
-
-        <View
-          className="mt-6 flex-row flex-wrap gap-3"
-          accessibilityLabel="Genre selection"
-        >
-          {GENRES.map((genre) => {
-            const isSelected = selected.has(genre.value);
-            return (
-              <View key={genre.value} className="min-h-11 justify-center">
-                <Chip
-                  label={genre.label}
-                  selected={isSelected}
-                  onPress={() => toggle(genre.value)}
-                />
-              </View>
-            );
-          })}
-        </View>
-
-        <View className="min-h-6 flex-1" />
-
-        <Button
-          label="Start Reading"
-          variant="primary"
-          className="h-14 w-full"
-          onPress={onSubmit}
-        />
-
-        <Text
-          onPress={onSkip}
-          accessibilityRole="button"
-          accessibilityLabel="Skip"
-          className="font-ui text-muted mt-4 min-h-11 text-center text-[15px] leading-[44px]"
-        >
-          Skip
-        </Text>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { flexGrow: 1 },
+});

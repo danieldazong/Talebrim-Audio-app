@@ -46,14 +46,10 @@ export type AlertsSheet = {
 };
 
 /**
- * The alerts sheet (`app/alerts.tsx`): what it shows, and its answers. Each
- * answer closes it through `close`. Closing it any other way while it asks
- * (the scrim, Android back) counts as "Not now".
- */
-/**
  * Alerts on this phone for this account: what the sheet shows, and the
- * Updates screen's alerts row. The system's permission is read now, and again
- * when the reader comes back from Android's settings.
+ * alerts rows on Updates and M11 (`alertsStatusWords()`). The system's
+ * permission is read now, and again when the reader comes back from
+ * Android's settings.
  */
 export function useAlertsStatus(): AlertsView {
   const enabled = useNotificationsStore((state) => state.enabled);
@@ -87,6 +83,11 @@ export function useAlertsStatus(): AlertsView {
           : { status: "off" };
 }
 
+/**
+ * The alerts sheet (`app/alerts.tsx`): what it shows, and its answers. Each
+ * answer closes it through `close`. Closing it any other way while it asks
+ * (the scrim, Android back) counts as "Not now".
+ */
 export function useAlertsSheet(from: AlertsFrom, close: () => void): AlertsSheet {
   const navigation = useNavigation();
   const view = useAlertsStatus();

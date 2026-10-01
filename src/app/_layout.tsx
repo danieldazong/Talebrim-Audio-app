@@ -133,6 +133,8 @@ function RootNavigator() {
         <Stack.Screen name="downloads" />
         {/* Discover's bell: new chapters of the stories on My List. */}
         <Stack.Screen name="updates" />
+        {/* M11's Help: a message to support@talebrim.com. */}
+        <Stack.Screen name="support" />
         {/* New-chapter alerts: a sheet like M5a's. */}
         <Stack.Screen
           name="alerts"

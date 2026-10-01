@@ -74,6 +74,11 @@ type Sdk = typeof Notifications;
 let sdk: Sdk | null = null;
 /** This phone's Expo push token, once fetched this session. */
 let phoneToken: string | null = null;
+/**
+ * The device (Firebase) token behind it: the last one this module fetched or
+ * the SDK reported. A report of the same token is no change (`onPushTokenChange()`).
+ */
+let deviceToken: string | null = null;
 /** Calls to `set_push_token()`, one at a time. */
 let serverQueue: Promise<unknown> = Promise.resolve();
 /** Alert taps already handled, by notification id: each opens once. */
@@ -121,16 +126,30 @@ async function ensureChannel(client: Sdk): Promise<void> {
   await client.deleteNotificationChannelAsync(OLD_ALERTS_CHANNEL_ID).catch(() => undefined);
 }
 
+/** A device token as text; null for the web's push subscription, which never runs here. */
+function deviceTokenText(token: Notifications.DevicePushToken): string | null {
+  return typeof token.data === "string" ? token.data : null;
+}
+
 /**
  * The phone's Expo push token. Asks Expo's server the first time in a session,
  * so it needs the network then. Android needs no permission for it.
+ *
+ * The device token is fetched here and handed on, so the Expo token is made
+ * from exactly that token, and the report the fetch sets off is known as no
+ * change before it arrives.
  */
 async function getPhoneToken(client: Sdk): Promise<string> {
   if (phoneToken !== null) return phoneToken;
   const projectId =
     Constants.easConfig?.projectId ??
     (Constants.expoConfig?.extra?.eas?.projectId as string | undefined);
-  const { data } = await client.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+  const device = await client.getDevicePushTokenAsync();
+  deviceToken = deviceTokenText(device);
+  const { data } = await client.getExpoPushTokenAsync({
+    ...(projectId ? { projectId } : {}),
+    devicePushToken: device,
+  });
   phoneToken = data;
   return data;
 }
@@ -202,10 +221,22 @@ export function releaseAlertsWithin(ms: number): Promise<void> {
   return Promise.race([release, new Promise<void>((resolve) => setTimeout(resolve, ms))]);
 }
 
-/** Every change of the phone's push token (Firebase can rotate it). Returns the unsubscribe. */
+/**
+ * Every change of the phone's push token (Firebase can rotate it). Returns the
+ * unsubscribe.
+ *
+ * `expo-notifications` 57.0.21 reports the device token each time it is
+ * fetched, not only when it changes, and `getPhoneToken()` fetches it. So a
+ * report of the token already known is ignored. Reacting to every report ran
+ * the sync again and again: offline, each attempt failed and set off the
+ * next, 33,794 times in 12 minutes on the owner's phone (2026-10-01).
+ */
 export function onPushTokenChange(listener: () => void): () => void {
   if (!AVAILABLE) return () => {};
-  const subscription = load().addPushTokenListener(() => {
+  const subscription = load().addPushTokenListener((token) => {
+    const reported = deviceTokenText(token);
+    if (reported !== null && reported === deviceToken) return;
+    deviceToken = reported;
     phoneToken = null;
     listener();
   });

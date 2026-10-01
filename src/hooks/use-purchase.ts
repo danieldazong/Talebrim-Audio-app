@@ -22,7 +22,7 @@ export type RestoreOutcome = PurchaseOutcome | { kind: "nothing" };
 
 /**
  * The app's one purchase path — prompt 22 step 7. M10 buys and restores
- * through it, M5a restores. There is no second one.
+ * through it; M5a and M11 restore. There is no second one.
  *
  * Each action ends in one outcome, classified from the SDK's error codes
  * (`lib/billing.ts`). A cancel is not an error and shows nothing; every other
@@ -32,7 +32,7 @@ export type RestoreOutcome = PurchaseOutcome | { kind: "nothing" };
  * every chapter at once. One action at a time, and the button never spins
  * forever: whatever the store answers ends it.
  */
-export function usePurchase(from: "paywall" | "subscription") {
+export function usePurchase(from: "paywall" | "subscription" | "profile") {
   const { userId } = useAuth();
   const queryClient = useQueryClient();
   const [running, setRunning] = useState<PurchaseAction | null>(null);

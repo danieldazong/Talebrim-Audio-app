@@ -18,6 +18,7 @@ import type { DownloadFailure } from "@/lib/downloads/queue";
 import { isUuid } from "@/lib/ids";
 import type { RestorePoint } from "@/lib/parity/convert";
 import type { PaywallFrom } from "@/lib/paywall";
+import type { SupportTopic } from "@/lib/support";
 import type { ParitySourceMode } from "@/store/parity-store";
 
 type HandoffDirection = "read_to_listen" | "listen_to_read";
@@ -50,7 +51,7 @@ type AnalyticsEvents = {
   purchase_completed: { package_id: string };
   purchase_cancelled: { package_id: string };
   purchase_failed: { package_id: string; kind: PurchaseFailure };
-  restore_tapped: { from: "paywall" | "subscription" };
+  restore_tapped: { from: "paywall" | "subscription" | "profile" };
   restore_completed: { entitled: boolean };
   // New-chapter alerts (prompt 23a). Never a push token.
   /** The alerts sheet asked, once per open. */
@@ -73,6 +74,17 @@ type AnalyticsEvents = {
   // The Updates inbox (2026-09-30). Counts only.
   /** Updates opened from Discover's bell, with how many chapters were new. */
   updates_opened: { new_chapters: number };
+  // M11 Profile (prompt 25). No properties: never a name or an email.
+  /** The reader confirmed Sign out, just before it runs. */
+  signed_out: Record<string, never>;
+  /**
+   * The server deleted the account, PostHog person and events included. Sent
+   * under a new anonymous id (`useDeleteAccount()`), so it counts deletions
+   * without making the deleted person again.
+   */
+  account_deleted: Record<string, never>;
+  /** M11's Help form sent a message. The topic only: never the message. */
+  support_message_sent: { topic: SupportTopic };
 };
 
 const KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY ?? "";
@@ -228,6 +240,18 @@ export function resetAnalytics(): void {
     PostHogPersistedProperty.InstalledAppVersion,
     PostHogPersistedProperty.DeviceId,
     PostHogPersistedProperty.OptedOut,
+  ]);
+}
+
+/**
+ * Sends every queued event now, never waiting longer than `ms`. Account
+ * deletion runs it first, so nothing captured before the deletion arrives
+ * after it and makes the deleted person again.
+ */
+export function flushAnalyticsWithin(ms: number): Promise<void> {
+  return Promise.race([
+    client.flush().catch(() => undefined),
+    new Promise<void>((resolve) => setTimeout(resolve, ms)),
   ]);
 }
 
