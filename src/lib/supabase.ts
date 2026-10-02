@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { tokenIssuedAtMs, tokenNeedsReplacing } from "@/lib/token-age";
 import type { Database } from "@/types/database";
 
 // Module-level indirection so the client stays a plain singleton (no React)
@@ -12,10 +13,30 @@ import type { Database } from "@/types/database";
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>;
 let clerkGetToken: GetToken | null = null;
 let pendingRealtimeAuth: Promise<void> | null = null;
+/** This phone's clock minus the server's, from the last token issued; null until one is. */
+let clockOffsetMs: number | null = null;
+let pendingIssue: Promise<string | null> | null = null;
 
 /** Called once from the provider tree; never from feature code. */
 export function setClerkTokenGetter(getToken: GetToken | null) {
   clerkGetToken = getToken;
+}
+
+/**
+ * A token Clerk issues now (`skipCache`), which also refills Clerk's cache,
+ * and what its `iat` says about this phone's clock. Requests made together
+ * share one.
+ */
+function issueToken(): Promise<string | null> {
+  pendingIssue ??= (async () => {
+    const token = (await clerkGetToken?.({ skipCache: true })) ?? null;
+    const issuedAt = token === null ? null : tokenIssuedAtMs(token);
+    if (issuedAt !== null) clockOffsetMs = Date.now() - issuedAt;
+    return token;
+  })().finally(() => {
+    pendingIssue = null;
+  });
+  return pendingIssue;
 }
 
 /**
@@ -40,7 +61,12 @@ export const supabase = createClient<Database>(
       // Null only before AuthedQueryProvider first renders. A request sent
       // without a token gets an empty result from RLS, not an error.
       if (!clerkGetToken) return null;
-      return (await clerkGetToken()) ?? null;
+      const cached = (await clerkGetToken()) ?? null;
+      if (cached === null) return null;
+      // Clerk's cached token can already be refused by the server, and in the
+      // background nothing replaces it (`lib/token-age.ts`). Checked on every
+      // request, by the server's clock, with no timer involved.
+      return tokenNeedsReplacing(tokenIssuedAtMs(cached), clockOffsetMs, Date.now()) ? issueToken() : cached;
     },
     auth: {
       persistSession: false,
@@ -63,7 +89,7 @@ export const supabase = createClient<Database>(
  */
 export function refreshRealtimeAuth(): Promise<void> {
   pendingRealtimeAuth ??= (async () => {
-    const token = await clerkGetToken?.({ skipCache: true });
+    const token = await issueToken();
     if (token) await supabase.realtime.setAuth(token);
   })().finally(() => {
     pendingRealtimeAuth = null;

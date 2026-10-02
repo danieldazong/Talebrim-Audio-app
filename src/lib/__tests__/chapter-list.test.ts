@@ -78,6 +78,19 @@ describe("buildChapterRows", () => {
     expect(rows[0].state.kind).toBe("locked");
   });
 
+  it("keeps the dashboard's locks visible to a subscriber: those chapters, and only those, read Unlimited", () => {
+    // 1–3 free by access, 4–8 locked; chapter 5 also unlocked on its own.
+    const rows = buildChapterRows(book, inputs(["chapter-5"], true), null);
+    expect(kinds(rows)).not.toContain("locked");
+    expect(rows.map((row) => row.byPlan)).toEqual([false, false, false, true, false, true, true, true]);
+    expect(rows[3].accessibilityLabel).toBe("Chapter 4: Title 4. Text only. Unlocked. With Talebrim Unlimited.");
+    expect(rows[0].accessibilityLabel).toBe("Chapter 1: Title 1. Text only. Unlocked.");
+    // Without the plan, the same chapters are Locked and nothing reads Unlimited.
+    const free = buildChapterRows(book, inputs(), null);
+    expect(kinds(free)).toEqual(["unlocked", "unlocked", "unlocked", "locked", "locked", "locked", "locked", "locked"]);
+    expect(free.some((row) => row.byPlan)).toBe(false);
+  });
+
   it("frees a chapter by its own access, never by its number", () => {
     expect(kinds(buildChapterRows(book, inputs(), null)).filter((kind) => kind !== "locked")).toHaveLength(3);
     // The owner locked chapter 2 in the dashboard: it stays locked (2026-09-30).

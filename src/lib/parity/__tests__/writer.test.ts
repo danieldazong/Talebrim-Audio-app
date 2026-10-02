@@ -119,6 +119,28 @@ it("writes at least every MAX_WAIT_MS while positions keep coming", async () => 
   expect(mockUpsert).toHaveBeenCalledTimes(1);
 });
 
+it("sends from the record itself once MAX_WAIT_MS has passed, when no timer runs", async () => {
+  // React Native on Android runs no timer while the app is in the background
+  // (2026-10-02): narration playing with the screen off. The clock moves on,
+  // the timers don't.
+  text(1);
+  jest.setSystemTime(Date.now() + MAX_WAIT_MS - 1);
+  text(2);
+  await Promise.resolve();
+  expect(mockUpsert).not.toHaveBeenCalled();
+
+  jest.setSystemTime(Date.now() + 1);
+  text(3);
+  await Promise.resolve();
+  expect(mockUpsert).toHaveBeenCalledTimes(1);
+  expect(mockUpsert.mock.calls[0][1]).toMatchObject({ text_offset: 3 });
+
+  // The wait starts again from the next record after a send.
+  text(4);
+  await Promise.resolve();
+  expect(mockUpsert).toHaveBeenCalledTimes(1);
+});
+
 it("keeps a failed write dirty and retries it", async () => {
   mockUpsert.mockResolvedValueOnce({ data: null, error: { message: "Network request failed", code: "" } });
   text(10);

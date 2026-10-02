@@ -56,6 +56,8 @@ const inFlight = new Map<string, Promise<void>>();
 let currentUserId: string | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
+/** When the oldest unsent record was made: MAX_WAIT_MS counts from here. */
+let waitingSince: number | null = null;
 
 function log(...args: unknown[]) {
   if (__DEV__) console.log("[parity]", ...args);
@@ -98,6 +100,12 @@ export function recordPosition(input: PositionInput): void {
   if (debounceTimer !== null) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => void flush(), DEBOUNCE_MS);
   maxWaitTimer ??= setTimeout(() => void flush(), MAX_WAIT_MS);
+  // React Native on Android runs no timer while the app is in the background
+  // (2026-10-02), so narration playing with the screen off would send nothing
+  // until a pause. Each record checks the wait itself as well: the player
+  // records several times a second while it plays.
+  waitingSince ??= Date.now();
+  if (Date.now() - waitingSince >= MAX_WAIT_MS) void flush();
 }
 
 /**
@@ -134,6 +142,7 @@ function clearTimers() {
   if (maxWaitTimer !== null) clearTimeout(maxWaitTimer);
   debounceTimer = null;
   maxWaitTimer = null;
+  waitingSince = null;
 }
 
 function send(chapterId: string, attempt: number): Promise<void> {

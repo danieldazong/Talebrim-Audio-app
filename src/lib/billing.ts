@@ -10,9 +10,36 @@ import type {
   PURCHASES_ERROR_CODE,
   PurchasesEntitlementInfo,
   PurchasesPackage,
+  PurchasesSubscriptionInfo,
 } from "react-native-purchases";
 
+import { PLAN_NAME } from "@/constants/plan";
 import { formatDate } from "@/lib/format";
+
+// --- The store app ---------------------------------------------------------
+
+/**
+ * Whether the app may configure RevenueCat with `key`. A Test Store key
+ * (`test_…`) works only in a development build: RevenueCat makes a release
+ * build that carries one show an alert and crash on purpose. A store build
+ * with one keeps billing off instead (Decisions — 2026-10-01, "The paywall,
+ * safe for the store app").
+ */
+export function billingKeyUsable(key: string, isDevelopmentBuild: boolean): boolean {
+  if (key.length === 0) return false;
+  return isDevelopmentBuild || !key.startsWith("test_");
+}
+
+/**
+ * What M10 and M11's Restore say where billing can't run. Inside the Android
+ * app (no key yet, or a test key refused in a store build) the plan is on its
+ * way. On the web preview and in Expo Go it lives in the Android app.
+ */
+export function billingUnavailableMessage(where: { androidApp: boolean }): string {
+  return where.androidApp
+    ? `${PLAN_NAME} is coming soon.`
+    : "Subscriptions are available in the Talebrim app for Android.";
+}
 
 // --- Entitlement -----------------------------------------------------------
 
@@ -32,13 +59,31 @@ export type Entitlement = {
   managementUrl: string | null;
 };
 
-/** An active entitlement, as `customerInfo.entitlements.active` holds it, or null for none. */
+/** One of the reader's subscriptions, as `customerInfo.subscriptionsByProductIdentifier` holds it. */
+export type SubscriptionRecord = Pick<
+  PurchasesSubscriptionInfo,
+  | "productIdentifier"
+  | "productPlanIdentifier"
+  | "isActive"
+  | "willRenew"
+  | "expiresDate"
+  | "purchaseDate"
+  | "originalPurchaseDate"
+  | "store"
+>;
+
+/**
+ * An active entitlement, as `customerInfo.entitlements.active` holds it, or
+ * null for none. With several subscriptions active, its plan is the one the
+ * reader started last (`newestActive()`), not the one RevenueCat names.
+ */
 export function entitlementFrom(
   info: Pick<
     PurchasesEntitlementInfo,
     "isActive" | "expirationDate" | "willRenew" | "productIdentifier" | "productPlanIdentifier" | "store"
   > | null,
   managementUrl: string | null = null,
+  subscriptions: readonly SubscriptionRecord[] = [],
 ): Entitlement {
   if (info === null || !info.isActive) {
     return {
@@ -51,6 +96,23 @@ export function entitlementFrom(
       managementUrl,
     };
   }
+  const newest = newestActive(subscriptions);
+  if (newest !== null) {
+    const planId = newest.productPlanIdentifier;
+    return {
+      active: true,
+      expiresAt: newest.expiresDate,
+      willRenew: newest.willRenew,
+      // As the entitlement names it: the subscription without its base plan.
+      productId:
+        planId !== null && newest.productIdentifier.endsWith(`:${planId}`)
+          ? newest.productIdentifier.slice(0, -(planId.length + 1))
+          : newest.productIdentifier,
+      planId,
+      store: newest.store,
+      managementUrl,
+    };
+  }
   return {
     active: true,
     expiresAt: info.expirationDate,
@@ -60,6 +122,49 @@ export function entitlementFrom(
     store: info.store,
     managementUrl,
   };
+}
+
+/**
+ * The plan ended: an entitlement known to be active is now inactive (prompt
+ * 22 step 19). A first answer that is inactive is no lapse, nor is any turn
+ * the other way.
+ */
+export function entitlementLapsed(
+  previous: Pick<Entitlement, "active"> | undefined,
+  next: Pick<Entitlement, "active">,
+): boolean {
+  return previous?.active === true && !next.active;
+}
+
+/**
+ * The plan began, as far as this session can tell (prompt 22a step 7): the
+ * session's first answer is active (a start or a sign-in), or an inactive one
+ * turned active (a purchase, a restore, a plan bought on another phone). The
+ * server is asked to check its copy then, which also catches a renewal whose
+ * webhook it missed. An active answer after an active one is no start.
+ */
+export function entitlementStarted(
+  previous: Pick<Entitlement, "active"> | undefined,
+  next: Pick<Entitlement, "active">,
+): boolean {
+  return previous?.active !== true && next.active;
+}
+
+/**
+ * The subscription the reader started last, when more than one is active;
+ * null for one or none. RevenueCat's entitlement names the one that lasts
+ * longest, so a reader who moved from Yearly to Weekly in the Test Store,
+ * where a switch buys the new plan beside the old (`productToReplace()`), went
+ * on seeing Yearly as their plan (found on the owner's phone, 2026-10-01).
+ * Google Play replaces the old plan, so it never has two. A renewal is not a
+ * start: `originalPurchaseDate` doesn't move with one.
+ */
+function newestActive(subscriptions: readonly SubscriptionRecord[]): SubscriptionRecord | null {
+  const active = subscriptions.filter((subscription) => subscription.isActive);
+  if (active.length < 2) return null;
+  const started = (subscription: SubscriptionRecord) =>
+    Date.parse(subscription.originalPurchaseDate ?? subscription.purchaseDate) || 0;
+  return active.reduce((newest, subscription) => (started(subscription) > started(newest) ? subscription : newest));
 }
 
 // --- Periods ---------------------------------------------------------------
@@ -152,7 +257,11 @@ export type Plan = {
   subline: string;
   /** The card as one radio: name, full price, period and badge, as one sentence. */
   spoken: string;
-  /** "Renews every month until you cancel in Google Play."; null without a period. */
+  /**
+   * The line under the button, with the amount billed: "$9.99 every month.
+   * Renews automatically until you cancel in Google Play."; null without a
+   * period.
+   */
   renewal: string | null;
 };
 
@@ -213,7 +322,10 @@ export function plansFrom(packages: readonly PlanPackage[]): Plan[] {
       spoken: `${[name, period === null ? pkg.product.priceString : `${pkg.product.priceString} every ${everyPeriod(period)}`, badgeWords]
         .filter((part) => part !== null)
         .join(", ")}.`,
-      renewal: period === null ? null : `Renews every ${everyPeriod(period)} until you cancel in Google Play.`,
+      renewal:
+        period === null
+          ? null
+          : `${pkg.product.priceString} every ${everyPeriod(period)}. Renews automatically until you cancel in Google Play.`,
     };
   });
 }
@@ -227,6 +339,19 @@ export function currentPlan(plans: readonly Plan[], entitlement: Entitlement): P
   if (!entitlement.active || entitlement.productId === null) return null;
   const joined = entitlement.planId === null ? null : `${entitlement.productId}:${entitlement.planId}`;
   return plans.find((plan) => plan.productId === joined || plan.productId === entitlement.productId) ?? null;
+}
+
+/**
+ * The product a plan switch replaces: the reader's own, on Google Play, which
+ * turns one base plan into another. Anywhere else a switch is a new purchase.
+ * RevenueCat's Test Store refuses a replacement ("No active purchase found for
+ * product", `PurchaseNotAllowedError`, on the owner's phone, 2026-10-01), so
+ * there the new plan runs beside the old until that ends, and
+ * `entitlementFrom()` shows the newer as the reader's plan.
+ */
+export function productToReplace(entitlement: Entitlement): string | null {
+  if (!entitlement.active || entitlement.productId === null) return null;
+  return entitlement.store === "PLAY_STORE" ? entitlement.productId : null;
 }
 
 /**

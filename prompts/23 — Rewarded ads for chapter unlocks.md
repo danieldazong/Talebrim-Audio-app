@@ -32,6 +32,19 @@ Read AGENTS.md first and follow it strictly. Do only what is on this page.
 >   available), `wait_unlock_claimed`, `wait_unlock_unavailable` (seconds
 >   left), `ad_requested`, `ad_unavailable`, `ad_rewarded`,
 >   `ad_dismissed_early`, `unlock_recorded`, `unlock_record_failed`.
+>
+> Owner decisions, 2026-10-01 (AGENTS.md § Decisions — 2026-10-01, "The
+> paywall for a first visit"). Fold these in at this prompt's review too:
+> - **M5a now sells the story.** It shows the cover, "Keep reading {story}",
+>   the locked chapter, three benefits, the ember "See plans" (to M10), then
+>   "Not now" and the restore links. The two unlocks join it here, at its
+>   `TODO(unlocks)`.
+> - **Ask the owner which button is the ember** once the sheet has three
+>   ways in: "Unlock free" or the ad (the 2026-09-25 plan above), or "See
+>   plans". Only one can be.
+> - **The plan is named "Talebrim Unlimited"** (`constants/plan.ts`), not
+>   "Ad-Free". With ads in the app, a benefit row about ads may join M5a's
+>   three, but never more than three rows.
 This is the second unlock path alongside the subscription from prompt 23. Both
 write into the same `resolveChapterState()`; neither may bypass the other.
 

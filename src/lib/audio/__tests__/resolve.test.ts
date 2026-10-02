@@ -94,6 +94,16 @@ it("online, plays a chapter the owner freed, whatever the cache held", async () 
   await expect(checkChapter(USER, CHAPTER)).resolves.toMatchObject({ kind: "playable", row: { id: CHAPTER } });
 });
 
+it("plays a locked chapter while the plan runs, and locks it once the plan has ended (prompt 22 step 19)", async () => {
+  const active = { ...entitlementFrom(null), active: true, willRenew: true, store: "TEST_STORE" };
+  queryClient.setQueryData(entitlementOptions(USER).queryKey, active);
+  await expect(checkChapter(USER, CHAPTER)).resolves.toMatchObject({ kind: "playable" });
+
+  // What the lapse watcher's check then reads: the plan's end.
+  queryClient.setQueryData(entitlementOptions(USER).queryKey, entitlementFrom(null));
+  await expect(checkChapter(USER, CHAPTER)).resolves.toEqual({ kind: "locked", chapterId: CHAPTER });
+});
+
 it("offline, lets the cached row stand, as nothing newer can be had", async () => {
   onlineManager.setOnline(false);
   await expect(checkChapter(USER, CHAPTER)).resolves.toMatchObject({ kind: "playable" });

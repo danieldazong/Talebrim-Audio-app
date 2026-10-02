@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { resetAnalytics } from "@/lib/analytics";
 import { releaseAudio } from "@/lib/audio/player";
+import { setFreeReaderPreview } from "@/lib/dev-preview";
 import { deleteDownloadFiles, resetDownloadChecks } from "@/lib/downloads/manage";
 import { stopDownloads } from "@/lib/downloads/queue";
 import { clearParityQueue } from "@/lib/parity/writer";
@@ -66,6 +67,9 @@ import { UPDATES_STORAGE_KEY, useUpdatesStore } from "@/store/updates-store";
  *  - the persisted `updates` slice: when this account last looked at
  *    Updates. The account keeps its own copy in Clerk, so the next sign-in
  *    picks it up (2026-09-30)
+ *  - the development-only free-reader view (`setFreeReaderPreview(false)`):
+ *    session state of the owner's account, never the next account's
+ *    (2026-10-02)
  *
  * Kept (device-scoped, not user data):
  *  - the persisted `reader` Zustand slice — font size, theme, line spacing,
@@ -94,6 +98,7 @@ export async function clearUserScopedState(): Promise<void> {
   useDownloadsStore.getState().clear();
   resetDownloadChecks();
   useUpdatesStore.getState().clear();
+  setFreeReaderPreview(false);
   useOnboardingStore.setState({
     hasCompletedOnboarding: false,
     selectedGenres: [],

@@ -23,8 +23,10 @@ const BANNER_HEIGHT_MIN = 225;
 const BANNER_HEIGHT_MAX = 300;
 
 /**
- * Top-of-screen banner for the onboarding pre-screen — AGENTS.md is silent
- * on this exact screen, spec comes from prompts/Onboarding-screen.md.
+ * Top-of-screen banner shared by the welcome screen, M1 (sign in) and M2
+ * (genre picker), so the three open on the same collage. AGENTS.md is silent
+ * on the welcome screen's exact look, spec comes from
+ * prompts/Onboarding-screen.md.
  *
  * Full-bleed from y=0 (no SafeAreaView here), fills from the top down into
  * the headline, fading into `bg` at the bottom via LinearGradient. AGENTS.md

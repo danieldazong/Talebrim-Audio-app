@@ -19,10 +19,11 @@ import { chapterDetailOptions, chapterNeighboursOptions, chapterTextOptions } fr
 import { readingPositionByChapterOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
+import { syncServerPlan } from "@/lib/server-plan";
 import type { DownloadEntry } from "@/store/downloads-store";
 import { useParityStore } from "@/store/parity-store";
 import type { ChapterDetailRow, ChapterTargetRow } from "@/types/catalog";
-import { lockStateFor, type LockableChapter, type PlayerStatus } from "@/types/states";
+import { askServerAboutPlan, lockStateFor, type LockableChapter, type PlayerStatus } from "@/types/states";
 
 /** The ready state's chapter: what the player loads, and what the screen shows around it. */
 export type PlayingChapter = LoadedChapter & {
@@ -208,7 +209,31 @@ export function useNowPlaying(chapterId: string) {
     lockState.kind !== "locked" &&
     open.hasAudio === true;
   const source = useQuery({ ...chapterAudioSourceOptions(userId ?? "", chapterId), enabled: sourceEnabled });
-  const refused = sourceEnabled && source.data?.kind === "refused";
+
+  // A chapter only Talebrim Unlimited opens, refused by Storage, or its row
+  // withheld (no `audio_path`): the server serves it from its own copy of
+  // the plan, which can be behind the phone's (prompt 22a step 8). The
+  // server is asked to check that copy, once per open, and the narration is
+  // signed once more. However that goes, the checks below then decide as
+  // before. No timer: nothing here waits on one.
+  const denied = sourceEnabled && (source.data?.kind === "refused" || source.data?.kind === "unavailable");
+  // Unlocks still loading count as none: the server never refuses a chapter
+  // the reader unlocked on its own.
+  const planInputs =
+    isSubscribed === undefined ? null : { unlockedChapterIds: unlockedChapterIds ?? new Set<string>(), isSubscribed };
+  const planAsked = useRef(false);
+  const [planChecked, setPlanChecked] = useState(false);
+  // True from the refusal until the server has checked: the screen loads meanwhile.
+  const checkingPlan = denied && open != null && askServerAboutPlan(open, planInputs, planChecked);
+  const refetchSource = source.refetch;
+  useEffect(() => {
+    if (!checkingPlan || planAsked.current) return;
+    planAsked.current = true;
+    void syncServerPlan()
+      .then(() => refetchSource())
+      .finally(() => setPlanChecked(true));
+  }, [checkingPlan, refetchSource]);
+  const refused = sourceEnabled && source.data?.kind === "refused" && !checkingPlan;
 
   // Storage refused to sign: the lock rule may have changed since it was
   // read (the chapter locked in the dashboard, say). The chapter row and the
@@ -325,7 +350,10 @@ export function useNowPlaying(chapterId: string) {
     } else {
       if (!hasFile) {
         if (source.data === undefined) return waitFor([source]);
-        // The row lost its narration after `has_audio` was read.
+        // The server is checking the reader's plan, then signing again.
+        if (checkingPlan) return settled("loading");
+        // The row lost its narration after `has_audio` was read, or the
+        // server withheld it.
         if (source.data.kind === "unavailable") return settled("unavailable");
         if (source.data.kind === "refused") return settled(rechecked ? "unavailable" : "loading");
       }

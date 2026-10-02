@@ -29,7 +29,11 @@ export type ChapterAudioSource =
    * notice a replaced recording (prompt 24 step 8).
    */
   | { kind: "signed"; url: string; path: string }
-  /** No `audio_path` (the row changed after `has_audio` was read), or no row: not available. */
+  /**
+   * No `audio_path` (the row changed after `has_audio` was read), or no row:
+   * not available. Since 2026-10-02 also a locked chapter's row the server
+   * withheld, for a reader it doesn't know may open it (prompt 22a).
+   */
   | { kind: "unavailable" }
   /** Storage would not sign it. The screen re-checks the lock rule before saying why. */
   | { kind: "refused" };

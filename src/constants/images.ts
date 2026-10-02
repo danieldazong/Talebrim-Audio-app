@@ -31,7 +31,6 @@ export const images = {
 // admin CMS or a designer — AGENTS.md § Image Generation Rules forbids
 // generating them.
 //   cover-placeholder.png   — every nullable books.cover_path renders this
-//   auth-header.png         — M1 sign in / sign up
 
 // `images.covers` (the 4 bundled seed-catalog jpgs above) is now used only
 // by data/seed-catalog.ts's own mock-path consumers, if any remain. Real

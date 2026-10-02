@@ -15,6 +15,7 @@ import { resumeTargetOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import {
   chapterStateFor,
+  openedByPlan,
   type ChapterLockInputs,
   type ChapterState,
   type LockableChapter,
@@ -28,6 +29,8 @@ export type PreviewChapter = {
   hasAudio: boolean;
   audioDurationSeconds: number | null;
   state: ChapterState;
+  /** Locked in the dashboard, open to this reader only through the subscription (`openedByPlan()`). */
+  byPlan: boolean;
 };
 
 /** Where Read or Listen goes. Only "ready" opens anything. */
@@ -106,6 +109,10 @@ export function useBookDetail(bookId: string) {
       rows: preview.data.flatMap((row) => {
         if (row.id === null || row.number === null) return [];
         const { id, number } = row;
+        // Locked beats Downloaded, as on M9.
+        const state = chapterStateFor({ id, number, access: row.access }, lockInputs, {
+          isDownloaded: downloaded.has(id),
+        });
         return [
           {
             id,
@@ -113,10 +120,8 @@ export function useBookDetail(bookId: string) {
             title: row.title,
             hasAudio: row.has_audio === true,
             audioDurationSeconds: row.audio_duration_seconds,
-            // Locked beats Downloaded, as on M9.
-            state: chapterStateFor({ id, number, access: row.access }, lockInputs, {
-              isDownloaded: downloaded.has(id),
-            }),
+            state,
+            byPlan: state.kind !== "locked" && openedByPlan({ id, number, access: row.access }, lockInputs),
           },
         ];
       }),

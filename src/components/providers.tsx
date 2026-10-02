@@ -3,7 +3,8 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { type ReactNode, useEffect, useMemo } from "react";
 
 import { identifyReader } from "@/lib/analytics";
-import { entitlementOptions } from "@/lib/queries/billing";
+import { recheckLoaded } from "@/lib/audio/player";
+import { entitlementOptions, watchEntitlementLapses, watchEntitlementStarts } from "@/lib/queries/billing";
 import {
   PERSIST_MAX_AGE_MS,
   createPersister,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/query-client";
 import { setParityUser } from "@/lib/parity/writer";
 import { identifyBillingReader, onEntitlementChange } from "@/lib/revenuecat";
+import { syncServerPlan } from "@/lib/server-plan";
 import { setClerkTokenGetter } from "@/lib/supabase";
 
 /**
@@ -49,9 +51,28 @@ export function AuthedQueryProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     identifyReader(userId);
     identifyBillingReader(userId);
-    return onEntitlementChange(userId, (entitlement) =>
+    const stopListening = onEntitlementChange(userId, (entitlement) =>
       queryClient.setQueryData(entitlementOptions(userId).queryKey, entitlement),
     );
+    // A plan that ends stops a locked chapter that is playing, as a lock set
+    // in the dashboard does (prompt 22 step 19). Offline, or after a failed
+    // check, it plays on.
+    const stopWatching = watchEntitlementLapses(queryClient, userId, () => {
+      if (__DEV__) console.log("[billing] plan ended: checking the loaded chapter");
+      void recheckLoaded(null);
+    });
+    // The server keeps its own copy of the plan, for the locked narration and
+    // text it serves (prompt 22a). Once a session, and whenever the plan
+    // turns active, it is asked to check its copy with RevenueCat: that
+    // catches a renewal whose webhook it missed. Never waited on.
+    const stopStarts = watchEntitlementStarts(queryClient, userId, () => {
+      void syncServerPlan();
+    });
+    return () => {
+      stopListening();
+      stopWatching();
+      stopStarts();
+    };
   }, [userId]);
 
   // Re-created per user so one account never restores another's rows.

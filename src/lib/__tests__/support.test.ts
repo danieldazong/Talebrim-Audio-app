@@ -1,12 +1,13 @@
 /// <reference types="jest" />
 
 import {
+  SUPPORT_INTRO,
   SUPPORT_MESSAGE_MAX,
+  SUPPORT_NOTE,
   SUPPORT_PROBLEMS,
+  SUPPORT_SENT,
   SUPPORT_TOPICS,
   canSendMessage,
-  destinationLine,
-  sentLine,
   supportOutcome,
   supportPayload,
   type SupportContext,
@@ -75,20 +76,11 @@ describe("supportOutcome", () => {
   });
 });
 
-describe("destinationLine and sentLine", () => {
-  it("name Talebrim's address, never the reader's", () => {
-    expect(destinationLine("support@talebrim.com")).toBe(
-      "Your message goes to support@talebrim.com, with the app's version and your phone's model. We'll reply to the email on your account.",
-    );
-    expect(sentLine("support@talebrim.com")).toBe(
-      "It's on its way to support@talebrim.com. We'll reply to the email on your account.",
-    );
-  });
-
-  it("still say where the reply goes with no address set", () => {
-    expect(destinationLine(null)).toBe(
-      "Your message includes the app's version and your phone's model. We'll reply to the email on your account.",
-    );
-    expect(sentLine(null)).toBe("Thanks for writing to us. We'll reply to the email on your account.");
+describe("the form's words", () => {
+  it("say what happens next and where the reply goes, without naming any address", () => {
+    expect(SUPPORT_INTRO).toBe("We're here to help. Tell us what's going on.");
+    expect(SUPPORT_NOTE).toBe("Our support team will get back to you by email as soon as possible.");
+    expect(SUPPORT_SENT).toBe("Thanks for reaching out. We'll reply to the email on your account.");
+    for (const line of [SUPPORT_INTRO, SUPPORT_NOTE, SUPPORT_SENT]) expect(line).not.toContain("@");
   });
 });

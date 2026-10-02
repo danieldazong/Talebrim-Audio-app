@@ -13,6 +13,7 @@ import {
 import { ChapterListMessage, ChapterRowsSkeleton } from "@/components/chapters/chapter-list-states";
 import { ChapterRow, chapterListRowHeight } from "@/components/chapters/chapter-row";
 import { Button, Screen } from "@/components/ui";
+import { PLAN_NAME } from "@/constants/plan";
 import { useChapterList } from "@/hooks/use-chapter-list";
 import { useBookDownloads } from "@/hooks/use-downloads";
 import {
@@ -24,7 +25,7 @@ import {
 } from "@/lib/chapter-list";
 import { downloadsAvailable } from "@/lib/downloads/files";
 import { isUuid } from "@/lib/ids";
-import { openPaywall } from "@/lib/paywall";
+import { openPaywall, openPlans } from "@/lib/paywall";
 
 // M9 Full Chapter List — AGENTS.md M9, prompt 20, material/5.png.
 //
@@ -33,8 +34,9 @@ import { openPaywall } from "@/lib/paywall";
 // this route is pushed over (as M4).
 //
 // Below the list, for a reader who isn't subscribed and has a chapter locked
-// here, the bar with "Unlock all chapters" and the ember "Go Ad-Free"
-// (prompt 22 step 11). The list's measured height is what the bar leaves.
+// here, the bar with "Unlock all chapters" and the ember "See plans"
+// (prompt 22 step 11; the frame's "Go Ad-Free" until the plan was renamed on
+// 2026-10-01). The list's measured height is what the bar leaves.
 //
 // Downloads (prompt 24 step 12): "Download all" in the sort bar, the
 // Downloaded disc and the queue's words in the rows, and each openable row's
@@ -228,7 +230,7 @@ function noSheet() {}
 /**
  * From material/5.png: a `raised` bar above the bottom safe area. "Unlock
  * all chapters" is a caption saying what the subscription does, not a
- * control: there is no per-book product. "Go Ad-Free" is M9's one ember
+ * control: there is no per-book product. "See plans" is M9's one ember
  * action, and opens M10 with no chapter, so back returns here.
  */
 function AdFreeBar() {
@@ -237,7 +239,11 @@ function AdFreeBar() {
       <Text className="font-ui text-muted flex-1 text-base" numberOfLines={2} maxFontSizeMultiplier={1.3}>
         Unlock all chapters
       </Text>
-      <Button label="Go Ad-Free" onPress={() => router.push("/subscription")} />
+      <Button
+        label="See plans"
+        accessibilityLabel={`See plans. Opens the ${PLAN_NAME} plans.`}
+        onPress={() => openPlans("chapter_list")}
+      />
     </View>
   );
 }

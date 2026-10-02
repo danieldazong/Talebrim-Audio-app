@@ -1,7 +1,6 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useBottomTabBarHeight } from "expo-router/tabs";
 import { router } from "expo-router";
-import { useState } from "react";
 import { ScrollView } from "react-native";
 
 import { Screen } from "@/components/ui";
@@ -13,13 +12,15 @@ import {
   DiscoverOffline,
   DiscoverSkeleton,
 } from "@/components/discover/discover-states";
-import { GenreTabStrip, type DiscoverTab } from "@/components/discover/genre-tab-strip";
+import { GenreTabStrip } from "@/components/discover/genre-tab-strip";
 import { HeroCarousel } from "@/components/discover/hero-carousel";
 import { ContinueSection } from "@/components/library/continue-card";
-import type { Genre } from "@/data/genres";
 import { openResumeTarget, useContinue, type ContinueView } from "@/hooks/use-continue";
+import { useDiscoverTabs } from "@/hooks/use-discover-tabs";
 import { useDownloadEntries } from "@/hooks/use-downloads";
-import { useHeroAutoAdvance, useHeroBooks } from "@/hooks/use-hero-carousel";
+import { useHeroBooks } from "@/hooks/use-hero-carousel";
+import { DISCOVER_TAB } from "@/lib/discover-tabs";
+import { booksBeyondHero } from "@/lib/hero";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
 import { catalogByTabOptions, newAudioReleasesOptions, pickedForYouOptions } from "@/lib/queries/catalog";
 import { useOnboardingStore } from "@/store/onboarding-store";
@@ -31,24 +32,15 @@ import type { CarouselBookRow } from "@/types/catalog";
 // from a screen's explicit mock path... once wired to real data, remove the
 // import").
 
-/** Tab strip entries that map onto a real `books.genres` value. "Discover" and "New" are not genres. */
-const TAB_GENRE: Partial<Record<DiscoverTab, Genre>> = {
-  Werewolf: "werewolf",
-  Romance: "romance",
-  Vampire: "vampire",
-  Fantasy: "fantasy",
-};
-
 export default function Discover() {
   const tabBarHeight = useBottomTabBarHeight();
-  const [tab, setTab] = useState<DiscoverTab>("Discover");
+  // One genre tab per genre a published story carries (`lib/discover-tabs.ts`).
+  const { tabs, tab, setTab } = useDiscoverTabs();
   const selectedGenres = useOnboardingStore((state) => state.selectedGenres);
-
-  const genreForTab = TAB_GENRE[tab] ?? null;
 
   const appSettings = useQuery(appSettingsOptions());
   const tabQuery = useQuery({
-    ...catalogByTabOptions(tab, genreForTab),
+    ...catalogByTabOptions(tab.id, tab.genre),
     placeholderData: keepPreviousData,
   });
   const pickedForYou = useQuery(pickedForYouOptions(selectedGenres));
@@ -62,8 +54,10 @@ export default function Discover() {
   const books = tabQuery.data ?? [];
   // The hero's five, held while Discover is on screen. Null while the list is
   // still the previous tab's placeholder, so a new tab's set waits for its own.
-  const heroBooks = useHeroBooks(books, tabQuery.isPlaceholderData ? null : tab);
-  const heroAutoAdvance = useHeroAutoAdvance();
+  const heroBooks = useHeroBooks(books, tabQuery.isPlaceholderData ? null : tab.id);
+  // A genre tab's stories past the hero's five, so every story is found under
+  // its genre. Not while the list is still the previous tab's placeholder.
+  const moreBooks = tab.genre !== null && !tabQuery.isPlaceholderData ? booksBeyondHero(books, heroBooks) : [];
   // Where the reader left off, first on the Discover tab: a returning reader
   // resumes without going to Library. Genre tabs don't show it.
   const continueView = useContinue("books").view;
@@ -84,7 +78,7 @@ export default function Discover() {
     // would double-pad the bottom (prompt 09 step 1).
     <Screen edges={["top"]}>
       <DiscoverHeader onPressSearch={() => router.push("/search")} />
-      <GenreTabStrip value={tab} onChange={setTab} />
+      <GenreTabStrip tabs={tabs} value={tab.id} onChange={setTab} />
 
       {isOffline ? (
         <DiscoverOffline onOpenDownloads={hasDownloads ? () => router.push("/downloads") : null} />
@@ -97,8 +91,8 @@ export default function Discover() {
       ) : (
         <DiscoverContent
           heroBooks={heroBooks}
-          heroAutoAdvance={heroAutoAdvance}
-          continueView={tab === "Discover" ? continueView : { status: "hidden" }}
+          more={moreBooks.length > 0 ? { title: `More in ${tab.label}`, books: moreBooks } : null}
+          continueView={tab.id === DISCOVER_TAB.id ? continueView : { status: "hidden" }}
           pickedForYou={pickedForYou}
           newAudioReleases={newAudioReleases}
           publicCdnDomain={appSettings.data?.public_cdn_domain ?? null}
@@ -113,7 +107,8 @@ export default function Discover() {
 type DiscoverContentProps = {
   /** The tab's newest stories for the hero carousel (`useHeroBooks()`). */
   heroBooks: CarouselBookRow[];
-  heroAutoAdvance: boolean;
+  /** A genre tab's stories past the hero's five, under their own heading; null when there are none. */
+  more: { title: string; books: CarouselBookRow[] } | null;
   continueView: ContinueView;
   /** Passed as the live query result, not just `.data` — each carousel needs its own pending/error state, not the parent tab query's (a sibling section still loading must render its own skeleton, not an empty state). */
   pickedForYou: UseQueryResult<CarouselBookRow[]>;
@@ -125,7 +120,7 @@ type DiscoverContentProps = {
 
 function DiscoverContent({
   heroBooks,
-  heroAutoAdvance,
+  more,
   continueView,
   pickedForYou,
   newAudioReleases,
@@ -162,7 +157,16 @@ function DiscoverContent({
           books={heroBooks}
           publicCdnDomain={publicCdnDomain}
           onPressBook={onOpenBook}
-          autoAdvance={heroAutoAdvance}
+        />
+      ) : null}
+
+      {more ? (
+        <CarouselSection
+          title={more.title}
+          books={more.books}
+          publicCdnDomain={publicCdnDomain}
+          onPressBook={onOpenBook}
+          emptyLabel="No more stories in this genre yet."
         />
       ) : null}
 

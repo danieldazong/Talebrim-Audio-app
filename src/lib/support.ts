@@ -1,4 +1,4 @@
-// M11's Help: a message to support@talebrim.com, written in the app (the
+// M11's Help: a message to support@nouvrix.com, written in the app (the
 // owner's request, 2026-10-01). The pure parts: the topics, the limits, what
 // the `contact-support` function's answer means, and the words. No React, no
 // hooks, no JSX (AGENTS.md § lib/). Tested in `lib/__tests__/support.test.ts`.
@@ -63,20 +63,16 @@ export const SUPPORT_PROBLEMS: Record<"offline" | Exclude<SupportOutcome, "sent"
   failed: "Couldn't send your message. Check your connection and try again.",
 };
 
-/**
- * Where the message goes, under the form: Talebrim's own address, never the
- * reader's (the owner's call, 2026-10-01). Replies still go to the email on
- * the reader's account, which the function reads from Clerk.
- */
-export function destinationLine(supportEmail: string | null): string {
-  return supportEmail
-    ? `Your message goes to ${supportEmail}, with the app's version and your phone's model. We'll reply to the email on your account.`
-    : "Your message includes the app's version and your phone's model. We'll reply to the email on your account.";
-}
+// The form's words, short and plain at the owner's request (2026-10-01,
+// "The support email, cleaned up"). No address on screen, neither the support
+// inbox's nor the reader's: replies go to the email on the reader's account,
+// which the function reads from Clerk.
 
-/** The line under "Message sent". */
-export function sentLine(supportEmail: string | null): string {
-  return supportEmail
-    ? `It's on its way to ${supportEmail}. We'll reply to the email on your account.`
-    : "Thanks for writing to us. We'll reply to the email on your account.";
-}
+/** Above the form. */
+export const SUPPORT_INTRO = "We're here to help. Tell us what's going on.";
+
+/** Under the message: what happens next (the owner's wording, 2026-10-01). */
+export const SUPPORT_NOTE = "Our support team will get back to you by email as soon as possible.";
+
+/** Under "Message sent". */
+export const SUPPORT_SENT = "Thanks for reaching out. We'll reply to the email on your account.";

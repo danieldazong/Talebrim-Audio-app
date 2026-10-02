@@ -14,13 +14,14 @@ export const queryKeys = {
   catalog: {
     all: () => ["catalog"] as const,
     /**
-     * Published books for one M3 tab-strip entry. `tab` is the strip label
-     * itself (`DiscoverTab`, e.g. "Discover" | "New" | "Werewolf" …) rather
-     * than just the genre, because "Discover" and "New" both query with
+     * Published books for one M3 tab-strip entry. `tab` is the strip entry's
+     * id (`DiscoverTab.id`: "discover", "new" or "genre:<slug>") rather than
+     * just the genre, because "Discover" and "New" both query with
      * `genre: null` but are semantically different lists and must cache
-     * under separate keys (prompt 11 step 9).
+     * under separate keys (prompt 11 step 9). `genre` is any slug a story
+     * carries, not only the ones `data/genres.ts` knows.
      */
-    byTab: (tab: string, genre: Genre | null) =>
+    byTab: (tab: string, genre: string | null) =>
       [...queryKeys.catalog.all(), "byTab", tab, genre] as const,
     /**
      * "Picked for You" — genre-containment filter keyed on the exact
@@ -36,6 +37,8 @@ export const queryKeys = {
     /** "New Audio Releases" — `audio_count > 0`, ordered newest-first. */
     newAudioReleases: () =>
       [...queryKeys.catalog.all(), "newAudioReleases"] as const,
+    /** The genres with a published story — which genre tabs M3 lists (`genresInUseOptions()`). */
+    genresInUse: () => [...queryKeys.catalog.all(), "genresInUse"] as const,
   },
 
   book: {

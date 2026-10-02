@@ -64,51 +64,43 @@ still open, one line each.** A feature here means a prompt, a fix, or any
 change the owner asked for. Remove an item only when the owner says it is
 done, and date it in the entry it points to.
 
-1. **For prompt 22, next: Google Play and RevenueCat** (prompt 22's BEFORE
-   list; Decisions — 2026-10-01, "Prompt 22 (second review)").
-   - A Google Play developer account, and an app for `com.talebrim.app` in
-     Play Console. Identity checks take days, and a personal account must
-     also run a 14-day closed test with 12 testers before production.
-   - A RevenueCat project with an Android app for `com.talebrim.app`, Google
-     service credentials connected, an `ad_free` entitlement, and its public
-     `goog_…` key in `.env.local` as `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`.
+1. **For prompt 22, next: Google Play** (prompt 22's BEFORE list;
+   Decisions — 2026-10-01, "Prompt 22 (second review)" and "RevenueCat's
+   Test Store until Google Play").
+   - A Google Play developer account (US$25), and an app for
+     `com.talebrim.app` in Play Console. Identity checks take days, and a
+     personal account must also run a 14-day closed test with 12 testers
+     before production. The owner expects to open it about a week after
+     2026-10-01.
+   - Recommended on 2026-10-02: open it as an organization account for
+     Nouvrix LLC, the operator. That needs a D-U-N-S number, which the Apple
+     Developer Program also needs for a company. Organization accounts skip
+     the 12-tester, 14-day closed test.
+   - The RevenueCat project exists, on its Test Store (2026-10-01). Still to
+     add to it: a Play Store app for `com.talebrim.app` with Google service
+     credentials and real-time notifications, the Play products attached to
+     `ad_free` and to the `default` offering's packages, and the app's
+     public `goog_…` key in `.env.local` in place of the Test Store key.
    - Then, at prompt 22's step 17: the internal testing upload, license
-     testers, the subscriptions and the `default` offering.
-   - Until then billing stays off, and every reader is "not subscribed".
-2. **Create the `support@talebrim.com` mailbox**, or forwarding to a mailbox
-   the owner reads. Item 3, replies to readers and every page on talebrim.com
-   need it.
-3. **Sign up at resend.com using `support@talebrim.com`.**
-   - Create an API key with Sending access.
-   - Add `RESEND_API_KEY=<key>` to the dashboard's `.env`, and tell the
-     agent. The agent sets the secret without printing it, then proves that a
-     real message arrives.
-   - Until then M11's Help form can't deliver: every message ends in
-     "Couldn't send your message" (Decisions — 2026-10-01, "Help is a message
-     to support").
-4. **Create a PostHog personal API key** (Person: Write, the `Talebrim_app`
-   project only).
-   - Add `POSTHOG_PERSONAL_API_KEY=<key>` to the dashboard's `.env`, and tell
-     the agent.
-   - Until then `delete-account`'s PostHog step stays undeployed, and
-     deleting an account leaves the reader's analytics behind (Decisions —
-     2026-10-01, "Legal pages, support and analytics deletion").
-5. **Review talebrim.com's pages: Terms, Privacy, Help and account
-   deletion.**
-   - Supply the operator's legal name, country and governing law.
-   - Confirm two promises: an emailed deletion request is handled within 30
-     days, and the backups wording.
-   - Then approve publishing the dashboard. Until then the app's Terms and
-     Privacy links show a 404 (same entry).
-6. **Before launch:**
-   - Verify talebrim.com in Resend (DNS records), so the agent can move
-     `SUPPORT_EMAIL_FROM` off `onboarding@resend.dev`.
-   - In Play Console, set the privacy policy (`https://talebrim.com/privacy`)
-     and the account deletion URL (`https://talebrim.com/delete-account`).
-7. **Older owner steps, where they were decided:**
-   - § Deferred setup: steps 3 and 7 (Google sign-in on the development
-     build; prompt 22 needs it confirmed) and the rest of step 9.
-   - The Apple Developer Program (Decisions — 2026-09-29).
+     testers and the subscriptions.
+   - Until then only the development build can buy, and its purchases are
+     simulated.
+   - The subscription is named **Talebrim Unlimited** (2026-10-01). Change
+     the title of the three Test Store products in RevenueCat to it now (M10's
+     status card shows the store's title), and give the Play subscription
+     that name.
+2. **Before launch, in Play Console:** set the privacy policy
+   (`https://talebrim.com/privacy`) and the account deletion URL
+   (`https://talebrim.com/delete-account`), and use `support@nouvrix.com`
+   as the store listing's contact email. (Resend's half of this item was
+   done on 2026-10-02: Decisions — 2026-10-02, "Support emails come from
+   talebrim.com".)
+
+Removed on 2026-10-02: the deferred setup's last check, connectivity lost
+mid-chapter, which the owner reported working (§ Deferred setup, step 9).
+The deferred setup is complete. The Apple Developer Program is not a reminder
+until the owner has an iPhone and says so (Decisions — 2026-10-02, "iOS waits
+for an iPhone").
 
 ---
 
@@ -377,13 +369,13 @@ Ember button labels are `#1A1420`. Never white.
 
 **M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid — the dashboard's genre list, mirrored in `data/genres.ts` (see Decisions); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
 
-**M3 · Home / Discover** — Wordmark left; search and notification icons right. The bell opens Updates, the new-chapter inbox, with a teal dot while a chapter is new (Decisions — 2026-09-30, "Updates inbox"); until then it opened the alerts sheet, with no inbox (Decisions — 2026-09-28). Horizontal tab strip (Discover, New, Werewolf, Romance, Vampire, Fantasy) with ember underline on active. Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
+**M3 · Home / Discover** — Wordmark left; search and notification icons right. The bell opens Updates, the new-chapter inbox, with a teal dot while a chapter is new (Decisions — 2026-09-30, "Updates inbox"); until then it opened the alerts sheet, with no inbox (Decisions — 2026-09-28). Horizontal tab strip with ember underline on active: Discover, New, then one tab for every genre a published story carries (the frame draws Werewolf, Romance, Vampire and Fantasy). A genre the app has never heard of gets its tab as soon as a story carries it, and a genre with no story has none, so no tab opens onto an empty screen (Decisions — 2026-10-02, "M3's tabs follow the genres of the published stories"). Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
 **M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"), then a round download button between the pill and Share that no frame draws either (Decisions — 2026-09-30, "M4's download button"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons (and M9's teal Downloaded disc on a downloaded chapter), ending in an entry point to M9. **No bottom nav, no mini player.**
 
 **M5 · Reader** — Light mode `#FBF7F1` by default (sepia and dark are user choices). Literata 18sp/1.7. Minimal top bar: back, chapter title, `Aa`. Fraunces chapter heading. Floating bottom toolbar on `#2C1E42` with brightness, `Aa`, bookmark, and a teal Listen icon that hands off to M6 at the equivalent position. Ember progress bar with position label. **No bottom nav, no mini player.**
 
-**M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet, lock icon, headline naming the next chapter. Ember `Watch ad & continue`. Teal outlined `Go Ad-Free`. Muted restore-purchases and manage-subscription links. States the ad-free value proposition before any purchase. Never shown for an already-unlocked chapter. Its ember is "Unlock free" while the reader's free unlock for the book is available, otherwise `Watch ad & continue` (Decisions — 2026-09-25, "Retention and revenue"); both arrive with prompt 23, so prompt 22's sheet has no ember. `Go Ad-Free` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall").
+**M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet. Since 2026-10-01 it sells the story (Decisions — 2026-10-01, "The paywall for a first visit"): the story's cover, "Keep reading {story}" ("Keep listening to…" from the player), a lock beside the locked chapter's name, at most three true benefits, the ember `See plans`, then muted `Not now`, restore-purchases and manage-subscription links. States what the subscription gives before any purchase. Never shown for an already-unlocked chapter. `See plans` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall"). Prompt 23 adds "Unlock free" and `Watch ad & continue`, and the owner then decides which button is the ember. Until 2026-10-01 the plan was for "Unlock free" to be the ember while the reader's free unlock for the book is available, otherwise the ad (Decisions — 2026-09-25, "Retention and revenue").
 
 **Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; Updates' alerts row always opens it, and so will M11's (prompt 25). The Discover bell opened it until 2026-09-30. Built by prompt 23a (Decisions — 2026-09-28).
 
@@ -393,11 +385,11 @@ Ember button labels are `#1A1420`. Never white.
 
 **M8 · Search & Results** — Back chevron plus search field in the header. Filter chips, active chip blush-filled. Result count line. Rows: cover thumbnail, title, author, metadata, audio badge where applicable. Recent searches when the query is empty. Needs a real empty state and a distinct no-results state.
 
-**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. Bottom bar with an ember `Go Ad-Free` and, beside it, the muted caption `Unlock all chapters` (text saying what the subscription does, not a second purchase: Decisions — 2026-09-25, "Paywall"). Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. Built by prompt 20 ("M9 as built"); the bottom bar by prompt 22 ("Paywall as built"); `Download all`, the Downloaded disc and each openable row's long-press sheet by prompt 24 (Decisions — 2026-09-28, "Downloads as built").
+**M9 · Full Chapter List** — Sticky header with cover and title. Sort toggle (Newest / Oldest). `Download all`. Long scrolling rows, each in exactly one state with a distinct visual: **Reading Now**, **Unlocked**, **Downloaded**, **Locked**. For a subscriber, a chapter the dashboard locked starts its second line with a teal open lock and "Unlimited", as on M4's preview rows (Decisions — 2026-10-01, "Dashboard locks, seen by a subscriber"). Bottom bar with an ember `See plans` (the frame's `Go Ad-Free`, renamed with the plan on 2026-10-01) and, beside it, the muted caption `Unlock all chapters` (text saying what the subscription does, not a second purchase: Decisions — 2026-09-25, "Paywall"). Must be virtualised — serials run well past 100 chapters. Frame: `material/5.png`. Built by prompt 20 ("M9 as built"); the bottom bar by prompt 22 ("Paywall as built"); `Download all`, the Downloaded disc and each openable row's long-press sheet by prompt 24 (Decisions — 2026-09-28, "Downloads as built").
 
-**M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.**
+**M10 · Subscription & Manage Plan** — Status card with current plan and renewal date. Switch-plan cards for Weekly, Monthly (blush savings badge) and Yearly (blush "Best value"); active plan carries an ember border. Confirm-change button. `Restore purchases` and `Manage in Google Play`. Muted cancel link. **Every price, plan title, badge percentage and renewal date is dynamic.** That is the subscriber's screen, as the frame draws it. A reader who doesn't subscribe gets "Choose a plan", one line on what every plan gives, and Restore, Terms and Privacy as links. No frame draws that layout (Decisions — 2026-10-01, "The paywall for a first visit").
 
-**M11 · Profile & Settings** — Frame: `material/10.png`, which stops below "Restore purchase". Fraunces "Profile". Account card: the account's own photo in a `raised` circle, or its initials when it has none (Decisions — 2026-10-01, "M11's avatar is the account's photo"), name and email, and a `blush` plan pill ("Free plan" or "Ad-Free"). Upsell card (`raised`) with ember `See plans`, hidden for a subscriber. Grouped 56dp rows: Reading (Reading preferences, Font and Theme, each opening M5's reading settings sheet, then Downloads & offline storage), Account (Manage subscription, Restore purchase, New chapter alerts, Usage analytics), Support (Help, which opens the in-app message form, `app/support.tsx`: Decisions — 2026-10-01, "Help is a message to support"). `Sign out` and `Delete account` links in `destructive` (`#C9705F`), then Terms and Privacy (once their URLs exist) and the version string. Mini player above bottom nav. This is the Profile bottom-nav destination. Reviewed 2026-10-01 (Decisions — 2026-10-01, "M11 (prompt 25 review)"); built by prompt 25 the same day ("M11 as built"). Account deletion runs through the `delete-account` Edge Function, live since 2026-10-01.
+**M11 · Profile & Settings** — Frame: `material/10.png`, which stops below "Restore purchase". Fraunces "Profile". Account card: the account's own photo in a `raised` circle, or its initials when it has none (Decisions — 2026-10-01, "M11's avatar is the account's photo"), name and email, and a `blush` plan pill ("Free plan" or "Unlimited"). Upsell card (`raised`), "Talebrim Unlimited" over "Every chapter of every story", with ember `See plans`, hidden for a subscriber. Grouped 56dp rows: Reading (Reading preferences, Font and Theme, each opening M5's reading settings sheet, then Downloads & offline storage), Account (Manage subscription, Restore purchase, New chapter alerts, Usage analytics), Support (Help, which opens the in-app message form, `app/support.tsx`: Decisions — 2026-10-01, "Help is a message to support"). `Sign out` and `Delete account` links in `destructive` (`#C9705F`), then Terms and Privacy (once their URLs exist) and the version string. Development builds only, and only for the owner's account (the address set as `EXPO_PUBLIC_DEVELOPER_EMAIL` in `.env.local`), above the links: a "Development" group with "View as a free reader" (Decisions — 2026-10-01; 2026-10-02, "Development tools belong to the owner's account"). Mini player above bottom nav. This is the Profile bottom-nav destination. Reviewed 2026-10-01 (Decisions — 2026-10-01, "M11 (prompt 25 review)"); built by prompt 25 the same day ("M11 as built"). Account deletion runs through the `delete-account` Edge Function, live since 2026-10-01.
 
 ---
 
@@ -692,12 +684,17 @@ Use this for external service helpers and pure functions.
 ```txt
 lib/
   supabase.ts
+  token-age.ts  a Clerk token's age by the server's clock, which supabase.ts
+                checks on every request (2026-10-02, the screen-off autoplay fix)
   clerk.ts
+  developer.ts  whose account sees the development tools; dev-preview.ts the
+                "View as a free reader" flag (2026-10-01, owner-only since 2026-10-02)
   parity/       the one reading_positions writer, and its pure rules
   query-status.ts  how a screen's status reads the queries it waits on (M5, M6)
-  chapter-list.ts, library.ts, hero.ts  M9's, M7's and M3's hero's pure parts, each with its tests
+  chapter-list.ts, library.ts, hero.ts, discover-tabs.ts  M9's, M7's, M3's hero's and M3's tab strip's pure parts, each with its tests
   audio/        the one app-wide player (expo-audio), from prompt 18
   revenuecat.ts  the one billing client; billing.ts its pure parts; paywall.ts every way into M5a
+  server-plan.ts asks the server to check its copy of the reader's plan (prompt 22a)
   push.ts       the one push client (new-chapter alerts); alerts.ts its pure parts
   updates.ts    the Updates inbox's pure parts (what shows, what is new, "seen")
   profile.ts    M11's pure parts; confirm.ts its two confirmations
@@ -718,7 +715,7 @@ Never expose secret keys in the mobile app.
 
 Strict split — violating it causes the parity bug this app exists to avoid.
 
-**TanStack Query** owns all server data: catalog, book and chapter metadata, chapter text, audio URLs, entitlements, unlock records. (Unlock records live in `unlocks`, which the app can read but never write. There is no entitlement mirror: subscription access comes from RevenueCat. The mirror planned in prompt 22a is for server-side checks only; the app still reads `customerInfo`. See Data Contract.) It also owns offline caching via a persister. Query keys are declared in one place.
+**TanStack Query** owns all server data: catalog, book and chapter metadata, chapter text, audio URLs, entitlements, unlock records. (Unlock records live in `unlocks`, which the app can read but never write. Subscription access comes from RevenueCat's `customerInfo`. The server keeps its own copy, the `entitlements` mirror (prompt 22a, live since 2026-10-02), for its own checks only: the app can't read or write it, and only asks the server to check it again (`lib/server-plan.ts`). See Data Contract.) It also owns offline caching via a persister. Query keys are declared in one place.
 
 **Zustand** owns transient client state, as listed under `store/`.
 
@@ -1564,7 +1561,10 @@ under § Clerk Rules.
     pauses under a finger, stops for good once they swipe, and moves only
     while Discover is on screen and the app in front, never with Reduce
     Motion or a screen reader on (`useHeroAutoAdvance()`, with
-    `hooks/use-reduce-motion-enabled.ts`). One story: no swiping, no dots.
+    `hooks/use-reduce-motion-enabled.ts`; since 2026-10-02
+    `useHeroMayAdvance()`, with "on screen" left to the carousel's
+    focus-driven timer: Decisions — 2026-10-02, "Tab switches render less").
+    One story: no swiping, no dots.
     Each genre tab has its own five.
   - **The badge reads "★ New Serial"**, replacing "Newest Serial": only the
     first page is the newest, and every page is one of the five newest.
@@ -1787,7 +1787,9 @@ under § Clerk Rules.
     secret key. Until 22a, a subscriber's locked chapter plays no audio once
     the audio storage policy is live (it is, since 2026-09-28): a known gap,
     never patched in the client. 22a closes it by adding the subscriber
-    branch at `-- TODO(paywall)` in `public.can_play_audio()`.
+    branch at `-- TODO(paywall)` in `public.can_play_audio()`. (Closed
+    2026-10-02, with both the webhook and the app's call: Decisions —
+    2026-10-02, "Subscriber access on the server as built".)
   - **Android only**, while iOS scope is open. **Entitlement id `ad_free`**,
     one constant.
   - **Every locked path opens M5a**, M5's end-of-chapter Next and M6's
@@ -2151,7 +2153,9 @@ under § Clerk Rules.
     only.
   - **Known gap:** until the entitlement mirror (prompt 22a), the storage
     policy doesn't know subscribers, so a subscriber's locked chapter can't
-    be downloaded. It fails as refused and deletes nothing.
+    be downloaded. It fails as refused and deletes nothing. (Closed
+    2026-10-02: Decisions — 2026-10-02, "Subscriber access on the server as
+    built".)
 - **Audio storage policy (deferred setup step 8).** Applied 2026-09-28 with
   the owner's yes: dashboard migration `20260928140000`, the second
   sanctioned change to a dashboard-owned object. The dashboard's AGENTS.md
@@ -2165,7 +2169,9 @@ under § Clerk Rules.
     subscription (`-- TODO(paywall)`, prompt 22a). A malformed path is
     false, never an error. `authenticated` may execute it; `anon` may not.
     (Changed 2026-09-30: never free by position. See Decisions —
-    2026-09-30, "A chapter's own access decides".)
+    2026-09-30, "A chapter's own access decides". Changed 2026-10-02: the
+    subscription too, through `has_active_plan()`. See Decisions —
+    2026-10-02, "Subscriber access on the server as built".)
   - **Nothing in the app changed.** `chapterAudioSourceOptions()` already
     treats a refusal ("Object not found") as a reason to re-check the lock
     rule once and show Locked or Not available. Regenerated
@@ -2961,7 +2967,9 @@ under § Clerk Rules.
     - Terms and Privacy, once `LEGAL_URLS` has them. Neither does.
     - The version from `expo-application`. Build `9235ee79` shows "Version
       1.0.0 (1)"; the web shows "Web preview".
-    - In development only, a `muted` "Development: health probe" link.
+    - In a development build and for the owner's account only, a `muted`
+      "Development: health probe" link (Decisions — 2026-10-02,
+      "Development tools belong to the owner's account").
   - **Sign-out** is `useSignOut()`. First a confirmation that counts the
     downloaded chapters it removes, then `signed_out`. The link reads
     "Signing out…" while it runs, so a second tap can't start a second one.
@@ -3219,6 +3227,8 @@ under § Clerk Rules.
       access (owner). The key reaches the function's secrets from the
       dashboard's `.env`, unprinted, as the Clerk key did. Then the deploy,
       and a proof over HTTP with a throwaway reader who has a PostHog person.
+      (Deployed and proven later the same day: "Account deletion removes
+      the reader's analytics".)
   - **Not in the pages yet, by design:** rewarded ads. Prompt 23 adds AdMob,
     and the privacy policy must change in the same change.
 - **Help is a message to support.** Asked for by the owner on 2026-10-01,
@@ -3268,8 +3278,10 @@ under § Clerk Rules.
     - It sends plain text through Resend's API: the message, then who sent
       it and from what. It stores nothing in the database. The log holds
       outcomes and codes only.
-  - **Settings:** `SUPPORT_EMAIL_TO` (`support@talebrim.com`) and
-    `SUPPORT_EMAIL_FROM` (`Talebrim app <onboarding@resend.dev>`) are set.
+  - **Settings:** `SUPPORT_EMAIL_TO` (`support@talebrim.com`, then
+    `support@nouvrix.com` from later the same day: "Support is
+    support@nouvrix.com") and `SUPPORT_EMAIL_FROM` (`Talebrim app
+    <onboarding@resend.dev>`) are set.
     Until talebrim.com is verified in Resend, Resend's own sender delivers
     only to the address the Resend account signed up with, which must be
     `support@talebrim.com`. **`RESEND_API_KEY` waits for the owner.** Until
@@ -3283,7 +3295,9 @@ under § Clerk Rules.
     reader was then deleted.
   - **Still to prove** once the key is set: a message arrives at
     `support@talebrim.com`, with Reply-To the reader's address, and the
-    sixth in an hour gets 429. Then the form on the phone.
+    sixth in an hour gets 429. Then the form on the phone. (Set and proven
+    later the same day, to `support@nouvrix.com`: "Support is
+    support@nouvrix.com".)
   - **The pages say so:** the privacy policy names Resend and what a
     message carries, Help points to Profile → Help, and the deletion page
     keeps conversations "from the app or by email".
@@ -3346,7 +3360,8 @@ under § Clerk Rules.
       frames are `material/11.png` (M10) and `material/5.png` (M9's bar).
   - **The production build needs six public variables:**
     - The five from before, plus `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`.
-    - Never `EXPO_PUBLIC_POSTHOG_DEBUG`.
+    - Never `EXPO_PUBLIC_POSTHOG_DEBUG`, nor `EXPO_PUBLIC_DEVELOPER_EMAIL`
+      (since 2026-10-02: the owner's address, for development builds only).
     - The Clerk key stays the development instance's (rule 5).
   - **Never install the Play build over the development build:** Play
     re-signs it, so Android refuses it as an update. The sandbox tests run
@@ -3375,10 +3390,1039 @@ under § Clerk Rules.
 
     All of it needs RevenueCat's secret key on the server. Until 22a, a
     subscriber's locked chapter can't play its narration or be downloaded:
-    a launch blocker.
+    a launch blocker. (Built 2026-10-02: Decisions — 2026-10-02,
+    "Subscriber access on the server as built".)
   - **Owner reminders** gained "For prompt 22, next", the Google Play and
     RevenueCat setup, as item 1. The Google Play account moved there from
     "older owner steps".
+- **RevenueCat's Test Store until Google Play.** Decided by the owner on
+  2026-10-01: the Google Play account waits about a week for its fee, and
+  the paywall should work meanwhile. RevenueCat's Test Store needs no store
+  account, and its purchases are simulated.
+  - **The project** is `talebrim`. Its Test Store holds three auto-renewing
+    subscriptions: `ad_free_weekly_v2` (1 week), `ad_free_monthly_v2` (1
+    month) and `ad_free_yearly` (1 year). Readers see each named "Ad-Free";
+    the owner set the prices, in USD.
+  - All three are attached to the entitlement `ad_free`. The `default`
+    offering, which is the default, holds them as `$rc_weekly`, `$rc_monthly`
+    and `$rc_annual`.
+  - **Left in the project, unused:** the setup wizard's entitlement
+    `talebrim_pro` (made inactive) and its products `monthly`, `yearly` and
+    `lifetime`. The wizard's Lifetime package was removed from `default`.
+    The owner's first `ad_free_weekly` and `ad_free_monthly` are inactive: a
+    Test Store product's price can't be edited, so `_v2` products replaced
+    them.
+  - **`.env.local` holds the Test Store key** (`test_…`) as
+    `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`. RevenueCat accepts it only in a
+    debug build. A release build with it shows an alert and crashes on
+    purpose. So it works in the development build only, and it must never
+    reach EAS's `production` environment: prompt 22 step 17 copies
+    `.env.local`, so the `goog_…` key replaces it first.
+  - **No code changed.** `react-native-purchases` 10.10.2, in build
+    `9235ee79`, supports the Test Store, which needs 9.5.4 or later.
+  - **Seen on the owner's phone the same day,** after Metro was restarted
+    with its cache cleared: M10 listed Weekly, Monthly ("Save 42%") and
+    Yearly ("Best value", "Save 71%", preselected), with the Test Store's
+    prices.
+  - **What test mode can't show:**
+    - M10's Google Play wording ("until you cancel in Google Play", "Manage
+      in Google Play") is the real store's, and Google Play knows nothing of
+      a test purchase.
+    - Test subscriptions renew every 5 minutes (weekly, monthly) or every
+      hour (yearly), 5 times, then end.
+    - A plan switch is a new subscription beside the old one, which renews
+      until the Test Store ends it (next entry).
+    - A subscriber's locked narration still waits for prompt 22a. (Plays
+      since 2026-10-02, when 22a was built.)
+  - **When the Play account exists:**
+    - Add the Play Store app to this project.
+    - Attach the Play products to `ad_free` and to the same three packages.
+    - Swap the key.
+
+    No code changes (Owner reminders item 1).
+  - **Proposed here, built later the same day** (Decisions — 2026-10-01,
+    "The paywall, safe for the store app"):
+    - "Ad-Free is coming soon." wherever an Android build has no billing,
+      worded "Talebrim Unlimited is coming soon." after the rename.
+    - A guard that never configures a `test_` key outside `__DEV__`.
+- **A switch in the Test Store showed the old plan.** Found by the owner on
+  the phone on 2026-10-01: after buying Yearly, a switch to Weekly or Monthly
+  went through, but M10 went straight back to Yearly as their plan.
+  - **Why:** the app names the replaced plan to Google Play only, so in the
+    Test Store each switch bought a new subscription beside the old one. The
+    owner held Yearly, Weekly and Monthly at once (read from the SDK's cache
+    on the phone with `run-as`). With several active, RevenueCat's
+    entitlement names the one that lasts longest, and a test Yearly renews
+    hourly against five minutes for the others, so M10 showed Yearly.
+  - **A first fix failed on the phone.** Naming the replaced plan to the Test
+    Store too (`productToReplace()`) made it refuse the purchase:
+    `PurchaseNotAllowedError`, "No active purchase found for product:
+    ad_free_yearly". That was reverted: only Google Play is told.
+  - **The fix:** `entitlementFrom()` (`lib/billing.ts`) also takes the
+    reader's subscriptions, `customerInfo.subscriptionsByProductIdentifier`,
+    passed by `lib/revenuecat.ts`.
+    - With more than one active, the plan, its expiry and its renewal come
+      from the one started last (`originalPurchaseDate`, which a renewal
+      doesn't move). A Google Play id that carries its base plan loses it.
+    - With one, the entitlement's own fields, as before. Google Play replaces
+      the old plan, so it never has two.
+  - **In test mode** the old plan keeps renewing beside the new one until
+    the Test Store ends it. Access doesn't change: any active subscription
+    grants `ad_free`.
+  - **Proven on the phone the same day:** Monthly → Weekly → Yearly →
+    Monthly, each a "Test valid purchase", with no error. After each, M10's
+    status card named the plan just bought ("$3.99/week", "$59.99/year",
+    "$9.99/month"), while RevenueCat's entitlement still named Yearly. It held
+    after a cold restart.
+  - **Tests:** 323 pass. Five new in `billing.test.ts` use the owner's own
+    purchase times; against the old code, three of them fail.
+- **The paywall for a first visit.** Audited on 2026-10-01 at the owner's
+  request, against a research spec of 2026 subscription patterns (RevenueCat's
+  and Adapty's benchmarks). Only what fits Talebrim and needs no test was
+  kept. The owner said go the same day, and chose three things: 3 free
+  chapters, the name "Talebrim Unlimited", and new welcome wording.
+  - **What a first visit met:**
+    - The catalog decided it. Whispers In the Mist's chapter 1 was locked, so
+      the paywall came before a word. Man of Ashes 001 gave one free chapter.
+      Eternal Eclipse is free throughout, so it never sells.
+    - The welcome screen claimed "Thousands of chapters" and "hundreds of
+      chapters" (33 exist), and read "Start with 1 free chapters."
+    - M5a had no filled button and no visible way out, didn't name the story,
+      and sold "Ad-Free" in an app with no ads.
+    - M10 said nothing of what a plan gives, and gave a reader who doesn't
+      subscribe two large outlined buttons beside Subscribe.
+  - **The free chapters are the owner's to set:** 1–3 free in every story,
+    in the dashboard. **Done 2026-10-02**, checked in the database:
+    - Every published story has 1–3 free and the rest locked: Whispers In
+      the Mist 4–11, Eternal Eclipse 4–9 (no longer a free taster) and Man
+      of Ashes 001 4–13.
+    - `free_chapters_at_start` is 3, saved at 12:40 UTC.
+  - **The name** is `PLAN_NAME` (`constants/plan.ts`), for the words the app
+    writes. The store's titles carry it too (Owner reminders item 1). M11's
+    pill reads "Unlimited". The entitlement id stays `ad_free`.
+  - **M5a** (`app/paywall/[chapterId].tsx`), from the top:
+    - the story's cover (72dp)
+    - "Keep reading {story}", or "Keep listening to {story}" from the player
+      (`paywallLines()` in `lib/paywall.ts`, tested)
+    - a lock beside "Chapter 4: {title}"
+    - three benefits: "Every chapter of every story, to read or listen",
+      "New chapters as soon as they're out", "Download any chapter for
+      offline"
+    - the ember "See plans"
+    - "Not now", "Restore purchases" and "Manage subscription"
+
+    Free features (speed, the sleep timer, downloads of open chapters) are
+    never sold. The listening and download promises hold for locked chapters
+    only once prompt 22a tells the server who subscribes, which is already a
+    launch blocker (they hold since 2026-10-02). The story comes from `bookDetailOptions()` and is never
+    waited on: without it, the chapter is the headline, as before. Prompt
+    23's two unlocks join the sheet, and the owner then picks the ember.
+  - **M10** (`app/subscription.tsx`), for a reader who doesn't subscribe:
+    - "Choose a plan" as the title.
+    - In place of the heading: "Talebrim Unlimited opens every locked
+      chapter of every story. Cancel anytime in Google Play."
+    - Restore purchase, Terms and Privacy as links.
+    - "Manage in Google Play" only for a reader who has had a subscription,
+      such as a lapsed one or one whose payment failed.
+
+    A subscriber's screen is the frame's, unchanged. For everyone, the line
+    under the button now starts with the amount billed: "$59.99 every year.
+    Renews automatically until you cancel in Google Play." (`plansFrom()`).
+  - **M9's bar and M11's upsell** read "See plans" (on M9, the frame's "Go
+    Ad-Free"). M11's card reads "Talebrim Unlimited" over "Every chapter of
+    every story". Both open M10 through `openPlans()`.
+  - **The end of a chapter shows the lock.** When the next chapter is locked,
+    M5's "Next chapter" reads "Unlock chapter 4" with a lock (`ReaderPill`'s
+    new `icon`), and still opens M5a. The spec's sheet opening by itself when
+    the text ends was not built: a reader scrolling to check a chapter's
+    length would get a paywall.
+  - **The welcome screen** says:
+    - "Romance, werewolf, vampire and fantasy serials. Switch between
+      reading and listening without losing your place."
+    - "Read or listen", "Pick up in audio where you stopped reading."
+    - "New chapter alerts", "Know when a story on your list has a new
+      chapter.", with a bell in place of the clock.
+    - "Start with 1 free chapter.", singular for 1.
+
+    At 393 × 852 in the web preview it scrolls by 40dp: the 18+ line sits
+    below the fold, while Start Reading and Sign in stay on screen. Not seen
+    on the phone, which is signed in. Alerts are Android-only until the iOS
+    series.
+  - **Analytics** (ids and fixed words, never a price):
+    - `paywall_dismissed` (`book_id`, `chapter_id`, `from`, `seconds`) when
+      M5a goes without its plans or chapter, caught by `beforeRemove` as the
+      alerts sheet does.
+    - `subscription_viewed`, once per open: `from` (`paywall`,
+      `chapter_list`, `profile_upsell` or `profile_manage`), `subscribed`,
+      and from M5a its chapter and book.
+    - `book_id` and `chapter_id` on every `purchase_*` event when M5a sent
+      the reader. M5a now passes `bookId` to M10.
+  - **Not taken from the spec**, each with its reason given to the owner:
+    - a free trial, its timeline and reminder: the spec's own first
+      experiment. If one is ever added in Play Console, RevenueCat applies it
+      to eligible buyers automatically, and Google requires its terms stated
+      in the app first.
+    - an onboarding paywall and a welcome discount
+    - the sheet opening by itself where the text ends
+    - a single-book unlock (Decisions — 2026-09-25, "Paywall")
+    - $4.99 weekly, two plans, and "Most popular", which needs real sales
+    - remote config and experiments: no traffic yet
+    - "Continue" in place of "Subscribe"
+    - coins and iOS offers
+    - a "You're in" screen: the buyer already lands in their chapter
+  - **Proven on the owner's phone.** Their test Yearly was still active, so
+    a temporary development-only change read the entitlement as inactive,
+    and a temporary log printed each event. Both were reverted.
+    - Whispers 3's end read "Unlock chapter 4".
+    - M5a showed the cover, "Keep reading (PART 1) Whispers In the Mist",
+      the locked chapter, the benefits, "See plans" and "Not now".
+    - M10 fit on one screen, with Yearly preselected and the price line.
+    - M9's bar and M11's card read as above.
+    - "Not now" sent `paywall_shown`, then `paywall_dismissed` (4 seconds).
+      "See plans" sent `paywall_shown`, then `subscription_viewed` from
+      `paywall` with both ids, and no dismissal.
+    - `subscription_viewed` came from `chapter_list`, `profile_upsell` and
+      `profile_manage`.
+    - Back on the real entitlement, M11's pill read "Unlimited" and the
+      upsell was gone.
+    - No errors in the log. Usage analytics is off on the owner's phone, so
+      its events don't reach PostHog.
+  - **Tests:** 329 pass. Six are new, in `lib/__tests__/paywall.test.ts`;
+    `billing.test.ts` and `profile.test.ts` follow the new words.
+- **Dashboard locks, seen by a subscriber.** Reported by the owner on
+  2026-10-01: chapters locked in the dashboard showed open in the app
+  ("11 chapters · 11 unlocked" on Whispers In the Mist).
+  - **Not a broken lock.** The database held the owner's locks as set on
+    2026-09-30 (Whispers 1, 2, 4–6, 8, 9 and 11 locked). The owner's account
+    had an active Talebrim Unlimited test subscription: a Yearly renewed at
+    13:14 UTC, and a Monthly bought at 13:36 (read from the phone's RevenueCat
+    cache). A subscription opens every locked chapter (the lock rule,
+    `types/states.ts`): that is what the plan sells. A reader without one gets
+    the dashboard's locks exactly, as seen on the phone the same day.
+  - **What was wrong:** a subscriber couldn't tell which chapters the
+    dashboard locked. Every row looked the same, so the admin, testing as a
+    subscriber, saw their locks vanish.
+  - **The fix:** `openedByPlan()` (`types/states.ts`, tested) marks a chapter
+    that is locked by its own `access`, not unlocked on its own, and open
+    only through the subscription. On M9's rows (`lib/chapter-list.ts`,
+    `components/chapters/chapter-row.tsx`) and M4's preview rows
+    (`hooks/use-book-detail.ts`, `components/book/chapter-preview-row.tsx`),
+    the second line then starts with a teal open lock
+    (`lock-open-outline`, 13dp) and "Unlimited", and screen readers hear
+    "With Talebrim Unlimited". Free chapters carry nothing. Without the plan,
+    nothing reads "Unlimited", and the same chapters are Locked.
+  - **Confirmed by the owner the same day,** after reporting it again as a
+    bug: subscribers open the chapters the dashboard locks, as the plan
+    promises. The open lock was added at their request, so the lock stays
+    visible. They also asked for a way to see the locked view while testing:
+    next entry.
+  - **RevenueCat's Test Store can't end a subscription early.** No cancel, no
+    management URL, and deleting the customer doesn't remove it (RevenueCat
+    community, February 2026). It ends after its last renewal: up to five,
+    hourly for a Yearly and every 5 minutes for a Weekly or Monthly. Every
+    test purchase therefore leaves the account a subscriber for that long. To
+    see a free reader's view sooner, sign in as reader B (§ Deferred setup,
+    step 5).
+  - **Proven on the owner's phone**, with their real subscription:
+    - Whispers' M9 read "Unlimited" on 1, 2, 4, 5, 6, 8, 9 and 11, and not on
+      3, 7 or 10, matching the dashboard one-to-one. M4's preview did the
+      same for 1 to 5.
+    - With the entitlement briefly read as inactive (a temporary
+      development-only change, reverted), chapter 1 showed "Chapter 1 is
+      locked." Earlier the same day, M9 showed the same eight chapters
+      Locked.
+  - **Tests:** 332 pass. Three are new: two for `openedByPlan()`, and one
+    for M9's rows with and without the plan.
+  - **Still a gap until prompt 22a:** a subscriber's locked narration
+    doesn't play. The storage policy doesn't know subscribers yet, so M6
+    shows the chapter as not available. (Closed 2026-10-02: Decisions —
+    2026-10-02, "Subscriber access on the server as built".)
+- **View as a free reader.** Chosen by the owner on 2026-10-01. Their test
+  purchases can't be cancelled and keep their account subscribed for hours,
+  so they never saw their own locks while testing. It is a switch in a
+  "Development" group on M11, drawn only in development builds (`__DEV__`),
+  never in the store app. Since 2026-10-02 only for the owner's account
+  (Decisions — 2026-10-02, "Development tools belong to the owner's
+  account").
+  - **What it does:** `lib/dev-preview.ts` holds the flag, session only (off
+    again after the app restarts). While it is on, `useEntitlement()` reads
+    the entitlement as no plan at all (`entitlementFrom(null)`, through
+    TanStack's `select`), so every screen shows what a reader without the
+    plan sees:
+    - the lock icons
+    - Locked in M5 and M6, with no text or audio
+    - M5a on a locked tap
+    - M10's free layout
+    - "Free plan" and the upsell on M11
+
+    The cache keeps the real answer.
+  - **What it leaves alone:** the downloads checks and the player read the
+    real entitlement (`fetchQuery`), so turning it on never deletes a
+    download.
+  - **What turns it off:** a purchase or a restore that ends active
+    (`usePurchase()`'s `finish()`), or the chapter just bought would still
+    show Locked; and, since 2026-10-02, signing out.
+  - **Tested:** `lib/__tests__/dev-preview.test.ts` (2 tests). It is off
+    until turned on, tells its listeners once per change, and refuses to turn
+    on when `__DEV__` is false.
+  - **Proven on the owner's phone the same day.** Whispers' M9 showed lock
+    icons on 1, 2, 4, 5, 6, 8, 9 and 11 and "3 unlocked". Chapter 1 read
+    "Chapter 1 is locked." with "Unlock chapter" in both M5 and M6. Off, it
+    went back to the open locks and "Unlimited". It was left on for the
+    owner. All 334 tests pass.
+- **The development tools stay in testing builds.** The owner asked on
+  2026-10-01 to remove every development explanation before real users
+  arrive. Checked first, no real user can see any of them:
+  - M11's "Development" group (`{__DEV__ ? <DevelopmentSection /> : null}`)
+    and its "Development: health probe" link render only when `__DEV__`.
+  - `app/health.tsx` renders nothing without `__DEV__`.
+  - `setFreeReaderPreview()` refuses to turn on without `__DEV__`.
+  - The dev client's floating gear, LogBox's red notices and RevenueCat's
+    Test Store purchase dialog ("Test valid purchase") exist only in the
+    development build. The last goes when the `goog_…` key replaces the
+    `test_…` one (Owner reminders item 1).
+
+  Told this, the owner chose to keep them, for testing only. Delete them
+  before launch if the owner asks. (Narrowed on 2026-10-02 to the owner's
+  own account. The list above was not quite right: `app/health.tsx` itself
+  was reachable by link in every build, and only its clear-storage button
+  checked `__DEV__`. Decisions — 2026-10-02, "Development tools belong to
+  the owner's account".)
+- **The paywall, safe for the store app.** Approved by the owner on
+  2026-10-01; proposed earlier the same day ("RevenueCat's Test Store until
+  Google Play").
+  - **A store build never configures a Test Store key.** RevenueCat makes a
+    release build carrying a `test_…` key show an alert and crash on purpose.
+    `billingKeyUsable(key, __DEV__)` (`lib/billing.ts`, tested) makes
+    `billingAvailable()` false instead, so billing stays off and nothing
+    crashes. A `goog_…` key works in every build; a test key only in a
+    development build.
+  - **"Talebrim Unlimited is coming soon."** M10's screen where billing
+    can't run, and M11's Restore line, now come from
+    `billingUnavailableMessage()` (`lib/billing.ts`, tested), through
+    `billingUnavailableLine()` (`lib/revenuecat.ts`):
+    - Inside the Android app (no key, or a refused test key): "Talebrim
+      Unlimited is coming soon.", under a clock.
+    - On the web preview and in Expo Go, as before: "Subscriptions are
+      available in the Talebrim app for Android."
+
+    `BILLING_UNAVAILABLE` left `lib/profile.ts`.
+  - **Tests:** 336 pass, two new in `billing.test.ts`.
+  - **Not seen on the phone.** It lost its network (Wi-Fi on but connected
+    to nothing, mobile data off) and lost Metro's USB link. Restarted, the
+    development build waits for a connection to sign in and stays on its grey
+    screen. The temporary change that would have shown M10 without billing
+    was reverted. In a development build with the test key, billing runs as
+    before.
+- **A plan that ends stops a locked chapter that is playing** (prompt 22,
+  Part D, step 19). Built on 2026-10-01 at the owner's request, ahead of Part
+  C, which waits for the Google Play account.
+  - **The rule:** `entitlementLapsed(previous, next)` (`lib/billing.ts`,
+    tested). It is true only when an entitlement known to be active turns
+    inactive. A first answer that is inactive is no lapse.
+  - **The watch:** `watchEntitlementLapses()` (`lib/queries/billing.ts`,
+    tested) subscribes to the query cache for the reader's entitlement key
+    and compares each new answer with the last. On a lapse,
+    `components/providers.tsx` runs `recheckLoaded(null)` (`lib/audio/
+    player.ts`): the loaded chapter is checked again, and if it is now
+    locked, it pauses, records its place and unloads, as after a dashboard
+    lock. Offline, or after a failed check, it plays on. Development builds
+    log `[billing] plan ended: checking the loaded chapter`.
+  - **A deviation from step 19:** it watches the entitlement query, not only
+    the SDK's listener. A refetch (a screen opening, or the player's own
+    check) can bring the inactive answer first, and the listener would then
+    see no change. The listener itself is unchanged.
+  - **Tests:** 343 pass, 7 of them new:
+    - two for `entitlementLapsed()`
+    - four in `lib/__tests__/entitlement-lapse.test.ts`: the listener's
+      write, a refetch that brings the end first, no call for a first
+      inactive answer or a running plan, another reader's key, and the
+      unsubscribe
+    - one in `resolve.test.ts`: a locked chapter plays while the plan runs,
+      and is Locked once the plan has ended
+
+    In a control run, with the rule always false, 3 of them fail.
+  - **Not seen on the phone.** It had no network (Wi-Fi connected to
+    nothing), so the development build couldn't start. Metro bundles the
+    change for Android. Until prompt 22a a subscriber can't play a locked
+    chapter's narration at all (the storage policy refuses it), so on the
+    phone this can only show its log line when a plan ends. It takes effect
+    in full with 22a (built 2026-10-02).
+- **Support is support@nouvrix.com.** Decided by the owner on 2026-10-01: the
+  parent company Nouvrix's inbox, already active, replaces the planned
+  `support@talebrim.com`. That closes the owner reminder to create a
+  mailbox.
+  - **The app:** `constants/support.ts` (`SUPPORT_EMAIL`), which M11's Help
+    form names ("Your message goes to support@nouvrix.com…", "It's on its way
+    to support@nouvrix.com…"). Comments and `support.test.ts` follow.
+  - **The dashboard repo:**
+    - `src/data/public-pages.ts` (`SUPPORT_EMAIL`), which the Terms, Privacy,
+      Help and deletion pages and their footer give.
+    - `contact-support`'s comments. Only comments changed in the function,
+      so it was not redeployed.
+  - **The function's delivery address:** `SUPPORT_EMAIL_TO` was set to
+    `support@nouvrix.com` with `supabase secrets set`, at the owner's
+    request. It was confirmed without printing it: the stored SHA-256
+    fingerprint matches the new address. `SUPPORT_EMAIL_FROM` is unchanged
+    (`Talebrim app <onboarding@resend.dev>`).
+  - **Resend, set up the same day.** The owner made the account (team
+    "nouvrix") and a Sending-access API key. The key was first put in the
+    app's `.env.local`; the agent moved it, unprinted, to the dashboard's
+    `.env`, where server keys live (both files are ignored by git, and the
+    app's six `EXPO_PUBLIC_` values were left as they were). It was then set
+    as the functions' `RESEND_API_KEY` through a temporary env file, deleted
+    afterwards, and its stored fingerprint matches the `.env`.
+  - **Proven over HTTP with the deployed function**, using a throwaway
+    reader (`talebrim.support.p1+clerk_test@example.com`) and a freshly
+    minted token:
+    - A message labelled as a test answered 200 `{"sent":true}`, so Resend
+      accepted it. That also shows the Resend account is
+      `support@nouvrix.com`: its test sender refuses any other recipient.
+    - With five sends recorded in the last minutes (the account's private
+      metadata, as the function writes it), the next answered 429
+      `rate_limited` with `retry_after` 3297 seconds.
+    - The reader was then deleted.
+
+    The owner confirms the email's arrival in the inbox, with Reply-To the
+    test address. Then the form on the phone, once it is online.
+  - **Checked:** the app's typecheck, lint and 343 tests; the dashboard's
+    typecheck and lint (0 errors, its 4 known warnings).
+  - The history entries above still name `support@talebrim.com` as it was
+    then.
+- **The support email, cleaned up.** Asked for by the owner on 2026-10-01,
+  after the first real message ("Talebrim help: Something else - helo", plain
+  text, ending with `--` and an ISO time): they wanted it, and the Help
+  screen's words, clean and professional.
+  - **The email:** `supabase/functions/contact-support/email.ts` in the
+    dashboard repo (`buildEmail()`, pure, so a sample renders locally).
+    `index.ts` now only handles the request.
+    - The subject is the topic, then the start of the message: "Downloads —
+      Chapter 3 stops at 30%…".
+    - The sender is "Talebrim Support" (`SUPPORT_EMAIL_FROM` changed from
+      "Talebrim app"; the address stays `onboarding@resend.dev` until a
+      domain is verified).
+    - The HTML uses Talebrim's colours, inline styles and tables. It has a
+      dark "Talebrim Support" bar, the topic, "New message from {name}" with
+      their email, the message in a card with an ember edge (line breaks
+      kept), and an ember "Reply to {name}" button (a `mailto:`). Then App,
+      Device and Account, and a line saying a reply answers them directly.
+    - A hidden preheader gives the inbox preview the message's start.
+    - A plain-text twin goes with it. The ISO "Sent" time was dropped: the
+      email has its own.
+    - Everything from the reader or the app is escaped: a sample with
+      `<b>…</b> &` showed as text.
+  - **Checked:**
+    - `deno check` on both files.
+    - The sample rendered at 680 and 393 wide (headless Edge).
+    - Deployed with the owner's yes (`--no-verify-jwt --use-api`), and the
+      new sender confirmed by its fingerprint.
+    - A test from a throwaway "Ada Reader" answered 200 `{"sent":true}`, and
+      the account was deleted. The owner checks it in the inbox.
+  - **The Help screen's words** (`lib/support.ts`, tested). No address
+    shows on the screen any more, neither the inbox's nor the reader's:
+    - `SUPPORT_INTRO`: "We're here to help. Tell us what's going on."
+    - `SUPPORT_NOTE`, under the message: "Our support team will get back to
+      you by email as soon as possible." This is the owner's wording,
+      replacing the first version's "We'll include your app version and
+      phone model to help us look into it." The intro was reworded with it,
+      so the screen doesn't say "get back to you by email" twice. The privacy
+      policy still says what a message carries.
+    - `SUPPORT_SENT`: "Thanks for reaching out. We'll reply to the email on
+      your account."
+
+    `destinationLine()` and `sentLine()` were removed, and so was
+    `constants/support.ts`, which nothing else used. The address now lives
+    only in the dashboard's `public-pages.ts` and `SUPPORT_EMAIL_TO`.
+  - **Tests:** 342 pass. The two tests of the old lines became one that
+    checks the new words name no address.
+  - **Seen on the owner's phone** once it was back online: "Contact support",
+    the intro, the chips, the message box and the note under it, and "Send
+    message" dimmed until a message is typed.
+  - The `onboarding@resend.dev` address goes once a domain is verified in
+    Resend (done 2026-10-02). Gmail's yellow "External" tag stays if
+    that domain is talebrim.com. Gmail puts the tag on threads with anyone
+    outside the inbox's own Google Workspace (nouvrix.com), and a reply to
+    these emails goes to a reader outside it. (Corrected 2026-10-02: this
+    line first said the tag would go too.)
+- **talebrim.com's pages are live.** On 2026-10-01 the owner tapped Terms
+  and Privacy in the app, got the dashboard's "Page not found", and approved
+  publishing. The pages had been built that day but never deployed.
+  - **What went live:** `main` had one commit to catch up on, `37b14a9`, which
+    added the public pages and the two functions' source and changed nothing
+    already live. Today's dashboard changes were committed on `dev` as
+    `fd615ad`: the pages' new name and support address, and the email's
+    source. `dev` was pushed, then `main` fast-forwarded to it
+    (`git push origin dev:main`, `dc039c2..fd615ad`), and Vercel deployed.
+  - **Checked first:** the dashboard's `typecheck`, `lint` (0 errors, its 4
+    warnings) and `build`, which prerenders `/terms`, `/privacy`, `/help` and
+    `/delete-account`.
+  - **Checked live,** about 50 seconds after the push:
+    - all four pages answered 200
+    - each gives `support@nouvrix.com` and names "Talebrim Unlimited", with
+      no "Ad-Free" left
+    - `/` still redirects to `/sign-in` (307)
+    - the privacy page renders cleanly at 393 wide
+
+    The app's Terms and Privacy links (M1, M10, M11) now open real pages.
+  - **Published as approved,** with the two promises in them: an emailed
+    deletion request is handled within 30 days, and copies can remain in
+    providers' backups for a limited time.
+  - **Missing at first:** the pages named no operator and no governing law,
+    and held no placeholders for them. Both were added on 2026-10-02
+    (Decisions — 2026-10-02, "The pages name Nouvrix LLC").
+- **Account deletion removes the reader's analytics.** Finished on
+  2026-10-01, which closes the owner reminder for a PostHog personal API
+  key. The step was written earlier the same day ("Legal pages, support and
+  analytics deletion") and waited only for the key.
+  - **The key:** the owner first pointed to `EXPO_PUBLIC_POSTHOG_KEY`. That
+    is the project key (`phc_…`), public, which only sends events. They then
+    made a personal key, `talebrim-delete-account`, with scope
+    `person:write`, on the `Talebrim_app` project only.
+  - **It landed in the app's `.env.local`,** under a name without
+    `EXPO_PUBLIC_`, so it was never bundled. The agent moved it, unprinted,
+    to the dashboard's `.env`.
+  - **Two fixes to the env files,** found while checking them by name:
+    - The app's `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` had gone from
+      `.env.local`, most likely overwritten while pasting. It was restored,
+      unprinted, from that day's Metro bundle, which held exactly one Test
+      Store key. The app is back to its six settings.
+    - The dashboard's `.env` held `RESEND_API_KEY` twice, with the same
+      value; one copy was removed.
+  - **The project:** `628093` (from the owner's PostHog address bar), at
+    `https://us.posthog.com`. The key reads persons there (200), and is
+    refused everything else (403 on the project, the environment and the
+    user), as scoped.
+  - **Settings:** `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_HOST` and
+    `POSTHOG_PROJECT_ID` were set through a temporary env file, deleted
+    afterwards, and each stored fingerprint matches.
+  - **Deployed:** `delete-account` was redeployed (`deno check` passed). It
+    answers `not_configured` without all three settings, so it was deployed
+    only after they were set.
+  - **Proven end to end** with a throwaway reader:
+    - Clerk made it.
+    - An event under its Clerk id, sent with the project key, made a
+      PostHog person.
+    - `delete-account` with a fresh token answered 200 `{"push_tickets":0,
+      "push_tokens":0,"reading_positions":0,"library_items":0,"unlocks":0,
+      "posthog_person":"deleted","clerk_user":"deleted"}`.
+    - PostHog then had no person for that id, and Clerk answered 404.
+
+    PostHog deletes the person's events in the background.
+
+## Decisions — 2026-10-02
+
+- **Support emails come from talebrim.com.** The owner verified talebrim.com
+  in Resend on 2026-10-02, closing an owner reminder. They chose it over
+  nouvrix.com on the agent's recommendation: it is the app's own name, it had
+  no mail records, and nouvrix.com's Google Workspace mail stays untouched.
+  - **The DNS** went in through Resend's "Auto configure" (Cloudflare's
+    Domain Connect). Cloudflare holds both domains.
+    - CNAME `send` → `send.forge.rmta.net`, Resend's own mail servers (MX
+      and SPF).
+    - CNAME `rsend` → `rsend.forge.rmta.net`, Amazon SES (MX `feedback-smtp.
+      us-east-1.amazonses.com`, SPF `include:amazonses.com`).
+    - TXT `resend._domainkey`, the DKIM key.
+
+    All three are "DNS only". Nothing at the root changed: the website's
+    records and Clerk's `clerk` and `clkmail` CNAMEs are as they were, and
+    `/privacy` still answered 200. There is no DMARC record yet; add `_dmarc`
+    (`v=DMARC1; p=none;`) if a receiver ever asks for one.
+  - **The first Auto configure was refused:** "You are not authorized to make
+    changes to talebrim.com". The browser was signed into a Cloudflare login
+    without access to the zone. The owner then signed in with the one that
+    holds it.
+  - **Resend's settings:** North Virginia (us-east-1), Receiving off, no
+    tracking subdomain. Resend's free plan allows three domains since August
+    2026.
+  - **`SUPPORT_EMAIL_FROM` is `Talebrim Support <support@talebrim.com>`.**
+    It was set once the owner showed the domain Verified, as proposed to
+    them, and its stored digest matches. No code change and no redeploy.
+    `support@talebrim.com` has no mailbox and needs none, since the Reply-To
+    is the reader's address.
+  - **Proven:** a throwaway reader's labelled test answered 200
+    `{"sent":true}`, and the reader was deleted.
+  - **Seen by the owner the same day, end to end:**
+    - They sent "testing" from the Help form on the phone. It arrived in the
+      support inbox from `Talebrim Support <support@talebrim.com>`, with
+      the subject "Reading & listening — testing" and every row right: the
+      name and email, the message, the Reply button, the app version, the
+      phone and the account id.
+    - Their reply reached the reader's own Gmail, threaded as "Re: …", so
+      the Reply-To works.
+  - **The reply went out from the founder's own nouvrix.com address, not
+    `support@nouvrix.com`.** The support address seems to deliver into
+    that mailbox, and Gmail replied from the mailbox's own address. Advised:
+    - add `support@nouvrix.com` under Gmail's "Send mail as", and choose
+      "Reply from the same address the message was sent to";
+    - give that address a support signature, without the founder's title
+      and phone.
+
+    That is a Gmail setting; nothing in the app or the function changes.
+  - Gmail's yellow "External" tag stays (Decisions — 2026-10-01, "The
+    support email, cleaned up").
+- **The pages name Nouvrix LLC.** On 2026-10-02 the owner confirmed the
+  operator: Nouvrix LLC, registered in North Carolina, United States. That
+  closes the owner reminder for the operator's legal name, country and
+  governing law.
+  - **What changed**, in the dashboard's `src/data/public-pages.ts`
+    (`OPERATOR`) and `(public)/layout.tsx`:
+    - Privacy opens with "Who we are", which names Nouvrix LLC as
+      responsible for the data. Its Contact section names it too.
+    - The Terms are "an agreement between you and" Nouvrix LLC. A new
+      "Governing law" section names North Carolina's law, without its
+      conflict-of-law rules, and keeps the non-waivable consumer
+      protections of a reader's own country.
+    - The stories belong to Nouvrix LLC "or to their authors and
+      licensors"; they had said Talebrim, which isn't a legal entity.
+    - The deletion page names it.
+    - Every page's footer reads "Talebrim is provided by Nouvrix LLC, North
+      Carolina, United States."
+    - The pages' date is 2 October 2026.
+  - **An assumption:** the owner named the state, not the law. North
+    Carolina's law was taken as the governing law, being where the LLC is
+    registered.
+  - **Not added:** a court, venue or arbitration clause. That is a lawyer's
+    call.
+  - **Checked:** the dashboard's typecheck, lint (0 errors, its 4 warnings)
+    and build, which prerendered all four pages with the new lines.
+  - **Published** with the owner's go-ahead: commit `f63d269` on `dev`,
+    fast-forwarded to `main` (`fd615ad..f63d269`). That commit also holds
+    the dashboard AGENTS.md's notes on the new sender and the PostHog
+    deletion step.
+- **Autoplay with the screen off stalled; fixed.** Found on the owner's
+  phone on 2026-10-02, running deferred setup step 9's check "with the
+  screen off: autoplay into the next chapter".
+  - **What happened:** Whispers In the Mist chapter 1 moved on to chapter 2
+    with the screen locked. When chapter 2 ended about a minute later,
+    chapter 3 waited, silently, until the owner woke the phone: `[audio]
+    chapter started … loadedAfterMs: 198216`. A second run stalled the same
+    way.
+  - **Two causes together:**
+    - **Timers.** React Native on Android runs no timer while the app is in
+      the background (`JavaTimerManager` pauses them with the activity;
+      only a zero-length timer fires at once). So TanStack's delayed retry
+      of a failed request, Clerk's token refresh and the parity writer's
+      10-second interval all waited for the app to come back.
+    - **The token.** The phone's clock ran 59 seconds slow. Clerk judges its
+      cached token's expiry by that clock, so a token the server had
+      refused for 50 seconds still had "7 seconds left" (a temporary
+      diagnostic log). The request checking the next chapter went out with
+      it, failed, and its retry waited on a timer.
+  - **The fix:**
+    - **`lib/supabase.ts` checks the token on every request,** by the
+      server's clock: its `iat`, plus this phone's offset from the server,
+      learned from tokens just issued (`lib/token-age.ts`). Past 40 seconds
+      it asks Clerk for a new token (`skipCache`). Concurrent requests share
+      one, and `refreshRealtimeAuth()` uses the same path. No timer is
+      involved.
+    - **`lib/query-client.ts` retries at once** while the app isn't active
+      (`retryDelayFor()`), and with TanStack's usual backoff on screen.
+    - **The parity writer** also sends from `recordPosition()` once
+      MAX_WAIT_MS has passed since the oldest unsent record. The player
+      records several times a second while it plays, so a chapter heard
+      with the screen off reaches the server every 10 seconds, not only at
+      a pause.
+  - **Proven on the phone the same day,** with the fix and the phone's
+    clock still slow. Chapters 1, 2 and 3 played on their own with the
+    screen locked throughout (chapter 3 loaded in 5.5 seconds). Playback
+    stopped after chapter 3, before the locked chapter 4.
+  - **Tests:** 352 pass, 10 new:
+    - `lib/__tests__/token-age.test.ts`: the owner's 59-second-slow clock,
+      a fast clock, the 40-second line, and unreadable tokens;
+    - `retryDelayFor()` in `query-client.test.ts`;
+    - a writer test in which the clock moves on and no timer runs.
+- **iOS waits for an iPhone.** On 2026-10-02 the owner put the Apple
+  Developer Program off until they have an iPhone to test on, and will say
+  when. It leaves the owner reminders until then.
+  - Nothing else changes: iOS still comes after Android v1, through prompt
+    28 (Decisions — 2026-09-29, "iOS in scope").
+  - Nouvrix LLC's D-U-N-S number is still worth getting now, for a Google
+    Play organization account. Apple's enrolment uses the same number later.
+- **Subscribers download locked chapters; free readers never do.** Decided
+  by the owner on 2026-10-02, when asked while planning prompt 22a.
+  - A chapter locked in the dashboard can't be played or downloaded by a
+    reader without the plan. Unchanged, and enforced by the server.
+  - A Talebrim Unlimited subscriber can play it and download it, as M5a's
+    "Download any chapter for offline" promises.
+  - Their downloads of locked chapters are deleted once the plan ends: the
+    online access check, or 30 days offline at the latest (Decisions —
+    2026-09-25, "Downloads").
+  - Prompt 22a builds the server side. Until then the storage policy
+    refuses a subscriber's locked narration (Decisions — 2026-10-01,
+    "Prompt 22 (second review)"). Built the same day (next entry but one).
+- **Prompt 22a written.** `prompts/22a — Subscriber access on the
+  server.md`, written on 2026-10-02 at the owner's request, from the code,
+  the live database and RevenueCat's documentation. Built the same day
+  ("Subscriber access on the server as built", below).
+  - **Part A, the mirror:**
+    - an `entitlements` table with no reader grants, and
+      `has_active_plan()`;
+    - the subscriber branch in `can_play_audio()`;
+    - two Edge Functions sharing one module: `revenuecat-webhook`, checked
+      by an Authorization value, and `sync-entitlement`, checked by the
+      reader's Clerk token. Both read the truth from RevenueCat's REST API.
+  - **Part B, the app:** it asks the server to check after a purchase or
+    restore, once per session, and once when a plan-opened chapter is
+    refused.
+  - **Part C, locked text:** readers without access get no row from
+    `chapters` for a locked chapter. It is a third sanctioned change to a
+    dashboard-owned object, and the owner's yes comes first. The two
+    catalog views stop using the caller's RLS so they still list locked
+    chapters, and lose their `anon` and write grants.
+  - **Part D:** account deletion also removes the `entitlements` row and
+    the RevenueCat customer, and the public pages say so.
+  - **Found while writing it:**
+    - RevenueCat's Test Store sends webhooks (`store: TEST_STORE`), so 22a
+      needs no Google Play account.
+    - Webhooks come with every RevenueCat plan.
+    - Around a Test Store renewal, active entitlements read empty for about
+      a minute; production purchases don't do this.
+    - `books_catalog` and `chapters_catalog` hold `ALL` privileges for
+      `anon` and `authenticated` today (Supabase's defaults), harmless only
+      while they run with the caller's RLS.
+- **M3's tabs follow the genres of the published stories.** Asked for by the
+  owner on 2026-10-02, in two steps. First, a genre tab opened onto an empty
+  screen: the live catalogue that day (read-only, through the Supabase CLI)
+  held Eternal Eclipse as `romance`, (PART 1) Whispers In the Mist as
+  `dark_romance` and Man of Ashes 001 with no genre, so of the four fixed
+  genre tabs only Romance had a story. Then, the same day: the strip should
+  hold exactly the genres the dashboard's stories carry, and a genre the app
+  has never heard of should get its tab as soon as a story carries it. That
+  replaced the fixed four (the first version only hid the empty ones).
+  - **The rule** (`lib/discover-tabs.ts`, tested in
+    `lib/__tests__/discover-tabs.test.ts`): the strip lists "Discover" and
+    "New", which list every story and stay, then one tab for every distinct
+    genre slug across the published books, and no other. A tab is `{ id,
+    label, genre }`; a genre tab's id is `genre:<slug>`, so a genre named
+    "new" can't clash with the fixed tabs. `catalogByTabOptions()` filters it
+    by exact containment (`genres @> {slug}`), so every listed tab has a
+    story, and a story shows under each genre it carries. A story with no
+    genre shows only under Discover and New.
+  - **Labels** come from `genreLabel()`: `data/genres.ts`'s spelling for a
+    slug it knows ("Sci-fi", "HFY"), and the slug spelled out for one it
+    doesn't (`mafia_boss` → "Mafia Boss"). A new genre needs no app update.
+    Add it to `data/genres.ts` only for an exact label (an acronym) and for
+    M2's picker, which still offers only that list.
+  - **Order** is fixed, never a count, so a tab doesn't move under the
+    reader's finger: the frame's four (Werewolf, Romance, Vampire, Fantasy),
+    then the rest of the dashboard's list in its order, then unknown genres
+    A to Z. An assumption: the owner chose no order.
+  - **The data:** `genresInUseOptions()` (`lib/queries/catalog.ts`) reads the
+    `genres` column of `books_catalog`, one request for every published
+    book, since no tab's own 20-book list can speak for the others. It sits
+    under `queryKeys.catalog`, so every catalog change refreshes it: a story
+    just published adds its genre's tab, and the last story of a genre
+    unpublished or re-tagged takes it away, within about a second while
+    Discover is open. PostgREST caps a response at 1,000 rows (Supabase's
+    default); past that, replace it with a distinct-genres view in the
+    dashboard repo. `catalogByTabOptions()`'s `genre` and the `byTab` key
+    take any slug now, not only `data/genres.ts`'s.
+  - **Until the genres are known** (loading, or offline with nothing cached)
+    only "Discover" and "New" show. The genre tabs join them to the right,
+    so no tab the reader can already tap moves. The answer persists with the
+    rest of `catalog`, so a warm start shows the right strip at once.
+  - **A tab that leaves while the reader is on it** falls back to Discover
+    (`resolveTab()`, `hooks/use-discover-tabs.ts`) and is forgotten, so it
+    doesn't snap back if that genre gets a story again.
+  - **"More in {genre}"** (added at the same time, no frame draws it: for
+    design review). The hero shows a tab's five newest, so a genre with more
+    stories would have left the rest unreachable under it. A genre tab now
+    has a row of that name under the hero, with the tab's stories the hero
+    doesn't show (`booksBeyondHero()`, `lib/hero.ts`, taken against the hero
+    on screen, so a story published while the reader looks on shows there at
+    once and none shows twice). It appears only when there are any, never on
+    Discover or New. The tab's list is capped at 20, so a genre with more
+    than 20 stories would need a "See all", which nothing builds yet.
+  - **Unchanged:** the three carousels under the hero ("Picked for You",
+    "Trending Now", "New Audio Releases") are the same on every tab and
+    aren't filtered by genre.
+  - **Moved:** the tab list and `TAB_GENRE`, from
+    `components/discover/genre-tab-strip.tsx` and `app/(tabs)/index.tsx`, to
+    `lib/discover-tabs.ts` (`DISCOVER_TABS` and `TAB_GENRE` are gone). The
+    strip draws the tabs it is given.
+  - **Tests:** 402 pass, 23 of them new (the rule, the order, a genre the app
+    has never heard of, the queries, catalog sync marking it stale, and the
+    "More" row). With both rules disabled, 8 of them fail. **Not yet seen on
+    the phone**, which was offline in airplane mode.
+  - **Seen on the phone later the same day**, in a screenshot taken during
+    prompt 22a's checks (17:26 UTC): the strip read Discover, New, Romance,
+    Dark Romance, the live catalogue's genres. Nothing else about it (the
+    "More in {genre}" row, a tab appearing or leaving live) was checked.
+- **Subscriber access on the server as built (prompt 22a).** Built on
+  2026-10-02 at the owner's request. The owner said yes to Part C's design
+  first, then to every server change at once (both migrations, the three
+  functions, the four settings), and to publishing the pages after the
+  proofs. The server's record is the dashboard's AGENTS.md (Data Model
+  Notes); here, § Data Contract ("The entitlement mirror") and § Connecting
+  ("Edge Functions").
+  - **RevenueCat's API (step 1)**, checked with the `talebrim-server` key:
+    - active entitlements come by internal id, with the expiry in
+      milliseconds or null: `ad_free` is `entlb97eb9391d`;
+    - an unknown customer answers 404 to a read and to a deletion, and a
+      read never creates one;
+    - a plan's product, store and environment come from the customer's
+      subscriptions, whose entitlements list the lookup key only while the
+      subscription gives access, so an ended plan couldn't name `ad_free`'s
+      id: the owner's new test plan did;
+    - in a billing grace period a subscription reads `in_grace_period`,
+      still giving access;
+    - 480 requests a minute for customer information.
+  - **The app (Part B):**
+    - `lib/server-plan.ts`: `syncServerPlan()` calls `sync-entitlement`,
+      shares one request among callers made together, never throws, and
+      logs in development only (`[server-plan]`). `syncServerPlanWithin(ms)`
+      stops waiting, not the request.
+    - After a purchase or restore that ends active, `usePurchase()`'s
+      `finish()` waits for it, at most 5 seconds, before the outcome
+      returns, so before `openUnlockedChapter()`. The button keeps its
+      spinner meanwhile.
+    - `watchEntitlementStarts()` (`lib/queries/billing.ts`, beside the lapse
+      watcher, both on one `watchEntitlement()`), from
+      `components/providers.tsx`: the session's first active answer, and any
+      turn to active (`entitlementStarted()`, `lib/billing.ts`).
+    - Once per open, for a chapter only the plan opens
+      (`askServerAboutPlan()`, `types/states.ts`):
+      - M6 (`hooks/use-now-playing.ts`): a `refused` or `unavailable` source
+        syncs the plan, then signs again, loading meanwhile; then the
+        existing recheck decides as before.
+      - M5 (`hooks/use-chapter-reader.ts`): a text read that comes back
+        empty although the row has text (`textWithheld()`) is read once
+        more, the plan synced first for a chapter the plan opens. Still
+        empty: Failed, whose Retry checks again. Never "no text".
+      - Downloads (`lib/downloads/queue.ts`): `sign()` and the new
+        `readText()` sync once and try once more; still refused, the chapter
+        fails as refused.
+    - Nothing waits on a JS timer to make progress. The purchase's 5-second
+      bound is a wait in the foreground, with M10 on screen.
+  - **Deviations from the prompt:**
+    - A fourth setting, `REVENUECAT_ENTITLEMENT_ID`, holds `ad_free`'s id,
+      as step 1 asked ("keep it as a setting").
+    - `sync-entitlement` also throttles a reader without a row, per function
+      instance, in memory: with no plan there's no `synced_at` to time from.
+    - A download's refresh (an edited chapter) now runs the lock check too,
+      so for a chapter the plan opens a withheld text fails it rather than
+      marking the old text current.
+    - The catalog views also got `security_barrier = on`, so a caller's
+      filter never runs before the views' own `published` filter.
+    - `entitlements.user_id` must look like a Clerk user id (a check).
+    - The webhook answers a `TEST` event before it reads the RevenueCat
+      settings, so the owner could set it up before the id was known.
+    - M6's check covers `unavailable` as well as `refused` (Part C withholds
+      the row). Unlocks still loading count as none in these checks: the
+      server never withholds a chapter the reader unlocked.
+    - The plan's details come from a second call, the customer's
+      subscriptions.
+  - **Proven over HTTP** (throwaway readers made through Clerk's Backend
+    API, all deleted afterwards; the dashboard's AGENTS.md has each check):
+    the webhook's credential (401 twice, 405, 400, and 200 for a test
+    event); `sync-entitlement`'s (401 twice, 200 to CORS, 405); with no
+    access, a locked chapter's text and narration refused while it stays
+    listed; with an unlock, a plan row, or a promotional `ad_free` granted in
+    RevenueCat and synced, both served; revoked and synced, or past the row's
+    expiry, refused again; signed out, both catalog views 401;
+    `delete-account` deleting the plan row and the RevenueCat customer
+    (`deleted`, or `already_gone` for a reader RevenueCat never saw).
+  - **Proven on the owner's phone** (build `9235ee79` over USB and Metro):
+    - The owner set up the webhook in RevenueCat (Integrations → Webhooks,
+      "Talebrim server", both environments, all events); its test event
+      answered 200.
+    - They bought a Test Store Weekly plan from Profile at 16:40 UTC. The
+      phone is signed in as `user_3JivpJ82m3qLux5aKJ57DKwH03b` (a Google
+      reader made 2026-09-23), not `user_3K3ACK…`, whose RevenueCat customer
+      the earlier checks used. The purchase's own check answered 500
+      (`not_configured`), as expected: the id wasn't set yet. The phone
+      account's plan, read from RevenueCat's API, gave `entlb97eb9391d` (a
+      first look found nothing because it read the other account). Once it
+      was set, the webhook wrote the row within seconds (`test_store`,
+      `sandbox`).
+    - Test Store renewals reached RevenueCat up to 6 minutes late (due
+      16:45:15, recorded 16:51:04, two periods at once), and meanwhile the
+      server treated the plan as ended, as it should. For steady checks the
+      account got a one-hour promotional `ad_free` through RevenueCat's API
+      (the webhook synced it in half a second), revoked at the end.
+    - A restart's once-a-session check answered "active".
+    - Whispers In the Mist 4 and 5, both locked, played in M6 for the
+      subscriber (loaded in 3.7 and 2.5 seconds) and from the mini player;
+      Read instead showed chapter 4's text.
+    - Chapter 4 downloaded (1,095,020 bytes of narration and its text, in 8
+      seconds) and played in airplane mode from its file (1.3 seconds).
+    - Reader B, with no plan, over HTTP: Storage refused chapter 4 (400), its
+      text returned no row, it stayed listed as locked, and
+      `sync-entitlement` answered `active: false`.
+    - The plan ended (the promotional grant revoked at 17:21 UTC, the Test
+      Store plan past its last period): RevenueCat showed nothing active at
+      once, and the webhook deleted the row within 10 seconds. As the phone
+      account, the server had no plan and no row for chapter 4. The app
+      noticed on returning to the front ("plan ended", then the server's
+      check: "none"), Discover's Continue card showed chapter 4 locked, and
+      the next start's access check deleted its download.
+    - **Not seen:** a *playing* locked chapter stopping when the plan ends.
+      Chapter 4 was paused, and when the app came back nothing was loaded,
+      so there was nothing to stop. The same path (`recheckLoaded()`)
+      stopped a playing chapter on a dashboard lock on 2026-09-30, and it is
+      tested.
+    - **Bought from a locked chapter's paywall, with the server set up**
+      (the same evening, at the owner's "continue"). By then the phone had
+      been signed in to the owner's main account, `user_3K3ACK…`, which had
+      no plan. Whispers 4 → its paywall → See plans → Weekly → Test valid
+      purchase at 19:25:15 UTC. The webhook wrote the row 1.3 seconds later,
+      and the app's own check after the purchase answered "active" within
+      about 4 seconds. Chapter 4 opened with its text, and Listen played its
+      narration (loaded in 4.1 seconds), then chapter 5's.
+  - **RevenueCat quirk found:** a promotional grant made again after a
+    revoke answers 201 but never shows active (proofs use a fresh reader for
+    each grant). A new purchase shows in RevenueCat's API at once: an
+    earlier note of a two-minute delay came from reading the wrong account.
+  - **Other sessions** worked in the same working tree during the build:
+    `talebrim-app-21` (tab-switch speed: the tab files, the root layout and
+    the mini player) and the M3 tabs entry above. The first one's edits
+    briefly broke Discover twice through Fast Refresh; a full reload cleared
+    both. None of their files are part of 22a.
+  - **Checked:** `typecheck`, `lint` and the test suite (22 of its tests
+    new for 22a: the download queue's checks, the start watcher,
+    `syncServerPlan()`, and the three rules). The dashboard: `deno check`,
+    its three gates and five verify scripts.
+  - **Copy:** none changed. M5's withheld text uses its existing Failed
+    state.
+  - **Published:** the dashboard's 22a changes are commit `527930f` on
+    `dev`, and `main` was fast-forwarded to it with the owner's yes
+    (`f63d269..527930f`). About a minute later talebrim.com's Privacy page
+    said the subscription's status is kept on our servers, and the deletion
+    page listed it with the record at RevenueCat; all four pages answered
+    200. This repo's changes were committed and pushed to `dev` and `main`
+    the same day.
+- **Development tools belong to the owner's account.** Asked for by the
+  owner on 2026-10-02: on the development build every account saw M11's
+  "Development" group, so a reader account looked like the owner's. Only
+  the owner's own account keeps the development tools; every other account
+  sees the app as a reader will.
+  - **The rule** (`lib/developer.ts`, tested in
+    `lib/__tests__/developer.test.ts`): `isDeveloperAccount(email, verified)`
+    is true only in a development build (`__DEV__`), for an account whose
+    primary email Clerk has verified and which is exactly the owner's
+    address, ignoring case and surrounding spaces. A "+tag", a moved dot or
+    `googlemail.com` is another Clerk account, so it fails.
+    `useIsDeveloper()` (`hooks/use-is-developer.ts`) reads it from Clerk's
+    `useUser()`: false while Clerk loads, signed out, and in a store build.
+  - **The owner's address is a setting, never in the repo.** Changed the
+    same day, before this work was first pushed, at the owner's choice,
+    because the GitHub repo is public ("The GitHub repos are public",
+    below). It is `EXPO_PUBLIC_DEVELOPER_EMAIL` in `.env.local`, read once
+    when `lib/developer.ts` loads, its case and spaces ignored. Unset or
+    blank, nobody is a developer. After a change, restart Metro with
+    `npx expo start -c`. Never copy it to EAS: prompt 22's step 17 leaves it
+    out, as it leaves out `EXPO_PUBLIC_POSTHOG_DEBUG`.
+  - **What it gates:**
+    - M11's "Development" group ("View as a free reader") and the footer's
+      "Development: health probe" link.
+    - The health screen (`app/health.tsx`). It sits outside every gate in
+      `app/_layout.tsx`, and only its clear-storage button ever checked
+      `__DEV__`, so a link such as `talebrimapp://health` opened the probe
+      (the reader's own session claims and a database check) in every build.
+      "The development tools stay in testing builds" (2026-10-01) had
+      recorded it as hidden, wrongly. Anyone but the owner is now sent to
+      `/`.
+    - The preview itself: `useFreeReaderPreview()` is false for any other
+      account, so a switch left on can't change what they see.
+    - Signing out turns the preview off (`clearUserScopedState()`), so it
+      never carries into the next account on the phone.
+  - **A UI gate, never security.** The owner's account is a reader in
+    Clerk, with no `metadata.role` (checked 2026-10-02 against the
+    development instance). The dashboard's admins are two other accounts, and
+    this app never grants that claim (rule 4). The check runs on the phone
+    and changes only what it draws; RLS stays the boundary.
+  - **Store builds show none of it, the owner's account included**, because
+    `__DEV__` is part of the rule. Whether the owner's account should keep
+    the preview switch in the store app is a separate decision, not made.
+  - **Not account-gated, because they belong to the build and not to the
+    app:** the development client's own overlay, LogBox's notices, the
+    `[…]` development logs, and RevenueCat's Test Store purchase dialog (a
+    `test_…` key works only in a development build). They go with the store
+    build.
+  - **Tests:** 407 pass, 5 of them new. Four are in `developer.test.ts`: the
+    owner's address in any case and with spaces; stand-ins for other readers
+    and the dashboard's two admins (`example.com` addresses, since the repo
+    is public and no other real account's address belongs in it) and seven
+    near-miss addresses; no email, or one Clerk hasn't verified; and a
+    release build. One is in `downloads.test.ts`
+    (sign-out turns the preview off). In a control run without the reset,
+    that one fails. Once the address became a setting, `developer.test.ts`
+    used an `example.com` stand-in for the owner too, and gained two tests:
+    the setting read with its case and spaces ignored, and nobody a
+    developer when it is missing or blank. 409 pass in all.
+  - **Seen on the owner's phone on 2026-10-02** (over USB and Metro), signed
+    in as the owner's account: Profile shows the
+    "Development" group and the "Development: health probe" link, so the
+    verified-email check holds at runtime. The switch still flips the account
+    card to "Free plan" with the upsell, and back to "Unlimited" when turned
+    off. The probe opens, and its user id is that account's. The log held
+    only Clerk's and RevenueCat's usual development warnings.
+  - **Not seen:** another account. That needs a second account signed in on
+    the phone, and signing the owner out deletes their downloads, so the
+    rule's other accounts are proven by the tests only. To check: sign in as
+    any account but the owner's, and Profile shows no "Development" group and
+    no "Development: health probe" link.
+- **Tab switches render less.** Worked on by another session
+  (`talebrim-app-21`) on 2026-10-02, because switching tabs felt slow. That
+  session ended before recording it, so this entry describes the code as it
+  was left. Built, but not timed on the phone (last point).
+  - **What changed:**
+    - **The tab bar** (`components/nav/tab-bar.tsx`): each tab is a
+      memoized `TabItem`, so a switch renders only the two tabs whose state
+      changed.
+    - **The mini player** (`components/player/MiniPlayer.tsx`) is memoized.
+      It takes no props and reads the player itself, so a tab switch no
+      longer renders it.
+    - **The root layout** (`app/_layout.tsx`): screen tracking moved into
+      its own `ScreenTracker` component, because its route hooks rendered
+      the whole root stack on every navigation. Everything under the root
+      layout is one memoized `App`, because Expo Router renders the root
+      layout again on every navigation, a tab switch included. The
+      navigators still update: they read their state from context.
+    - **The tabs** (`app/(tabs)/_layout.tsx`): `TabPreloader` builds the
+      tabs that weren't on screen when the shell mounted (Library and
+      Profile, on a start at Discover) in the background, one at a time,
+      each once the JS thread is idle (`requestIdleCallback`, 1.5 seconds
+      apart). It sends to the tab navigator itself: `router.prefetch()`
+      would aim at the root stack whenever another screen covers the tabs
+      and build a second, hidden tab shell. Built on the tap instead,
+      Profile took most of a second, nearly two in a development build.
+    - **Discover's hero** (`hooks/use-hero-carousel.ts`,
+      `components/discover/hero-carousel.tsx`): the auto-advance timer
+      follows focus and blur events instead of `useIsFocused()` state, so
+      leaving or returning to Discover renders nothing (`useHeroAutoAdvance()`
+      became `useHeroMayAdvance()`, without the focus check). Regaining focus
+      renders Discover again only when it brings a different hero set
+      (`refocusChangesHeroSet()`, `lib/hero.ts`, tested in
+      `lib/__tests__/hero.test.ts`).
+  - **Fast Refresh can't swap a plain component for a memoized one.** When
+    the mini player became memoized, the phone showed "Render Error: Object
+    is not a function" in `TabsLayout` (17:22 local) until the app was
+    restarted. After such a change, restart the app rather than trust the
+    hot reload.
+  - **The temporary timing code was removed before the commit** (2026-10-02):
+    the React `Profiler`s and the JS-stall interval in
+    `app/(tabs)/_layout.tsx`, and the commit and press logs (with their
+    `useLayoutEffect`) in `components/nav/tab-bar.tsx`, all marked
+    `TEMP(tabperf)`. Nothing prints `[tabperf]` any more. Typecheck, lint
+    and the 407 tests pass without it.
+  - **Not known:** how much faster the switches are on the phone. The
+    session was measuring when it ended. Time them on the phone and record
+    the result here.
+- **The GitHub repos are public.** Found on 2026-10-02, before the work
+  since `7f4b50e` was pushed: `danieldazong/Talebrim-Audio-app` and
+  `danieldazong/Story-App-Dashboard` both answer GitHub's API without
+  signing in. Everything committed, this file included, is readable by
+  anyone, and stays in the history once pushed.
+  - **No personal email address goes in a commit.** At the owner's choice,
+    the owner's address moved from the code to a setting ("Development tools
+    belong to the owner's account", above), the tests use `example.com`
+    stand-ins, and this file names neither the owner's address nor the
+    founder's own mailbox. Neither was ever pushed. Commits are authored as
+    `you@yourdomain.com`, a placeholder.
+  - **Before every push,** check the changed files against the values in
+    both env files without printing any of them, and for email addresses
+    other than the public support ones.
 
 ---
 
@@ -3476,13 +4520,44 @@ deletion on the phone are still to be checked. Measuring M11 found
 NativeWind's rem was 14 on native, which shrank every screen, and an alerts
 loop while offline. Both were fixed the same day; each still needs a look on
 the phone, which was locked (Decisions — 2026-10-01).
-**Next:** prompt 22's Part C (the store setup and the sandbox tests) and Part
-D, reviewed again on 2026-10-01 and waiting on the owner's Google Play and
-RevenueCat accounts (Decisions — 2026-10-01, "Prompt 22 (second review)").
-Then prompt 22a (the entitlement mirror), prompt 23, and the passes 26 and 27
-last (Decisions — 2026-09-25, "Build order from here"). The rest of the
-deferred setup (steps 3, 7 and part of 9) is still open. Each prompt is
-reviewed against the code before it is built.
+**Next:** prompt 22's Part C (the store setup and the sandbox tests), waiting
+on the owner's Google Play account (Decisions — 2026-10-01, "Prompt 22
+(second review)"). Its Part D was built on 2026-10-01 ("A plan that ends
+stops a locked chapter that is playing"). Meanwhile RevenueCat runs on its
+Test Store in the development build ("RevenueCat's Test Store until Google
+Play").
+Prompt 22a (the entitlement mirror, locked text on the server) was built on
+2026-10-02 (Decisions — 2026-10-02, "Subscriber access on the server as
+built"). Then prompt 23, and the passes 26 and 27 last (Decisions —
+2026-09-25, "Build order from here"). Each prompt is reviewed against the
+code before it is built.
+**Status, 2026-10-02** (Decisions — 2026-10-02):
+- **Live and proven:** support email comes from `support@talebrim.com`
+  (talebrim.com verified in Resend); talebrim.com's pages name Nouvrix LLC
+  under North Carolina law; chapters 1–3 of every story are free
+  (`free_chapters_at_start` 3).
+- **Prompt 22a** is built, live on the server (two migrations, three Edge
+  Functions, RevenueCat's webhook) and proven on the phone: a subscriber
+  plays, downloads and reads locked chapters, a purchase from the paywall
+  opens one within seconds, and a reader without the plan is refused by the
+  server.
+- **The deferred setup:** steps 3 and 7 (Google sign-in on the development
+  build) were found done. Of step 9, screen-off autoplay was fixed and
+  passed, and the sleep timer passed; the owner reports the rest working,
+  "connectivity lost mid-chapter" included, which they first skipped. The
+  deferred setup is complete.
+- **Built the same day by other sessions:** Discover's tabs follow the
+  published stories' genres (its strip showed on the phone during 22a's
+  checks), and the development tools show only on the owner's account (seen
+  on the phone). Each is recorded in its own entry.
+- **Tab switches render less** (its own entry): built, and its temporary
+  `[tabperf]` timing code removed before the commit. Not yet timed on the
+  phone.
+- **Committed and pushed on 2026-10-02:** everything since `7f4b50e`, to
+  `dev` and `main`, with no personal email address in it, since both
+  repos are public ("The GitHub repos are public"). The dashboard's 22a
+  changes are its commits `527930f` and `39d8035`, and `4a98a7f` records
+  their publishing.
 Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
@@ -3537,6 +4612,19 @@ video now pauses the narration. Still open: steps 3 and 7 (Google sign-in on
 the development build), and of step 9 the phone call, the Bluetooth buttons,
 the screen-off checks and connectivity lost mid-stream.
 
+**Progress, 2026-10-02:**
+- Steps 3 and 7 were already done (Google sign-in on the build since
+  2026-09-30).
+- Step 9's screen-off checks were run with the agent watching the phone's
+  log:
+  - Autoplay failed. It was fixed and passed the same day (Decisions —
+    2026-10-02, "Autoplay with the screen off stalled; fixed").
+  - The sleep timer passed.
+- The owner reports the phone call, the Bluetooth buttons, the re-mint and
+  the lock screen's 10-second skips working.
+- Connectivity lost mid-stream: skipped at first, then reported working by
+  the owner the same day. **The deferred setup is complete.**
+
 **Owner, before anything else:**
 
 1. **Android package name.** **Done 2026-09-25: `com.talebrim.app`**, in
@@ -3557,7 +4645,10 @@ the screen-off checks and connectivity lost mid-stream.
 3. **Clerk redirect.** Development instance → Talebrim → Configure → Native
    applications → Allowlist for mobile SSO redirect → add
    `talebrimapp://sso-callback`. That is where Google sign-in returns in the
-   development build; Expo Go uses its own address.
+   development build; Expo Go uses its own address. **Done**, found on
+   2026-10-02 through Clerk's Backend API (`GET /v1/redirect_urls`). The
+   allowlist holds `talebrimapp://sso-callback` and an Expo Go address,
+   `exp://100.91.238.31:8081/--/sso-callback`.
 4. **An Android phone.** Android 13 or newer if possible, allowed to install
    unknown apps, on the same Wi-Fi as the PC. Bluetooth headphones or a
    speaker for the Bluetooth checks.
@@ -3583,7 +4674,14 @@ the screen-off checks and connectivity lost mid-stream.
    with `buildFromSource`) was installed on the owner's phone, an itel
    A662LM on Android 12, on 2026-09-26. On this PC the build command needs `EAS_NO_VCS=1` in
    front of it (Decisions — 2026-09-25, "Development build").
-7. Sign in with Google on the build, to prove the redirect.
+7. Sign in with Google on the build, to prove the redirect. **Done
+   2026-09-30, confirmed 2026-10-02.**
+   - The owner's account was created through Google on 2026-09-30 at
+     13:42:28 UTC: its email is verified `from_oauth_google`, and it has no
+     password.
+   - The session the development build holds on the phone (the
+     `com.talebrim.app` process's log names it) was created in that same
+     moment, so Google sign-in returned to the build.
 8. **The audio storage policy**, a migration in the dashboard repo, with
    § Phase 2's discipline. **Done 2026-09-28** (dashboard migration
    `20260928140000`, proven over HTTP; Decisions — 2026-09-28, "Audio
@@ -3620,7 +4718,8 @@ the screen-off checks and connectivity lost mid-stream.
    build:
    - background playback past three minutes, and the lock-screen controls,
      with their skip interval. **Passed 2026-09-26.**
-   - pause and resume from Bluetooth headphone buttons
+   - pause and resume from Bluetooth headphone buttons. **The owner reports
+     it working** (2026-10-02, tested about three days earlier)
    - the Android 13+ notification: its controls should appear with no
      permission asked. **Settled 2026-09-25:** Android exempts
      media-session notifications from `POST_NOTIFICATIONS`, and
@@ -3644,18 +4743,29 @@ the screen-off checks and connectivity lost mid-stream.
      build: unplugging, and switching Bluetooth headphones off. iOS pauses on
      its own.
    - the lock screen's 10-second skips (see Decisions — 2026-09-24, "Audio
-     as built"): accept them, or decide otherwise
+     as built"): accept them, or decide otherwise. **Accepted by the owner
+     on 2026-10-02:** tried on the phone, and they work
    - a phone call pauses and then resumes; another app taking audio focus
      pauses without resuming. **Failed on 2026-09-30** (YouTube played over
      the narration); fixed in the `expo-audio` patch, and **the YouTube half
      passed on 2026-10-01** with build `9235ee79` (Decisions — 2026-09-30,
-     "Another app's audio pauses the narration"). The phone call is still
-     to check
+     "Another app's audio pauses the narration"). **The owner reports the
+     phone call working** (2026-10-02, tested about three days earlier). That
+     was probably on a build before `9235ee79`, which changed how calls take
+     the audio, so a quick repeat is worth doing when convenient
    - with the screen off: the sleep timer pausing on time, autoplay into the
      next chapter, and a re-mint after the URL expires (`DEV_FORCE_EXPIRY`
-     in `lib/queries/audio.ts` signs for 60 seconds)
+     in `lib/queries/audio.ts` signs for 60 seconds). **Autoplay failed on
+     2026-10-02**: it stalled until the screen came back. It was fixed and
+     passed the same day (Decisions — 2026-10-02, "Autoplay with the screen
+     off stalled; fixed"). **The sleep timer passed on 2026-10-02:** five
+     minutes on Eternal Eclipse chapter 1, and it paused on time, the
+     button back to "Sleep timer". **The owner reports the re-mint working**
+     too (2026-10-02). It was never run with the forced 60-second expiry
    - connectivity lost mid-stream: it pauses when the buffer runs out, and
-     resumes where it stopped on reconnect
+     resumes where it stopped on reconnect. Skipped by the owner on
+     2026-10-02, then **reported working by the owner the same day**. It was
+     not watched in the phone's log.
 
 ### Phase 2 — the three reader tables (done 2026-09-23)
 
@@ -3700,21 +4810,19 @@ that day. See Data Contract for what exists.
 Read/listen parity becomes implementable at this point and not before: steps
 2–4 of its algorithm write to `reading_positions`.
 
-### Before production — five things to plan for now
+### Before production — four things to plan for now, and one closed
 
-**Locked chapter text is not protected server-side.** RLS lets any signed-in
-reader select `chapters.script_text` for any published chapter, locked or not
-— by design, `locked` is enforced in the app, not a row-level secret. The app
-never runs the text query for a locked chapter, which keeps the UI honest but
-is not security: anyone replaying their own token can read every chapter.
-Before launch, serve text through a server-side check of unlocks and
-subscription entitlement (a `security definer` function or an Edge Function),
-written as an additive migration in the dashboard repo — the `chapters`
-policies stay the dashboard's. Audio closed the same gap on 2026-09-28
-(§ Deferred setup, step 8): its storage policy signs only what the reader may
-play. Both checks need the subscription entitlement mirror, which prompt 22a
-builds after the paywall prompt adds subscriptions (Decisions — 2026-09-25,
-"Paywall").
+**Locked chapter text is protected server-side (closed 2026-10-02).** Until
+then RLS let any signed-in reader select `chapters.script_text` for any
+published chapter, locked or not: the app never ran the text query for a
+locked chapter, which kept the UI honest but was not security. Prompt 22a
+closed it with the owner's yes: dashboard migration `20261002130000` rewrote
+`chapters_select`, so a reader gets a locked chapter's row only when they
+unlocked it or hold Talebrim Unlimited (`has_active_plan()`, from the
+entitlement mirror). The catalog views still list every chapter (Decisions —
+2026-10-02, "Subscriber access on the server as built"). Audio closed the
+same gap on 2026-09-28 (§ Deferred setup, step 8) and gained the plan with
+22a.
 
 **The instance is `t3.nano`.** `AGENTS.md` measures a **~450ms floor for a
 trivial query** and concludes that **instance size outranks every code-level
@@ -3742,12 +4850,14 @@ one `ScrollView`, which has not been tried at that length.
 2026-10-01, talebrim.com serves Terms, Privacy, Help and an account-deletion
 page from the dashboard repo, and the app links to them (Decisions —
 2026-10-01, "Legal pages, support and analytics deletion"). Before launch:
-- The owner reviews the pages and supplies the operator's legal name and
-  country and the governing law. Then the dashboard is deployed.
-- The owner creates the `support@talebrim.com` mailbox.
+- Published on 2026-10-01 with the owner's approval. The owner still
+  supplies the operator's legal name and country and the governing law.
+- The support inbox is `support@nouvrix.com`, the parent company's, active
+  since 2026-10-01 (it replaced the planned `support@talebrim.com`).
 - In Play Console, the privacy policy is
-  `https://talebrim.com/privacy`, and the account deletion URL in the Data
-  safety form is `https://talebrim.com/delete-account`.
+  `https://talebrim.com/privacy`, the account deletion URL in the Data
+  safety form is `https://talebrim.com/delete-account`, and the listing's
+  contact email is `support@nouvrix.com`.
 Keep the pages true as the app changes: rewarded ads (prompt 23) need the
 privacy policy updated first.
 
@@ -3806,18 +4916,46 @@ with a Supabase token (Supabase's docs for the `sb_` keys). Deploy with
   own secret key. **At the production Clerk cutover, change both Clerk
   secrets together**, or every deletion fails as an unverified token.
   Deployed on 2026-10-01 with the owner's yes, and proven over HTTP
-  (Decisions — 2026-10-01, "M11 as built"). Its PostHog step is written and
-  not yet deployed. That step needs `POSTHOG_PERSONAL_API_KEY`,
-  `POSTHOG_HOST` and `POSTHOG_PROJECT_ID` (Decisions — 2026-10-01, "Legal
-  pages, support and analytics deletion").
+  (Decisions — 2026-10-01, "M11 as built"). Its PostHog step deletes the
+  reader's PostHog person and events. It was deployed on 2026-10-01 with
+  `POSTHOG_PERSONAL_API_KEY` (person write, the `Talebrim_app` project
+  only), `POSTHOG_HOST` (`https://us.posthog.com`) and `POSTHOG_PROJECT_ID`
+  (`628093`); without all three, every deletion answers `not_configured`
+  (Decisions — 2026-10-01, "Account deletion removes the reader's
+  analytics"). Since 2026-10-02 (prompt 22a) it also deletes the reader's
+  `entitlements` row and their RevenueCat customer, before PostHog and
+  Clerk, with `REVENUECAT_SECRET_KEY` and `REVENUECAT_PROJECT_ID`; its
+  answer gains `entitlements` (a count) and `revenuecat_customer`
+  (`"deleted"` or `"already_gone"`).
+- **`sync-entitlement`** (prompt 22a; Decisions — 2026-10-02, "Subscriber
+  access on the server as built") is called by this app, only from
+  `lib/server-plan.ts`, with the reader's Clerk token, verified as
+  `delete-account` verifies it. It asks RevenueCat for the caller's active
+  entitlements and writes the `entitlements` mirror to match, answering
+  `{ active, expires_at }`. A row synced in the last 10 seconds answers from
+  the table. Its secrets: `CLERK_ISSUER`, `REVENUECAT_SECRET_KEY`,
+  `REVENUECAT_PROJECT_ID` and `REVENUECAT_ENTITLEMENT_ID` (`ad_free`'s
+  internal id, `entlb97eb9391d`).
+- **`revenuecat-webhook`** (prompt 22a) is called by RevenueCat only, for
+  every event from production and sandbox (the Test Store's included). Its
+  `Authorization` header must equal `REVENUECAT_WEBHOOK_AUTH` (in the
+  dashboard's `.env` and the function's secrets; RevenueCat → Integrations →
+  Webhooks holds the same value). It syncs every Clerk id an event names
+  from RevenueCat's REST API, never from the event, and answers 500 on a
+  failure so RevenueCat retries.
 - **`contact-support`** (Decisions — 2026-10-01, "Help is a message to
   support") is called by this app, only from
   `hooks/use-contact-support.ts`, with the reader's Clerk token. It emails
-  M11's Help form to `support@talebrim.com` through Resend.
+  M11's Help form to `support@nouvrix.com` (`SUPPORT_EMAIL_TO`, since
+  2026-10-01) through Resend.
   - Its secrets are the two Clerk ones (change them with `delete-account`'s
     at the cutover), plus `RESEND_API_KEY`, `SUPPORT_EMAIL_TO` and
     `SUPPORT_EMAIL_FROM`.
-  - Deployed 2026-10-01. `RESEND_API_KEY` waits for the owner.
+  - Deployed 2026-10-01. `RESEND_API_KEY` set the same day, and a message
+    delivered (Decisions — 2026-10-01, "Support is support@nouvrix.com").
+  - Since 2026-10-02 the sender is `Talebrim Support
+    <support@talebrim.com>`, on talebrim.com as verified in Resend
+    (Decisions — 2026-10-02, "Support emails come from talebrim.com").
 
 ### Clerk
 
@@ -3870,7 +5008,7 @@ read it rather than hardcoding:
 | `public_cdn_domain`      | `https://fwjrdzzdtshbqrfkgivd.supabase.co` |
 | `bucket_name`            | `novelnow-media`                           |
 | `storage_provider`       | `supabase_storage`                         |
-| `free_chapters_at_start` | `1` (set by the owner on 2026-09-30)       |
+| `free_chapters_at_start` | `3` (set by the owner on 2026-10-02)       |
 | `default_chapter_access` | `locked`                                   |
 
 Cover URLs are built as
@@ -3982,10 +5120,33 @@ Applied 2026-09-28 from the dashboard repo, additive, with prompt 23a
   repo: 53 checks since 2026-09-30, the job's steps included, all passing.
   Re-run it after any change to these objects.
 
+### The entitlement mirror (migrations 20261002120000, 20261002130000)
+
+Applied 2026-10-02 from the dashboard repo with the owner's yes (prompt 22a;
+Decisions — 2026-10-02, "Subscriber access on the server as built").
+
+| Object | What it is | Readers may |
+| --- | --- | --- |
+| `entitlements` | one row per reader while RevenueCat says Talebrim Unlimited (`ad_free`) is active: its expiry, product, store and environment | nothing (server only) |
+| `has_active_plan()` | `security definer`: the caller has an `ad_free` row whose `expires_at` is null or later than now | call it (`authenticated` only) |
+
+- Written only by the `revenuecat-webhook` and `sync-entitlement` Edge
+  Functions, from RevenueCat's REST API (§ Connecting, "Edge Functions"), and
+  emptied for a reader by `delete-account`. This app never reads or writes
+  it: its lock rule reads RevenueCat's SDK, and `lib/server-plan.ts` only
+  asks the server to check again.
+- `has_active_plan()` opens a chapter in `can_play_audio()` (the audio
+  policy) and in `chapters_select` (the text), so a subscriber plays,
+  downloads and reads every locked chapter. The server's clock ends a plan
+  at its expiry, webhook or not.
+- Sandbox and Test Store plans count, as in the app.
+- Verified by `supabase/verify/entitlements_rls.sql` (31 checks) and
+  `supabase/verify/locked_text_rls.sql` (29), with
+  `audio_read_policy.sql` (27, its subscriber cases added) in the dashboard
+  repo.
+
 **Still does not exist:** `bookmarks` (M5's bookmark button is omitted until
-it does) and any entitlement mirror (planned as prompt 22a: RevenueCat → an
-Edge Function → an additive `entitlements` table, for server-side checks
-only; Decisions — 2026-09-25, "Paywall").
+it does).
 
 ### Column facts that change how screens are built
 
@@ -4023,16 +5184,19 @@ only; Decisions — 2026-09-25, "Paywall").
 under the reader's Clerk token. Storage signs only what the `audio` read policy
 allows. Since 2026-09-28 (dashboard migration `20260928140000`) that is
 `is_admin()` or `public.can_play_audio(name)`: a published chapter's current
-file, free by its own access, or unlocked by this reader (never by its
-number since migration `20260930120000`). Until then any
+file, free by its own access, unlocked by this reader, or opened by
+Talebrim Unlimited (`has_active_plan()`, since migration `20261002120000`;
+never by its number since migration `20260930120000`). Until then any
 signed-in user could read any object. No Edge Function and no service-role
-key are involved.
+key are involved in signing.
 
 - A signed URL is a bearer credential, and it expires: never persist one.
 - An offline download is a copy made with a fresh signed URL. The file then
   plays locally, so the expiry no longer matters to it.
 - `chapters.audio_path` stays readable to any signed-in reader. Once the policy
   is in, that is harmless: a path the reader may not sign plays nothing.
+  (Since 2026-10-02 a locked chapter's row, `audio_path` included, reaches
+  only a reader who may open it: § Before production.)
 
 ### Query patterns this app needs, and the indexes behind them
 
@@ -4074,7 +5238,10 @@ That single-row read by id (`chapterTextOptions()` in
 It runs only after `chapters_catalog` has returned the same chapter — which
 proves it is published — and never for a chapter that resolves to locked.
 Prompt 18 adds the only other one, `audio_path` for signing
-(`chapterAudioSourceOptions()`), on the same terms.
+(`chapterAudioSourceOptions()`), on the same terms. Since 2026-10-02 the
+server enforces those terms too: a locked chapter's row comes back only to a
+reader who unlocked it or whose plan the server knows of; to anyone else
+the read answers no row (`textWithheld()`, prompt 22a).
 
 Since dashboard migration `20260928150000` (prompt 24, 2026-09-28) it also
 carries two sizes for offline downloads, appended at its end:
@@ -4083,9 +5250,17 @@ carries two sizes for offline downloads, appended at its end:
 and M9's queries keep their explicit columns; `lib/queries/downloads.ts`
 selects the sizes.
 
-Both views set `security_invoker = on`, so the caller's RLS still applies.
-Drafts are excluded **by construction**: a mobile query that forgets
-`status = 'published'` cannot leak one, because there are none in the view.
+Both views set `security_invoker = on` until 2026-10-02, so the caller's RLS
+applied. Since dashboard migration `20261002130000` (prompt 22a) they run as
+their owner (`security_invoker = off`, `security_barrier = on`), because
+`chapters` now withholds a locked chapter's row from a reader without access,
+and the lists, the lock icons and `books_catalog`'s counts need every
+chapter. They hold no text and no `audio_path`, and their grants are SELECT
+for `authenticated` only: a signed-out request gets 401. A later `create or
+replace view` of either must restate both options. Supabase's advisor flags
+them as security-definer views; that is expected. Drafts are excluded **by
+construction**: a mobile query that forgets `status = 'published'` cannot
+leak one, because there are none in the view.
 
 Verified by impersonating a non-admin reader in SQL: `is_admin()` false, zero
 drafts visible, no `script_text` column, `activity_log` and `app_settings`
@@ -4292,6 +5467,27 @@ Command Prompt's `%LOCALAPPDATA%`, which PowerShell rejects.
   `adb -d logcat -d`.
 - **Two Metro servers** on port 8081 clash. Stop one before starting
   another.
+
+**Learned on 2026-10-02:**
+- **Check which account the phone is signed in to** before reading
+  RevenueCat or the server's copy of a plan. That day it was a second Google
+  account (`user_3JivpJ82m3qLux5aKJ57DKwH03b`) for one test and the owner's
+  main account (`user_3K3ACK3uL5Mv59I1UbjJfiXNgK9`, the address in
+  `EXPO_PUBLIC_DEVELOPER_EMAIL`) for the next. Reading the wrong one
+  first looked like RevenueCat being slow. Profile's "Development" group
+  shows only on the main account.
+- **`adb -d logcat -c` can fail** on this phone ("failed to clear the
+  'main,system,crash,kernel' logs"). Never chain the app's relaunch after it
+  with `&&`.
+- **With no phone attached, `adb -d logcat` waits forever.** Check `adb
+  devices` first; the owner sometimes unplugs the phone between tests.
+- **Other Claude sessions may share the phone and Metro.** Three did that
+  day. Agree with them before restarting the app or sending taps, and say
+  when the phone is free again.
+- **The app can come back from the background as a fresh screen** ("Running
+  \"main\"" again in the log, the same process). Android had destroyed the
+  activity while memory was short. That time nothing was loaded in the
+  player afterwards.
 
 ---
 

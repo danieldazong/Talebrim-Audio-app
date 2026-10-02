@@ -135,13 +135,19 @@ export function ChapterRow({ row, height, isLast, onOpen, onListen, onOpenSheet,
           >
             {row.title}
           </Text>
-          <Text
-            className="font-ui text-muted text-[13px] leading-[18px]"
-            numberOfLines={1}
-            maxFontSizeMultiplier={MAX_FONT_SCALE}
-          >
-            {row.detail}
-          </Text>
+          {/* Locked in the dashboard, open through the subscription: the lock
+              stays visible to a subscriber, open (Decisions — 2026-10-01). */}
+          <View className="flex-row items-center gap-1">
+            {row.byPlan ? <Ionicons name="lock-open-outline" size={13} color={colors.teal} /> : null}
+            <Text
+              className="font-ui text-muted shrink text-[13px] leading-[18px]"
+              numberOfLines={1}
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
+            >
+              {row.byPlan ? <Text className="font-ui-medium text-teal">Unlimited · </Text> : null}
+              {row.detail}
+            </Text>
+          </View>
         </View>
         <Trailing row={row} />
       </Pressable>

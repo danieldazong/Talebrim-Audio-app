@@ -3,9 +3,11 @@
 import {
   HERO_COUNT,
   NO_HERO_SET,
+  booksBeyondHero,
   heroBooks,
   newestHeroIds,
   nextHeroSet,
+  refocusChangesHeroSet,
   settlePage,
   wrapPage,
   type HeroSet,
@@ -71,10 +73,58 @@ describe("nextHeroSet", () => {
   });
 });
 
+describe("refocusChangesHeroSet", () => {
+  const shown: HeroSet = { ids: ["a", "b", "c"], tab: "Discover", focus: 1 };
+
+  it("changes nothing when the newest stories are still the ones on screen, so Discover isn't rendered again", () => {
+    expect(refocusChangesHeroSet(shown, ["a", "b", "c"], "Discover")).toBe(false);
+  });
+
+  it("takes a story published while the reader was away", () => {
+    expect(refocusChangesHeroSet(shown, ["new", "a", "b", "c"], "Discover")).toBe(true);
+  });
+
+  it("drops a story unpublished while the reader was away", () => {
+    expect(refocusChangesHeroSet(shown, ["a", "c"], "Discover")).toBe(true);
+  });
+
+  it("waits while the list is still the previous tab's placeholder", () => {
+    expect(refocusChangesHeroSet(shown, ["x", "y"], null)).toBe(false);
+  });
+
+  it("agrees with nextHeroSet: a refocus it lets through brings the newer set", () => {
+    const latest = ["new", "a", "b", "c"];
+    expect(refocusChangesHeroSet(shown, latest, "Discover")).toBe(true);
+    expect(nextHeroSet(shown, latest, "Discover", shown.focus + 1)?.ids).toEqual(latest);
+  });
+});
+
 describe("heroBooks", () => {
   it("shows the current rows, so an edit shows at once and an unpublished story leaves", () => {
     const rows = [book("a", "Edited"), book("c")];
     expect(heroBooks(["a", "b", "c"], rows).map((row) => row.title)).toEqual(["Edited", "Title c"]);
+  });
+});
+
+describe("booksBeyondHero", () => {
+  const rows = ["a", "b", "c", "d", "e", "f", "g"].map((id) => book(id));
+
+  it("is the tab's stories the hero doesn't show, newest first", () => {
+    expect(booksBeyondHero(rows, rows.slice(0, 5)).map((row) => row.id)).toEqual(["f", "g"]);
+  });
+
+  it("is empty when the hero shows every story", () => {
+    expect(booksBeyondHero(rows.slice(0, 3), rows.slice(0, 3))).toEqual([]);
+  });
+
+  it("lists a story published while the hero holds its older set, and none twice", () => {
+    // The hero keeps ["a".."e"] while the reader looks on; "new" arrived meanwhile.
+    const latest = [book("new"), ...rows];
+    expect(booksBeyondHero(latest, rows.slice(0, 5)).map((row) => row.id)).toEqual(["new", "f", "g"]);
+  });
+
+  it("skips a row with no id, which can't be opened", () => {
+    expect(booksBeyondHero([book(null), book("a")], []).map((row) => row.id)).toEqual(["a"]);
   });
 });
 

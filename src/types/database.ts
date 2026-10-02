@@ -386,6 +386,36 @@ export type Database = {
           },
         ]
       }
+      entitlements: {
+        Row: {
+          entitlement: string
+          environment: string | null
+          expires_at: string | null
+          product_id: string | null
+          store: string | null
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          entitlement: string
+          environment?: string | null
+          expires_at?: string | null
+          product_id?: string | null
+          store?: string | null
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          entitlement?: string
+          environment?: string | null
+          expires_at?: string | null
+          product_id?: string | null
+          store?: string | null
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       library_items: {
         Row: {
           book_id: string
@@ -778,6 +808,7 @@ export type Database = {
     Functions: {
       can_play_audio: { Args: { object_name: string }; Returns: boolean }
       clerk_user_id: { Args: never; Returns: string }
+      has_active_plan: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       notify_due_books: {
         Args: never

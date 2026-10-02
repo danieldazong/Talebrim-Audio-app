@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { useMiniPlayer } from "@/hooks/use-mini-player";
@@ -21,8 +22,11 @@ const COVER_RADIUS = 8;
  * The open target and the play button are siblings, never one inside the
  * other. On the web a button can't contain a button, and on a phone a screen
  * reader reads a button as one element, which hid the play button inside it.
+ *
+ * Memoized: it takes no props and reads the player itself, so a tab switch,
+ * which renders the tab bar again, doesn't render it again too.
  */
-export function MiniPlayer() {
+export const MiniPlayer = memo(function MiniPlayer() {
   const { track, status, togglePlay, open } = useMiniPlayer();
 
   if (track === null) return null;
@@ -89,4 +93,4 @@ export function MiniPlayer() {
       </Pressable>
     </View>
   );
-}
+});

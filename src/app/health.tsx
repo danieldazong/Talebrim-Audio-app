@@ -1,15 +1,22 @@
 import { useAuth } from "@clerk/expo";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
 
 import { Button, Screen } from "@/components/ui";
+import { useIsDeveloper } from "@/hooks/use-is-developer";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { clearUserScopedState } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 
 // SCAFFOLDING for prompt 09: a wiring probe, not a product screen. Delete
 // when the navigation shell lands.
+//
+// The route is reachable by link in every build (`app/_layout.tsx` keeps it
+// outside every gate, and the app's scheme opens it), so the screen decides who
+// sees it: the owner's account in a development build, and nobody else
+// (`lib/developer.ts`). Anyone else is sent home, a signed-out phone included:
+// it can't say who is asking.
 
 /**
  * Dev-only clear-storage button (prompt 07 step 9). Calls the SAME
@@ -71,6 +78,14 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export default function Health() {
+  const isDeveloper = useIsDeveloper();
+  // `AuthGate` renders nothing until Clerk has loaded, so "not the owner" is
+  // never just "not known yet" here.
+  if (!isDeveloper) return <Redirect href="/" />;
+  return <HealthProbe />;
+}
+
+function HealthProbe() {
   const { isLoaded, isSignedIn, getToken, userId } = useAuth();
   const signOut = useSignOut();
 

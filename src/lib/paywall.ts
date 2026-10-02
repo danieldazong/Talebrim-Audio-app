@@ -1,5 +1,5 @@
-// Every way into M5a, and out of it to the chapter — prompt 22. Navigation
-// only: no React, no hooks, no JSX (AGENTS.md § lib/).
+// Every way into M5a and M10, out of them to the chapter, and M5a's words —
+// prompt 22. No React, no hooks, no JSX (AGENTS.md § lib/).
 import { router } from "expo-router";
 
 import type { ParitySourceMode } from "@/store/parity-store";
@@ -10,6 +10,56 @@ export type PaywallFrom = (typeof PAYWALL_FROM)[number];
 
 export function isPaywallFrom(value: unknown): value is PaywallFrom {
   return PAYWALL_FROM.some((from) => from === value);
+}
+
+/**
+ * Where M10 was opened from: analytics' `from` on `subscription_viewed`.
+ * `paywall` is M5a's "See plans", which carries its chapter; the others carry
+ * none.
+ */
+export const SUBSCRIPTION_FROM = ["paywall", "chapter_list", "profile_upsell", "profile_manage"] as const;
+export type SubscriptionFrom = (typeof SUBSCRIPTION_FROM)[number];
+
+export function isSubscriptionFrom(value: unknown): value is SubscriptionFrom {
+  return SUBSCRIPTION_FROM.some((from) => from === value);
+}
+
+/** M10 from a screen with no chapter (M9's bar, M11). Pushed, so back returns there. */
+export function openPlans(from: Exclude<SubscriptionFrom, "paywall">): void {
+  router.push({ pathname: "/subscription", params: { source: from } });
+}
+
+/** M5a's words for a locked chapter. */
+export type PaywallLines = {
+  /** "Keep reading {story}", or "Keep listening to {story}" from the player. */
+  headline: string;
+  /** "Chapter 4: The Pact", beside a lock. */
+  chapter: string;
+  /** The same as screen readers hear it: "Chapter 4, The Pact, is locked." */
+  chapterSpoken: string;
+};
+
+/**
+ * Sells the story the reader is in, in the mode the tap was going to
+ * (Decisions — 2026-10-01, "The paywall for a first visit"). Without the
+ * story's title (not loaded, or failed), the chapter is the headline, as
+ * before.
+ */
+export function paywallLines(
+  mode: ParitySourceMode,
+  bookTitle: string | null,
+  chapter: { number: number; title: string | null },
+): PaywallLines {
+  const title = chapter.title?.trim() || null;
+  const name = title ? `Chapter ${chapter.number}: ${title}` : `Chapter ${chapter.number}`;
+  const spoken = title ? `Chapter ${chapter.number}, ${title}, is locked.` : `Chapter ${chapter.number} is locked.`;
+  const story = bookTitle?.trim() || null;
+  if (story === null) return { headline: name, chapter: "Locked", chapterSpoken: spoken };
+  return {
+    headline: mode === "audio" ? `Keep listening to ${story}` : `Keep reading ${story}`,
+    chapter: name,
+    chapterSpoken: spoken,
+  };
 }
 
 export function isParityMode(value: unknown): value is ParitySourceMode {

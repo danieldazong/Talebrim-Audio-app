@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QueryClient, defaultShouldDehydrateQuery, onlineManager, type Query } from "@tanstack/react-query";
+import { AppState } from "react-native";
 
 import { queryKeys } from "@/lib/query-keys";
 
@@ -38,6 +39,18 @@ export function queryCacheKey(userId: string | null | undefined): string {
 const STALE_TIME_MS = 5 * 60 * 1000;
 const GC_TIME_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * The wait before a retry: TanStack's own (1, 2, 4… seconds, at most 30)
+ * while the app is on screen, none in the background. React Native on
+ * Android runs no timer while the app is in the background, except a
+ * zero-length one, which fires at once (`JavaTimerManager`). So a delayed
+ * retry there waited until the app came back: autoplay with the screen off
+ * stalled on one for minutes (2026-10-02).
+ */
+export function retryDelayFor(failureCount: number, appState: string | null | undefined): number {
+  return appState === "active" ? Math.min(1000 * 2 ** failureCount, 30_000) : 0;
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -46,6 +59,7 @@ export const queryClient = new QueryClient({
       // persister can restore them.
       gcTime: GC_TIME_MS,
       retry: 2,
+      retryDelay: (failureCount) => retryDelayFor(failureCount, AppState.currentState),
       refetchOnWindowFocus: false,
     },
   },

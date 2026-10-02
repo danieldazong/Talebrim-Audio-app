@@ -160,6 +160,44 @@ export function chapterStateFor(
   });
 }
 
+/**
+ * A chapter the dashboard locked that this reader opens only through the
+ * subscription (Talebrim Unlimited): locked by its own `access`, not unlocked
+ * on its own (an `unlocks` row), and the reader subscribes. M9's and M4's
+ * rows mark it "Unlimited", so the dashboard's locks stay visible to a
+ * subscriber, the owner testing included (Decisions — 2026-10-01, "Dashboard
+ * locks, seen by a subscriber"). A null `access` is locked for everyone, so it
+ * is never one.
+ */
+export function openedByPlan(chapter: LockableChapter, inputs: ChapterLockInputs): boolean {
+  return chapter.access === "locked" && inputs.isSubscribed && !inputs.unlockedChapterIds.has(chapter.id);
+}
+
+/**
+ * Whether a chapter the server refused is worth asking the server to check
+ * the reader's plan first (prompt 22a step 8). The server serves a locked
+ * chapter's narration and text from its own copy of the plan, which can be
+ * behind RevenueCat's SDK on the phone (a webhook not yet arrived). So only a
+ * chapter that opens through Talebrim Unlimited alone (`openedByPlan()`),
+ * once per open (`asked`), and never while the lock inputs are unknown
+ * (`null`). A free or unlocked chapter's refusal has nothing to do with the
+ * plan.
+ */
+export function askServerAboutPlan(chapter: LockableChapter, inputs: ChapterLockInputs | null, asked: boolean): boolean {
+  return !asked && inputs !== null && openedByPlan(chapter, inputs);
+}
+
+/**
+ * A text read that came back with nothing although the chapter's catalog row
+ * says it has text (prompt 22a step 8): the server withheld the row (its
+ * `chapters` policy returns a locked chapter only to a reader it knows may open
+ * it), or the text went since the row was read. Never "no text": M5 checks
+ * again, then fails with Retry. `undefined` is a read not answered yet.
+ */
+export function textWithheld(hasText: boolean | null, text: string | null | undefined): boolean {
+  return hasText === true && text === null;
+}
+
 const NO_UNLOCKS: ReadonlySet<string> = new Set();
 
 /**

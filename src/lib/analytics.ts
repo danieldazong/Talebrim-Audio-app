@@ -17,11 +17,14 @@ import type { PurchaseFailure } from "@/lib/billing";
 import type { DownloadFailure } from "@/lib/downloads/queue";
 import { isUuid } from "@/lib/ids";
 import type { RestorePoint } from "@/lib/parity/convert";
-import type { PaywallFrom } from "@/lib/paywall";
+import type { PaywallFrom, SubscriptionFrom } from "@/lib/paywall";
 import type { SupportTopic } from "@/lib/support";
 import type { ParitySourceMode } from "@/store/parity-store";
 
 type HandoffDirection = "read_to_listen" | "listen_to_read";
+
+/** The chapter that sent the reader to M10, when one did: both ids, or neither. */
+export type StoryProps = { book_id?: string; chapter_id?: string };
 
 /** Every event this app sends, and its properties. */
 type AnalyticsEvents = {
@@ -45,12 +48,23 @@ type AnalyticsEvents = {
   // currency. RevenueCat reports revenue; PostHog never sees a price.
   /** M5a showed a locked chapter, once per open. */
   paywall_shown: { book_id: string; chapter_id: string; from: PaywallFrom };
+  /**
+   * M5a went away without its plans or its chapter: "Not now", the scrim or
+   * Android back. `seconds` it was up, whole.
+   */
+  paywall_dismissed: { book_id: string; chapter_id: string; from: PaywallFrom; seconds: number };
+  /**
+   * M10 opened, once per open, once the entitlement is known. From M5a, with
+   * the chapter that sent the reader there.
+   */
+  subscription_viewed: { from: SubscriptionFrom; subscribed: boolean } & StoryProps;
   /** The reader picked a plan card on M10, not the preselection. */
   plan_selected: { package_id: string };
-  purchase_started: { package_id: string };
-  purchase_completed: { package_id: string };
-  purchase_cancelled: { package_id: string };
-  purchase_failed: { package_id: string; kind: PurchaseFailure };
+  // With the chapter that sent the reader to M10, when one did: which story sells.
+  purchase_started: { package_id: string } & StoryProps;
+  purchase_completed: { package_id: string } & StoryProps;
+  purchase_cancelled: { package_id: string } & StoryProps;
+  purchase_failed: { package_id: string; kind: PurchaseFailure } & StoryProps;
   restore_tapped: { from: "paywall" | "subscription" | "profile" };
   restore_completed: { entitled: boolean };
   // New-chapter alerts (prompt 23a). Never a push token.

@@ -2,9 +2,10 @@
 // No React, no hooks, no JSX (AGENTS.md § lib/).
 //
 // Android only while iOS scope is open (AGENTS.md § Important Constraints).
-// Configured once, with the PUBLIC Android SDK key (`goog_…`). The secret key
-// and the Google service-account key never enter this app, an `EXPO_PUBLIC_`
-// variable or this repo.
+// Configured once, with the PUBLIC Android SDK key (`goog_…`), or in a
+// development build the Test Store's (`test_…`), which a store build refuses
+// (`billingKeyUsable()`). The secret key and the Google service-account key
+// never enter this app, an `EXPO_PUBLIC_` variable or this repo.
 //
 // The App User ID is the Clerk user id, as analytics' and every reader
 // table's are, so an entitlement, an `unlocks` row and a reading position all
@@ -14,26 +15,39 @@ import { Platform } from "react-native";
 import type Purchases from "react-native-purchases";
 import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
-import { entitlementFrom, type Entitlement } from "@/lib/billing";
+import { billingKeyUsable, billingUnavailableMessage, entitlementFrom, type Entitlement } from "@/lib/billing";
 
 /** The owner's RevenueCat entitlement identifier. Nothing else names it. */
 export const ENTITLEMENT_ID = "ad_free";
 
 const KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? "";
 
+/** Inside the Talebrim app on Android: not the web, not Expo Go. */
+const ANDROID_APP = Platform.OS === "android" && !isRunningInExpoGo();
+
 /**
  * Billing runs only where it can: an Android build made from this project,
- * with a key. Not in the web build's server render (no `window`: the trap
- * prompt 21a's analytics fell into), not on the web, and not in Expo Go,
- * where the SDK falls back to a browser mode that takes only Test Store keys.
- * Everywhere else every call below is a no-op, so the web preview, Expo Go and
- * tests keep running.
+ * with a key it may use. Not in the web build's server render (no `window`:
+ * the trap prompt 21a's analytics fell into), not on the web, and not in Expo
+ * Go, where the SDK falls back to a browser mode that takes only Test Store
+ * keys. Never with a Test Store key in a store build, which RevenueCat makes
+ * crash (`billingKeyUsable()`). Everywhere else every call below is a no-op,
+ * so the web preview, Expo Go and tests keep running.
  */
-const AVAILABLE =
-  typeof window !== "undefined" && Platform.OS === "android" && !isRunningInExpoGo() && KEY.length > 0;
+const AVAILABLE = typeof window !== "undefined" && ANDROID_APP && billingKeyUsable(KEY, __DEV__);
 
 export function billingAvailable(): boolean {
   return AVAILABLE;
+}
+
+/** M10's and M11's words where billing can't run (`billingUnavailableMessage()`). */
+export function billingUnavailableLine(): string {
+  return billingUnavailableMessage({ androidApp: ANDROID_APP });
+}
+
+/** True inside the Talebrim app on Android, where a missing plan is "coming soon". */
+export function inAndroidApp(): boolean {
+  return ANDROID_APP;
 }
 
 type Sdk = typeof Purchases;
@@ -142,9 +156,10 @@ export async function getCurrentOffering(userId: string): Promise<PurchasesOffer
 }
 
 /**
- * Buys `pkg`. A subscriber switching plans passes the product they are on:
- * Google's product change, with the SDK's default replacement mode (none is
- * sent). Throws the SDK's error, which `purchaseFailure()` classifies.
+ * Buys `pkg`. A subscriber switching plans on Google Play passes the product
+ * they are on (`productToReplace()`): Google's product change, with the SDK's
+ * default replacement mode (none is sent). Throws the SDK's error, which
+ * `outcomeOfError()` classifies.
  */
 export async function buyPackage(
   userId: string,
@@ -169,5 +184,9 @@ export async function restoreBilling(userId: string): Promise<Entitlement> {
 }
 
 function fromCustomerInfo(info: CustomerInfo): Entitlement {
-  return entitlementFrom(info.entitlements.active[ENTITLEMENT_ID] ?? null, info.managementURL);
+  return entitlementFrom(
+    info.entitlements.active[ENTITLEMENT_ID] ?? null,
+    info.managementURL,
+    Object.values(info.subscriptionsByProductIdentifier),
+  );
 }

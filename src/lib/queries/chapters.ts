@@ -181,7 +181,9 @@ export const lastChapterNumberOptions = (bookId: string) =>
  * view carries prose. A single row by id, still under RLS. Callers enable it
  * only after `chapterDetailOptions()` has returned the same chapter, which
  * proves it is published, and only when the chapter does not resolve to
- * locked.
+ * locked. Since 2026-10-02 (prompt 22a) RLS returns a locked chapter's row
+ * only to a reader who unlocked it or whose plan the server knows of: to
+ * anyone else it reads as `null`, as a missing row does (`textWithheld()`).
  *
  * `script_text` is expected to contain exactly three Markdown marks —
  * `**bold**`, `_italic_`, `## heading`. `lib/chapter-text.ts` parses those

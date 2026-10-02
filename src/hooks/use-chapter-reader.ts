@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/expo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useDownloadEntry, useIsOnline, useVerifyOnOpen } from "@/hooks/use-downloads";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -21,10 +21,17 @@ import { downloadedTextOptions } from "@/lib/queries/downloads";
 import { readingPositionByChapterOptions } from "@/lib/queries/reading-position";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
+import { syncServerPlan } from "@/lib/server-plan";
 import type { DownloadEntry } from "@/store/downloads-store";
 import { useParityStore } from "@/store/parity-store";
 import type { ChapterDetailRow, ChapterTargetRow } from "@/types/catalog";
-import { lockStateFor, type LockableChapter, type ReaderStatus } from "@/types/states";
+import {
+  askServerAboutPlan,
+  lockStateFor,
+  textWithheld,
+  type LockableChapter,
+  type ReaderStatus,
+} from "@/types/states";
 
 /** The ready state's chapter. */
 export type ReadyChapter = {
@@ -40,10 +47,13 @@ export type ReadyChapter = {
   /** Null at either end of the book, and while the neighbours load or after they fail. */
   previousId: string | null;
   nextId: string | null;
+  /** The next chapter's number, which the end of the chapter names when it is locked. */
+  nextNumber: number | null;
   /**
    * The next chapter is locked for this reader: "Next chapter" opens M5a for
-   * it instead of the reader (prompt 22 step 12). False while its lock can't
-   * be told yet: the reader then opens it in whatever state it resolves to.
+   * it instead of the reader (prompt 22 step 12), and says so before the tap
+   * ("Unlock chapter 4"). False while its lock can't be told yet: the reader
+   * then opens it in whatever state it resolves to.
    */
   nextLocked: boolean;
   /**
@@ -188,11 +198,14 @@ export function useChapterReader(chapterId: string) {
   const lockState = open && rowUsable ? lockStateFor(open, unlockedChapterIds, isSubscribed) : null;
 
   // The text is fetched only for a published chapter (its catalog row came
-  // back) that does not resolve to locked. This keeps the app honest; it is
-  // NOT security. RLS still lets any signed-in reader select `script_text`
-  // for a locked chapter directly. Closing that is a pre-launch task
-  // (AGENTS.md § Before production). A subscription opens the chapter the
-  // moment its entitlement lands, and this query starts by itself.
+  // back) that does not resolve to locked. Since 2026-10-02 the server holds
+  // to the same rule (prompt 22a): its `chapters` policy returns a locked
+  // chapter's row only to a reader who unlocked it or whose plan the server
+  // knows of, so a subscriber's read can come back empty while the server's
+  // copy of the plan is behind (`withheld`, below). Until then, any signed-in
+  // reader could read a locked chapter's text straight from the API. A
+  // subscription opens the chapter the moment its entitlement lands, and this
+  // query starts by itself.
   //
   // A downloaded chapter's text comes from its file instead, online or off,
   // with no network wait: offline from the start, online once the lock check
@@ -209,12 +222,41 @@ export function useChapterReader(chapterId: string) {
   const networkText = useQuery({ ...chapterTextOptions(chapterId), enabled: textEnabled });
   const text = fromFile ? fileText : networkText;
 
+  // The read came back with no text although the catalog row says there is
+  // some: the server withheld the row, or the text went since (prompt 22a
+  // step 8). It is read once more, and for a chapter only Talebrim Unlimited
+  // opens the server is first asked to check its copy of the plan. Still
+  // empty, the screen fails with Retry, never "no text". No timer: nothing
+  // here waits on one.
+  const withheld = !fromFile && textEnabled && open != null && textWithheld(open.hasText, networkText.data);
+  // Unlocks still loading count as none: the server never withholds a
+  // chapter the reader unlocked on its own.
+  const planInputs =
+    isSubscribed === undefined ? null : { unlockedChapterIds: unlockedChapterIds ?? new Set<string>(), isSubscribed };
+  const askServer = open != null && askServerAboutPlan(open, planInputs, false);
+  // One check on opening, and one more for each Retry: counted, so nothing
+  // is set while rendering or in the effect's body.
+  const [checksWanted, setChecksWanted] = useState(1);
+  const [checksDone, setChecksDone] = useState(0);
+  const checksStarted = useRef(0);
+  const checkingText = withheld && checksDone < checksWanted;
+  const refetchText = networkText.refetch;
+  useEffect(() => {
+    if (!checkingText || checksStarted.current >= checksWanted) return;
+    checksStarted.current = checksWanted;
+    const round = checksWanted;
+    void (askServer ? syncServerPlan() : Promise.resolve(null))
+      .then(() => refetchText())
+      .finally(() => setChecksDone(round));
+  }, [checkingText, checksWanted, askServer, refetchText]);
+
   // The first text this screen receives stays for as long as it is mounted.
   // A dashboard edit refetches the query, but the new text waits for the
   // next open rather than moving under the reader. Only an enabled query
-  // counts: a disabled one still hands back whatever the cache holds.
+  // counts: a disabled one still hands back whatever the cache holds. A
+  // withheld text is never kept: it is checked again above.
   const [shownText, setShownText] = useState<{ value: string | null } | null>(null);
-  if (shownText === null && (fromFile || textEnabled) && text.data !== undefined) {
+  if (shownText === null && (fromFile || textEnabled) && text.data !== undefined && !withheld) {
     setShownText({ value: text.data });
   }
   const blocks = useMemo(
@@ -289,7 +331,12 @@ export function useChapterReader(chapterId: string) {
       return settled("expired");
     }
     if (open === null) return settled("unavailable");
-    if (shownText === null) return open.hasText === false ? settled("no-text") : waitFor([text]);
+    if (shownText === null) {
+      if (open.hasText === false) return settled("no-text");
+      // Checked again once, then Failed, whose Retry checks again.
+      if (withheld) return { view: { status: checkingText ? "loading" : "failed" }, waitingOn: [] };
+      return waitFor([text]);
+    }
     // Null, empty or whitespace-only text parses to no blocks.
     if (blocks.length === 0) return settled("no-text");
     // The text is ready; the place to open it at is not yet. Never an error.
@@ -315,6 +362,7 @@ export function useChapterReader(chapterId: string) {
           lastChapterNumber: Math.max(lastNumber.data ?? book.data?.chapter_count ?? 0, open.number),
           previousId: toNeighbour(neighbours.data?.previous)?.id ?? null,
           nextId: next?.id ?? null,
+          nextNumber: next?.number ?? null,
           nextLocked: nextLockState?.kind === "locked",
           restore: restoreFrom
             ? textRestoreOffset(restoreFrom, {
@@ -333,6 +381,9 @@ export function useChapterReader(chapterId: string) {
   const { view, waitingOn } = resolve();
 
   function retry() {
+    // A withheld text: the check runs again, the server asked first when the
+    // plan opens the chapter.
+    if (withheld && !checkingText) setChecksWanted((wanted) => wanted + 1);
     for (const query of waitingOn) {
       if (query.isError) void query.refetch();
     }

@@ -40,6 +40,12 @@ type ChapterBodyProps = {
   onTap: () => void;
   /** `null` hides the control: no next chapter, or the neighbours aren't known. */
   onNext: (() => void) | null;
+  /**
+   * The next chapter's number when it is locked for this reader: the control
+   * says so before the tap ("Unlock chapter 4", with a lock), so M5a is never
+   * a surprise. Null for an open next chapter, or one whose lock isn't known.
+   */
+  lockedNextNumber: number | null;
   /** `null` hides the control: no previous chapter, or the neighbours aren't known. */
   onPrevious: (() => void) | null;
 };
@@ -64,6 +70,7 @@ export const ChapterBody = memo(function ChapterBody({
   onBlockLayout,
   onTap,
   onNext,
+  lockedNextNumber,
   onPrevious,
 }: ChapterBodyProps) {
   const gap = paragraphGap(fontSize);
@@ -121,7 +128,18 @@ export const ChapterBody = memo(function ChapterBody({
       {onNext || onPrevious ? (
         <View className="mt-12 items-center">
           {onNext ? (
-            <ReaderPill label="Next chapter" palette={palette} onPress={onNext} className="h-12 self-stretch" />
+            lockedNextNumber === null ? (
+              <ReaderPill label="Next chapter" palette={palette} onPress={onNext} className="h-12 self-stretch" />
+            ) : (
+              <ReaderPill
+                label={`Unlock chapter ${lockedNextNumber}`}
+                icon="lock-closed"
+                accessibilityLabel={`Chapter ${lockedNextNumber} is locked. Opens the ways to unlock it.`}
+                palette={palette}
+                onPress={onNext}
+                className="h-12 self-stretch"
+              />
+            )
           ) : null}
           {onPrevious ? (
             <Pressable

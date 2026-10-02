@@ -36,7 +36,7 @@ function appContext(): SupportContext {
 /**
  * The `contact-support` Edge Function (the dashboard repo). The client sends
  * the reader's Clerk token as the bearer, as its `accessToken` does for every
- * request; the function emails the message to support@talebrim.com, with the
+ * request; the function emails the message to support@nouvrix.com, with the
  * account's own address to reply to.
  */
 async function sendToSupport(body: ReturnType<typeof supportPayload>): Promise<SupportOutcome> {

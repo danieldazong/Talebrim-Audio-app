@@ -4,6 +4,9 @@ import { useMemo } from "react";
 
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { useRowCheck } from "@/hooks/use-row-check";
+import { resolveCoverUrl } from "@/lib/covers";
+import { appSettingsOptions } from "@/lib/queries/app-settings";
+import { bookDetailOptions } from "@/lib/queries/book";
 import { chapterDetailOptions } from "@/lib/queries/chapters";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { waitFor, type NeededQuery } from "@/lib/query-status";
@@ -11,6 +14,9 @@ import { lockStateFor } from "@/types/states";
 
 /** The chapter M5a names. */
 export type PaywallChapter = { id: string; bookId: string; number: number; title: string | null };
+
+/** The story M5a sells: its title, and its cover when the CDN domain is known. */
+export type PaywallStory = { title: string; coverUrl: string | null };
 
 export type PaywallView =
   | { status: "locked"; chapter: PaywallChapter }
@@ -69,6 +75,16 @@ export function usePaywallChapter(chapterId: string) {
 
   const { view, waitingOn } = resolve();
 
+  // The story is never waited on: a slow or failed read of it only leaves the
+  // chapter as the headline. Usually cached, by the screen the reader came from.
+  const bookId = view.status === "locked" ? view.chapter.bookId : null;
+  const book = useQuery({ ...bookDetailOptions(bookId ?? ""), enabled: bookId !== null });
+  const settings = useQuery(appSettingsOptions());
+  const domain = settings.data?.public_cdn_domain ?? null;
+  const story: PaywallStory | null = book.data?.title
+    ? { title: book.data.title, coverUrl: domain === null ? null : resolveCoverUrl(domain, book.data.cover_path) }
+    : null;
+
   function retry() {
     for (const query of waitingOn) {
       if (query.isError) void query.refetch();
@@ -77,6 +93,9 @@ export function usePaywallChapter(chapterId: string) {
 
   return {
     view,
+    story,
+    /** The story is on its way: a fetch in flight, not one paused offline or failed. */
+    storyPending: bookId !== null && book.isPending && book.fetchStatus === "fetching",
     /** Where the reader manages a subscription they have had; null if they never have. */
     managementUrl: entitlement.data?.managementUrl ?? null,
     retry,

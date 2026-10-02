@@ -1,5 +1,24 @@
 Read AGENTS.md first and follow it strictly. Do only what is on this page.
 
+> **Changed later on 2026-10-01; fold in at Part C's run** (AGENTS.md §
+> Decisions — 2026-10-01, from "The paywall for a first visit" on):
+> - **Part D (step 19) is built.** It watches the entitlement query rather
+>   than only the listener. Don't build it again: step 18 checks it.
+> - **The plan is "Talebrim Unlimited"**, not "Ad-Free" (`constants/plan.ts`).
+>   Name the Play subscription that. Wherever this page says "Ad-Free" or "Go
+>   Ad-Free", read the new name and "See plans".
+> - **M5a sells the story.** It shows the cover, "Keep reading {story}", the
+>   locked chapter, three benefits, and the ember "See plans", then "Not
+>   now". M10 has a free reader's layout ("Choose a plan"), and M9's bar and
+>   M11's upsell read "See plans".
+> - **A store build refuses a `test_…` key** (`billingKeyUsable()`), and
+>   where billing can't run in the Android app, M10 and M11's Restore say
+>   "Talebrim Unlimited is coming soon."
+> - **For a subscriber,** chapters the dashboard locked show an open lock
+>   and "Unlimited" on M9 and M4.
+> - **Development builds have "View as a free reader"** on M11. Turn it off
+>   before the sandbox tests, which test the subscriber's view.
+
 > **Reviewed again 2026-10-01** against the code (prompts 01–25, 21a, 23a
 > and 24, with the fixes of 2026-09-30 and 2026-10-01), AGENTS.md,
 > `material/11.png`, `material/5.png` and the owner's phone. The calls are
@@ -151,10 +170,20 @@ In short:
       - `EXPO_PUBLIC_POSTHOG_HOST`
       - `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`
 
-      Never `EXPO_PUBLIC_POSTHOG_DEBUG`, and never a secret. The Clerk key
+      Never `EXPO_PUBLIC_POSTHOG_DEBUG` or `EXPO_PUBLIC_DEVELOPER_EMAIL` (the
+      owner's address, for development builds only), and never a secret. The Clerk key
       stays the development instance's (`pk_test_…`), the dashboard's
       instance (AGENTS.md rule 5): the production cutover is deferred. List
       the names you created in the report.
+
+      The RevenueCat key must be the Play Store app's `goog_…` key. Since
+      2026-10-01 `.env.local` has held the Test Store's `test_…` key
+      (AGENTS.md § Decisions — 2026-10-01, "RevenueCat's Test Store until
+      Google Play"). RevenueCat crashes a release build carrying it on
+      purpose; since 2026-10-01 the app refuses it outside a development
+      build instead (`billingKeyUsable()`), so such a build sells nothing and
+      says "Talebrim Unlimited is coming soon." Either way, stop if it is
+      still there.
     - **The build.** The owner runs it, or asks the agent to:
       `EAS_NO_VCS=1 npx eas-cli build --profile production --platform
       android` (AGENTS.md § Decisions — 2026-09-25, "Development build",
@@ -229,6 +258,8 @@ In short:
 ## Part D — one catch-up since the build
 
 19. **A subscription that lapses stops a locked chapter that is playing.**
+    *Built on 2026-10-01 (AGENTS.md § Decisions — 2026-10-01, "A plan that
+    ends stops a locked chapter that is playing").*
     - In `components/providers.tsx`, when the entitlement listener's update
       turns `ad_free` from active to inactive, run `recheckLoaded(null)`
       (`lib/audio/player.ts`), as a catalog change does. A chapter now

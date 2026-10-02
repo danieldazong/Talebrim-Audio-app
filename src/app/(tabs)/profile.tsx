@@ -15,21 +15,17 @@ import { LEGAL_URLS } from "@/constants/legal";
 import { useAlertsStatus } from "@/hooks/use-alerts";
 import { useDeleteAccount } from "@/hooks/use-delete-account";
 import { useDownloadEntries } from "@/hooks/use-downloads";
-import { useEntitlement } from "@/hooks/use-entitlement";
+import { useEntitlement, useFreeReaderPreview } from "@/hooks/use-entitlement";
+import { useIsDeveloper } from "@/hooks/use-is-developer";
 import { usePurchase } from "@/hooks/use-purchase";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { alertsStatusWords } from "@/lib/alerts";
 import { isAnalyticsOptedOut, optInToAnalytics, optOutOfAnalytics, track } from "@/lib/analytics";
 import { confirmDestructive } from "@/lib/confirm";
-import {
-  BILLING_UNAVAILABLE,
-  RESTORE_SUCCEEDED,
-  accountIdentity,
-  planState,
-  signOutMessage,
-  versionLine,
-} from "@/lib/profile";
-import { billingAvailable } from "@/lib/revenuecat";
+import { setFreeReaderPreview } from "@/lib/dev-preview";
+import { openPlans } from "@/lib/paywall";
+import { RESTORE_SUCCEEDED, accountIdentity, planState, signOutMessage, versionLine } from "@/lib/profile";
+import { billingAvailable, billingUnavailableLine } from "@/lib/revenuecat";
 import { useReaderStore } from "@/store/reader-store";
 import { layout } from "@/theme";
 
@@ -50,6 +46,7 @@ function openLink(url: string) {
 export default function Profile() {
   const tabBarHeight = useBottomTabBarHeight();
   const { isLoaded, user } = useUser();
+  const isDeveloper = useIsDeveloper();
   const entitlement = useEntitlement();
   // As M10: a refetch after a failure shows the skeleton, not "failed".
   const plan = planState(entitlement.data, entitlement.isError && !entitlement.isFetching);
@@ -88,14 +85,15 @@ export default function Profile() {
             subscribe: a subscriber's screen has none. */}
         {plan === "free" ? (
           <View className="mt-4">
-            <UpsellCard onSeePlans={() => router.push("/subscription")} />
+            <UpsellCard onSeePlans={() => openPlans("profile_upsell")} />
           </View>
         ) : null}
 
         <ReadingSection />
         <AccountSection />
         <SupportSection />
-        <Footer />
+        {isDeveloper ? <DevelopmentSection /> : null}
+        <Footer showHealthProbe={isDeveloper} />
       </ScrollView>
     </Screen>
   );
@@ -188,7 +186,7 @@ function AccountSection() {
 
   async function restorePurchase() {
     if (!billingAvailable()) {
-      setRestoreNote(BILLING_UNAVAILABLE);
+      setRestoreNote(billingUnavailableLine());
       return;
     }
     setRestoreNote(null);
@@ -212,7 +210,7 @@ function AccountSection() {
           icon="card-outline"
           label="Manage subscription"
           trailing={CHEVRON}
-          onPress={() => router.push("/subscription")}
+          onPress={() => openPlans("profile_manage")}
           accessibilityLabel="Manage subscription. Opens your plan."
         />
         <SettingsRow
@@ -256,8 +254,36 @@ function AccountSection() {
 }
 
 /**
+ * The owner's account in a development build only, never another account and
+ * never the store app (`lib/developer.ts`): "View as a free reader"
+ * (`lib/dev-preview.ts`). A Test Store purchase can't be cancelled and keeps
+ * the owner's account subscribed for hours; this shows the dashboard's locks
+ * as a reader without the plan sees them, until it is turned off, a plan is
+ * bought or restored, the account signs out, or the app restarts.
+ */
+function DevelopmentSection() {
+  const preview = useFreeReaderPreview();
+  return (
+    <>
+      <SettingsHeading label="Development" />
+      <SettingsGroup>
+        <SettingsRow
+          icon="eye-outline"
+          label="View as a free reader"
+          detail="Shows your locked chapters as readers without a plan see them."
+          trailing={{ kind: "switch", value: preview }}
+          onPress={() => setFreeReaderPreview(!preview)}
+          accessibilityLabel="View as a free reader"
+          accessibilityHint="Development only. Shows your locked chapters as readers without a plan see them."
+        />
+      </SettingsGroup>
+    </>
+  );
+}
+
+/**
  * Help: a message to support, written in the app (`app/support.tsx`), which
- * reaches support@talebrim.com by email. It needs no web page (the owner's
+ * reaches support@nouvrix.com by email. It needs no web page (the owner's
  * call, 2026-10-01).
  */
 function SupportSection() {
@@ -280,10 +306,11 @@ function SupportSection() {
 
 /**
  * Sign out and Delete account, the legal links once they exist, the
- * installed version, and in development the health probe, which holds the
- * clear-storage button. Never in a release build.
+ * installed version, and for the owner's account in a development build the
+ * health probe, which holds the clear-storage button (`showHealthProbe`, from
+ * `useIsDeveloper()`). Nobody else sees it, and never in a release build.
  */
-function Footer() {
+function Footer({ showHealthProbe }: { showHealthProbe: boolean }) {
   const signOut = useSignOut();
   const downloads = useDownloadEntries();
   const deletion = useDeleteAccount();
@@ -354,7 +381,7 @@ function Footer() {
         </Text>
       ) : null}
 
-      {__DEV__ ? (
+      {showHealthProbe ? (
         <View className="mt-2">
           <TextLink label="Development: health probe" onPress={() => router.push("/health")} />
         </View>

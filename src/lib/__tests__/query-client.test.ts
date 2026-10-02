@@ -2,7 +2,7 @@
 
 import { QueryClient } from "@tanstack/react-query";
 
-import { shouldPersistQuery } from "@/lib/query-client";
+import { retryDelayFor, shouldPersistQuery } from "@/lib/query-client";
 import { queryKeys } from "@/lib/query-keys";
 
 // What the persisted TanStack cache writes to disk (prompt 24 step 10):
@@ -50,5 +50,19 @@ describe("shouldPersistQuery", () => {
   it("persists the catalog", () => {
     expect(persisted(queryKeys.book.detail("book-1"))).toBe(true);
     expect(persisted(queryKeys.appSettings.all())).toBe(true);
+  });
+});
+
+// Android runs no timer for an app in the background, except a zero-length
+// one (2026-10-02): a delayed retry there waited until the app came back.
+describe("retryDelayFor", () => {
+  it("backs off on screen, as TanStack does by default", () => {
+    expect([0, 1, 2, 5, 10].map((count) => retryDelayFor(count, "active"))).toEqual([1_000, 2_000, 4_000, 30_000, 30_000]);
+  });
+
+  it("retries at once in the background, or before the app's state is known", () => {
+    expect(retryDelayFor(1, "background")).toBe(0);
+    expect(retryDelayFor(1, "inactive")).toBe(0);
+    expect(retryDelayFor(1, null)).toBe(0);
   });
 });

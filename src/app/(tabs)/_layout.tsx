@@ -1,4 +1,5 @@
-import { Tabs } from "expo-router/tabs";
+import { Tabs, type BottomTabBarProps } from "expo-router/tabs";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { MiniPlayer } from "@/components/player/MiniPlayer";
@@ -17,6 +18,9 @@ import { MINI_PLAYER_VISIBLE_ROUTES } from "@/lib/mini-player-visibility";
  * Visibility is data-driven from `MINI_PLAYER_VISIBLE_ROUTES` (step 6); all
  * three tab routes are `true` today, but the check stays explicit rather
  * than assuming every tab route wants it.
+ *
+ * The tabs not on screen are built in the background (`TabPreloader`), so a
+ * tap switches to a screen that already exists.
  */
 export default function TabsLayout() {
   return (
@@ -32,6 +36,7 @@ export default function TabsLayout() {
 
         return (
           <View>
+            <TabPreloader state={props.state} navigation={props.navigation} />
             {showMiniPlayer ? (
               <View className="mb-2">
                 <MiniPlayer />
@@ -47,4 +52,47 @@ export default function TabsLayout() {
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>
   );
+}
+
+/** Before the first tab is built, and between tabs: the screen on show starts first. */
+const PRELOAD_GAP_MS = 1_500;
+
+/**
+ * Builds the tabs that weren't on screen when the shell mounted (Library and
+ * Profile, on a start at Discover) in the background: one at a time, each
+ * once the JS thread is idle. The first tap on one then shows a screen that
+ * already exists. Built on the tap instead, Profile took most of a second,
+ * and nearly two in a development build.
+ *
+ * Sent to the tab navigator itself. `router.prefetch()` aims at the root stack
+ * whenever another screen covers the tabs, and there it would build a second,
+ * hidden copy of the whole tab shell.
+ */
+function TabPreloader({ state, navigation }: Pick<BottomTabBarProps, "state" | "navigation">) {
+  const [names] = useState(() =>
+    state.routes.filter((_, index) => index !== state.index).map((route) => route.name),
+  );
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let idle: number | undefined;
+    const preload = (next: number) => {
+      if (next >= names.length) return;
+      timer = setTimeout(() => {
+        idle = requestIdleCallback(() => {
+          // The tab on screen is built already.
+          const current = navigation.getState();
+          if (current.routes[current.index]?.name !== names[next]) navigation.preload(names[next]);
+          preload(next + 1);
+        });
+      }, PRELOAD_GAP_MS);
+    };
+    preload(0);
+    return () => {
+      clearTimeout(timer);
+      if (idle !== undefined) cancelIdleCallback(idle);
+    };
+  }, [names, navigation]);
+
+  return null;
 }

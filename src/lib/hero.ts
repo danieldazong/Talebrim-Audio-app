@@ -59,11 +59,37 @@ export function nextHeroSet(
 }
 
 /**
+ * Whether Discover regaining focus would bring a different set: only when the
+ * tab's newest stories are no longer the ones on screen. Otherwise the return
+ * changes nothing, and Discover isn't rendered again for it.
+ */
+export function refocusChangesHeroSet(shown: HeroSet, latestIds: readonly string[], tab: string | null): boolean {
+  if (tab === null) return false;
+  return latestIds.length !== shown.ids.length || latestIds.some((id, index) => id !== shown.ids[index]);
+}
+
+/**
  * The set's stories, from the current rows: an edit (title, cover) shows at
  * once, and a story unpublished meanwhile leaves.
  */
 export function heroBooks(ids: readonly string[], books: readonly CarouselBookRow[]): CarouselBookRow[] {
   return ids.flatMap((id) => books.find((book) => book.id === id) ?? []);
+}
+
+/**
+ * The tab's stories the hero doesn't show, newest first: a genre tab's "More
+ * in …" row, so a story past the hero's five is still found under its genre.
+ * Taken against the hero on screen, not against the five newest: the hero
+ * holds its set while the reader looks on, so a story published meanwhile
+ * shows here at once, and no story shows in both. A row without an id can't be
+ * opened and is skipped.
+ */
+export function booksBeyondHero(
+  books: readonly CarouselBookRow[],
+  hero: readonly CarouselBookRow[],
+): CarouselBookRow[] {
+  const shown = new Set(hero.map((book) => book.id));
+  return books.filter((book) => book.id !== null && !shown.has(book.id));
 }
 
 /**

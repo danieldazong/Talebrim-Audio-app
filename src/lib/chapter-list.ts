@@ -2,11 +2,12 @@
 // left off and what is downloaded (prompt 24), in; what each row shows, says
 // and opens, out.
 // No React, no hooks, no JSX — AGENTS.md § lib/.
+import { PLAN_NAME } from "@/constants/plan";
 import type { DownloadFailure, QueueItem } from "@/lib/downloads/queue";
 import { formatDuration, formatDurationSpoken } from "@/lib/format";
 import type { ParitySourceMode } from "@/store/parity-store";
 import type { ChapterListItemRow } from "@/types/catalog";
-import { chapterStateFor, type ChapterLockInputs, type ChapterState } from "@/types/states";
+import { chapterStateFor, openedByPlan, type ChapterLockInputs, type ChapterState } from "@/types/states";
 
 export type ChapterSortOrder = "oldest" | "newest";
 
@@ -62,6 +63,11 @@ export type ChapterListRow = {
   /** The row as one screen-reader element: its title, its audio and its state, in words. */
   accessibilityLabel: string;
   state: ChapterState;
+  /**
+   * Locked in the dashboard and open to this reader only through the
+   * subscription (`openedByPlan()`): the detail line starts "Unlimited".
+   */
+  byPlan: boolean;
   trailing: ChapterRowTrailing;
   /** Null opens nothing: a chapter with neither text nor narration. */
   opens: ChapterRowOpens | null;
@@ -176,6 +182,7 @@ export function buildChapterRows(
     const detail = detailLines(hasText, hasAudio, row.audio_duration_seconds);
     const mode: ParitySourceMode | null = hasText ? "text" : hasAudio ? "audio" : null;
     const locked = state.kind === "locked";
+    const byPlan = !locked && openedByPlan({ id, number, access: row.access }, inputs);
 
     return [
       {
@@ -188,10 +195,12 @@ export function buildChapterRows(
           detail.spoken,
           locked ? null : downloadWords(download),
           STATE_WORDS[state.kind],
+          byPlan ? `With ${PLAN_NAME}` : null,
         ]
           .filter((part) => part !== null)
           .join(". ")}.`,
         state,
+        byPlan,
         trailing: trailingFor(state, hasAudio, download),
         opens:
           mode === null

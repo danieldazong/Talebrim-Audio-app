@@ -1,3 +1,4 @@
+import { useNavigation } from "expo-router";
 import { useEffect, useState } from "react";
 import { useWindowDimensions, View, type AccessibilityActionEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -14,6 +15,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { HeroCard } from "@/components/discover/hero-card";
+import { useHeroMayAdvance } from "@/hooks/use-hero-carousel";
 import { track as trackEvent } from "@/lib/analytics";
 import { resolveCoverUrl } from "@/lib/covers";
 import { HERO_ADVANCE_MS, HERO_SETTLE_MS, HERO_SLIDE_MS, settlePage, wrapPage } from "@/lib/hero";
@@ -71,8 +73,6 @@ type HeroCarouselProps = {
   books: CarouselBookRow[];
   publicCdnDomain: string | null;
   onPressBook: (id: string) => void;
-  /** Discover on screen, the app in front, no Reduce Motion, no screen reader (`useHeroAutoAdvance()`). */
-  autoAdvance: boolean;
 };
 
 /**
@@ -98,8 +98,9 @@ type HeroCarouselProps = {
  * visible ember action. One story: no track to slide, no dots. The parent
  * keys it by the set of stories, so a new set starts at the first.
  */
-export function HeroCarousel({ books, publicCdnDomain, onPressBook, autoAdvance }: HeroCarouselProps) {
+export function HeroCarousel({ books, publicCdnDomain, onPressBook }: HeroCarouselProps) {
   const { width } = useWindowDimensions();
+  const navigation = useNavigation();
   const count = books.length;
   const loops = count > 1;
   // The looped track: the last page's copy, every page, then the first page's copy.
@@ -113,14 +114,31 @@ export function HeroCarousel({ books, publicCdnDomain, onPressBook, autoAdvance 
   // Where the track is, in pages: -1 and `count` are the copies.
   const position = useSharedValue(0);
   const dragStart = useSharedValue(0);
-  const running = autoAdvance && !touching && !swiped && loops;
+  // The app in front, no Reduce Motion, no screen reader (`useHeroMayAdvance()`).
+  const mayAdvance = useHeroMayAdvance();
+  const running = mayAdvance && !touching && !swiped && loops;
 
   // A new timer after each landing, so every story gets its full 7 seconds.
+  // It counts only while Discover is on screen: focus events start and stop
+  // it, rather than state, so leaving or returning to Discover re-renders
+  // nothing and a tab switch never waits on the carousel.
   useEffect(() => {
     if (!running) return;
-    const timer = setTimeout(() => slideTo(position, page + 1, count, SLIDE, setPage), HERO_ADVANCE_MS);
-    return () => clearTimeout(timer);
-  }, [running, page, count, position]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => slideTo(position, page + 1, count, SLIDE, setPage), HERO_ADVANCE_MS);
+    };
+    const stop = () => clearTimeout(timer);
+    if (navigation.isFocused()) start();
+    const offFocus = navigation.addListener("focus", start);
+    const offBlur = navigation.addListener("blur", stop);
+    return () => {
+      stop();
+      offFocus();
+      offBlur();
+    };
+  }, [running, page, count, position, navigation]);
 
   const pan = Gesture.Pan()
     .enabled(loops)

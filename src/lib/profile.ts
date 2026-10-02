@@ -3,6 +3,7 @@
 //
 // The account card reads the reader's names, email and photo from Clerk,
 // never `publicMetadata` or a role (AGENTS.md rule 4).
+import { PLAN_NAME } from "@/constants/plan";
 
 /** What the account card shows. */
 export type AccountIdentity = {
@@ -62,9 +63,12 @@ export function planState(entitlement: { active: boolean } | undefined, failed: 
   return failed ? "unknown" : "loading";
 }
 
-/** The pill's words; null for no pill. */
+/**
+ * The pill's words; null for no pill. A subscriber's is the plan's name
+ * without "Talebrim", which the screen already says (`PLAN_NAME`).
+ */
 export function planLabel(state: PlanState): string | null {
-  if (state === "ad_free") return "Ad-Free";
+  if (state === "ad_free") return "Unlimited";
   if (state === "free") return "Free plan";
   return null;
 }
@@ -88,7 +92,7 @@ export function deleteAccountMessage(subscriptionRenews: boolean): string {
   const message =
     "Your account, reading places, My List and unlocked chapters are deleted, and downloads are removed from this phone. This can't be undone.";
   return subscriptionRenews
-    ? `${message}\n\nYour Ad-Free subscription isn't cancelled by this: cancel it in Google Play first.`
+    ? `${message}\n\nYour ${PLAN_NAME} subscription isn't cancelled by this: cancel it in Google Play first.`
     : message;
 }
 
@@ -111,11 +115,8 @@ export const DELETE_PROBLEMS: Record<"offline" | Exclude<DeleteOutcome, "deleted
   failed: "Couldn't delete your account. Check your connection and try again.",
 };
 
-/** M11's Restore, where billing can't run: M10's own line. */
-export const BILLING_UNAVAILABLE = "Subscriptions are available in the Talebrim app for Android.";
-
-/** M11's Restore, when it found an active subscription. */
-export const RESTORE_SUCCEEDED = "Your Ad-Free subscription is restored.";
+/** M11's Restore, when it found an active subscription. (Where billing can't run, it shows M10's own line, `billingUnavailableLine()`.) */
+export const RESTORE_SUCCEEDED = `Your ${PLAN_NAME} subscription is restored.`;
 
 /**
  * The installed binary's version, from `expo-application` ("Version 1.0.0

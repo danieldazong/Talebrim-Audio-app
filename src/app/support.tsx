@@ -13,28 +13,29 @@ import {
 } from "react-native";
 
 import { Button, Chip, Screen } from "@/components/ui";
-import { SUPPORT_EMAIL } from "@/constants/support";
 import { useContactSupport } from "@/hooks/use-contact-support";
 import {
   SUPPORT_COUNTER_FROM,
+  SUPPORT_INTRO,
   SUPPORT_MESSAGE_MAX,
+  SUPPORT_NOTE,
+  SUPPORT_SENT,
   SUPPORT_TOPICS,
   canSendMessage,
-  destinationLine,
-  sentLine,
   type SupportTopic,
 } from "@/lib/support";
 import { colors, fonts, layout } from "@/theme";
 
 // Contact support — M11's Help (the owner's request, 2026-10-01): a message
-// that reaches support@talebrim.com by email, through the `contact-support`
-// Edge Function, with the reader's account address to reply to. Works without
-// the website. No frame: built from Updates' header, M2's chips and M8's field
-// look, for design review. A pushed route over the tab shell (no tab bar, no
-// mini player). "Send message" is the screen's one ember action.
+// that reaches the support inbox (support@nouvrix.com) by email, through the
+// `contact-support` Edge Function, with the reader's account address to reply
+// to. Works without the website. No frame: built from Updates' header, M2's
+// chips and M8's field look, for design review. A pushed route over the tab
+// shell (no tab bar, no mini player). "Send message" is the screen's one ember
+// action.
 //
-// The screen names Talebrim's address, never the reader's own: the reply
-// goes to the email on the account, which it says in words.
+// The screen names no address, neither the inbox's nor the reader's: the
+// reply goes to the email on the account, which it says in words.
 
 function goBack() {
   if (router.canGoBack()) router.back();
@@ -77,7 +78,7 @@ export default function SupportRoute() {
             showsVerticalScrollIndicator={false}
           >
             <Text className="font-ui text-muted text-[15px] leading-[22px]" maxFontSizeMultiplier={1.5}>
-              Tell us what&apos;s wrong or what you need, and we&apos;ll reply by email.
+              {SUPPORT_INTRO}
             </Text>
 
             <Text className="font-ui-medium text-body mt-6 text-[15px]" maxFontSizeMultiplier={1.3}>
@@ -124,7 +125,7 @@ export default function SupportRoute() {
             ) : null}
 
             <Text className="font-ui text-muted mt-3 text-[13px] leading-[18px]" maxFontSizeMultiplier={1.5}>
-              {destinationLine(SUPPORT_EMAIL)}
+              {SUPPORT_NOTE}
             </Text>
 
             {line ? (
@@ -160,7 +161,7 @@ function Sent() {
         Message sent
       </Text>
       <Text className="font-ui text-muted text-center text-[15px] leading-[22px]" maxFontSizeMultiplier={1.5}>
-        {sentLine(SUPPORT_EMAIL)}
+        {SUPPORT_SENT}
       </Text>
       <Button label="Done" variant="outlined" onPress={goBack} className="mt-3" />
     </View>

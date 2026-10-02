@@ -4,6 +4,7 @@ import { onlineManager } from "@tanstack/react-query";
 import { AppState, Platform, type AppStateStatus, type NativeEventSubscription } from "react-native";
 
 import { releaseAudio } from "@/lib/audio/player";
+import { freeReaderPreview, setFreeReaderPreview } from "@/lib/dev-preview";
 import {
   prepareDownloads,
   reconcileDownloads,
@@ -221,6 +222,16 @@ const mockServer = {
   sizes: new Map<string, number>(),
   /** What the file really weighs, where it differs from the catalog. */
   fileBytes: new Map<string, number>(),
+  /** RevenueCat's SDK says the reader holds Talebrim Unlimited. */
+  subscribed: false,
+  /**
+   * The server's own copy of the plan (prompt 22a): until it knows, its
+   * `chapters` policy withholds a locked chapter's row from a reader who
+   * hasn't unlocked it, and Storage refuses its narration (`refused`).
+   */
+  planKnown: false,
+  /** Whether asking the server to check the plan (`syncServerPlan()`) teaches it. */
+  syncWorks: true,
 };
 
 function mockCatalogRow(chapter: MockChapter) {
@@ -244,7 +255,13 @@ function mockRows(table: string): Record<string, unknown>[] {
     case "chapters_catalog":
       return mockServer.chapters.map(mockCatalogRow);
     case "chapters":
-      return mockServer.chapters;
+      // The `chapters` policy since 2026-10-02 (prompt 22a).
+      return mockServer.chapters.filter(
+        (candidate) =>
+          candidate.access === "free" ||
+          mockServer.planKnown ||
+          mockServer.unlocks.some((unlock) => unlock.chapter_id === candidate.id),
+      );
     case "unlocks":
       return mockServer.unlocks;
     case "books_catalog":
@@ -305,7 +322,14 @@ jest.mock("@/lib/supabase", () => ({
 
 jest.mock("@/lib/revenuecat", () => ({
   getEntitlement: () =>
-    Promise.resolve({ active: false, expiresAt: null, willRenew: false, productId: null, planId: null, managementUrl: null }),
+    Promise.resolve({
+      active: mockServer.subscribed,
+      expiresAt: null,
+      willRenew: false,
+      productId: null,
+      planId: null,
+      managementUrl: null,
+    }),
   getCurrentOffering: () => Promise.resolve(null),
   logOutBilling: jest.fn(),
 }));
@@ -324,6 +348,11 @@ jest.mock("@/lib/audio/player", () => ({
 }));
 
 jest.mock("@/lib/analytics", () => ({ track: jest.fn(), resetAnalytics: jest.fn() }));
+
+// The `sync-entitlement` Edge Function: the server checks the plan with
+// RevenueCat. Set up in beforeEach from `mockServer`.
+const mockSyncServerPlan = jest.fn();
+jest.mock("@/lib/server-plan", () => ({ syncServerPlan: () => mockSyncServerPlan() }));
 
 // The real client pulls in NetInfo's native module; these need only a cache
 // (the persistence rule has its own test, `lib/__tests__/query-client.test.ts`).
@@ -409,6 +438,16 @@ beforeEach(async () => {
   mockServer.failing = new Set();
   mockServer.sizes = new Map();
   mockServer.fileBytes = new Map();
+  mockServer.subscribed = false;
+  mockServer.planKnown = false;
+  mockServer.syncWorks = true;
+  mockSyncServerPlan.mockReset();
+  mockSyncServerPlan.mockImplementation(async () => {
+    if (!mockServer.syncWorks) return null;
+    mockServer.planKnown = mockServer.subscribed;
+    if (mockServer.planKnown) mockServer.refused = new Set();
+    return { active: mockServer.subscribed, expiresAt: null };
+  });
   mockSignOutSteps.length = 0;
   useDownloadsStore.getState().clear();
   queryClient.clear();
@@ -453,7 +492,7 @@ describe("downloading", () => {
   });
 
   it("fails a refused chapter with its reason, never retries it, and deletes nothing downloaded", async () => {
-    // Unlocked by the app's lock rule, refused by the storage policy (a subscriber, until the mirror).
+    // Unlocked by the app's lock rule, refused by the storage policy.
     mockServer.unlocks = [{ id: "u1", chapter_id: "c4", source: "ad", created_at: "" }];
     await downloadBook("c1");
     await downloadBook("c4");
@@ -462,6 +501,8 @@ describe("downloading", () => {
     expect(mockFs.downloads.filter((url) => url.includes("c4"))).toHaveLength(0);
     expect(index().c1).toBeDefined();
     expect(files()).toEqual(["c1.m4a", "c1.txt"]);
+    // Unlocked on its own, not by the plan: nothing to ask the server about.
+    expect(mockSyncServerPlan).not.toHaveBeenCalled();
   });
 
   it("fails a chapter that doesn't fit with a full disk, leaves no partial file, and stops the queue", async () => {
@@ -594,6 +635,72 @@ describe("downloading", () => {
 /** Just past the 50 MB margin: a small chapter fits, a large write runs out. */
 const DISK_ROOM = 50_000_000 + 100_000;
 
+// --- A subscriber's locked chapters (prompt 22a) ------------------------------
+
+describe("a chapter only Talebrim Unlimited opens", () => {
+  beforeEach(() => {
+    mockServer.subscribed = true;
+  });
+
+  it("asks the server to check the plan once when it is refused, then downloads", async () => {
+    await downloadBook("c4");
+    expect(mockSyncServerPlan).toHaveBeenCalledTimes(1);
+    expect(getDownloadQueue().find((item) => item.chapterId === "c4")).toBeUndefined();
+    expect(index().c4).toBeDefined();
+    expect(files()).toEqual(["c4.m4a", "c4.txt"]);
+  });
+
+  it("fails as refused, as before, when the server still says no", async () => {
+    mockServer.syncWorks = false;
+    await downloadBook("c4");
+    expect(mockSyncServerPlan).toHaveBeenCalledTimes(1);
+    expect(getDownloadQueue().find((item) => item.chapterId === "c4")).toMatchObject({
+      status: "failed",
+      failure: "refused",
+    });
+    expect(index().c4).toBeUndefined();
+    expect(files()).toEqual([]);
+  });
+
+  it("asks nothing when the server already knows the plan", async () => {
+    mockServer.planKnown = true;
+    mockServer.refused = new Set();
+    await downloadBook("c4");
+    expect(mockSyncServerPlan).not.toHaveBeenCalled();
+    expect(files()).toEqual(["c4.m4a", "c4.txt"]);
+  });
+
+  it("asks once when a chapter with text only is withheld, then downloads its text", async () => {
+    mockServer.chapters = mockServer.chapters.map((candidate) =>
+      candidate.id === "c4" ? { ...candidate, audio_path: null } : candidate,
+    );
+    await downloadBook("c4");
+    expect(mockSyncServerPlan).toHaveBeenCalledTimes(1);
+    expect(files()).toEqual(["c4.txt"]);
+    expect(mockDisk.get(`${DOWNLOADS}/c4.txt`)).toBe("Text of chapter 4.");
+  });
+
+  it("fails a withheld text as refused, never as a chapter with no text", async () => {
+    mockServer.syncWorks = false;
+    mockServer.chapters = mockServer.chapters.map((candidate) =>
+      candidate.id === "c4" ? { ...candidate, audio_path: null } : candidate,
+    );
+    await downloadBook("c4");
+    expect(getDownloadQueue().find((item) => item.chapterId === "c4")).toMatchObject({
+      status: "failed",
+      failure: "refused",
+    });
+    expect(index().c4).toBeUndefined();
+    expect(files()).toEqual([]);
+  });
+
+  it("never asks about a free chapter", async () => {
+    await downloadBook("c1");
+    expect(mockSyncServerPlan).not.toHaveBeenCalled();
+    expect(files()).toEqual(["c1.m4a", "c1.txt"]);
+  });
+});
+
 // --- The online access check ---------------------------------------------
 
 describe("the access check", () => {
@@ -711,6 +818,15 @@ describe("sign-out", () => {
     // Nothing outside downloads/ is touched.
     expect(mockDisk.has(`${DOCUMENT}/.posthog-rn.json`)).toBe(true);
     expect(mockDisk.has(`${DOCUMENT}/.posthog-rn-logs.json`)).toBe(true);
+  });
+
+  it("turns the development free-reader view off, so the next account never inherits it", async () => {
+    setFreeReaderPreview(true);
+    expect(freeReaderPreview()).toBe(true);
+
+    await clearUserScopedState();
+
+    expect(freeReaderPreview()).toBe(false);
   });
 
   it("removes every download, and only downloads, on Remove all", async () => {

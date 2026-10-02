@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
+import { PLAN_NAME } from "@/constants/plan";
 import type { PreviewChapter } from "@/hooks/use-book-detail";
 import { formatDuration } from "@/lib/format";
 import { colors } from "@/theme";
@@ -21,8 +22,11 @@ type ChapterPreviewRowProps = {
  * Two per-user states are drawn here: Locked, and Downloaded (M9's teal
  * disc, Decisions — 2026-09-30), which Locked beats. A chapter opened by an
  * unlock looks exactly like a free one; M9 gives Unlocked and Reading their
- * own visuals. The disc is part of the row, not a button: the row opens the
- * chapter, and downloads are managed on M9 and the Downloads screen.
+ * own visuals. A chapter the dashboard locked that the subscription opens
+ * starts its second line with a teal open lock and "Unlimited", as on M9, so
+ * a subscriber still sees the lock (Decisions — 2026-10-01). The disc is part of the row,
+ * not a button: the row opens the chapter, and downloads are managed on M9
+ * and the Downloads screen.
  *
  * Omitted from the frame: "8 min read" (there is no word-count column) and
  * the check mark with its "Read" label (a finished state nothing records).
@@ -48,6 +52,7 @@ export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
         chapter.title ? `Chapter ${chapter.number}: ${chapter.title}` : heading,
         audio ?? "Text only",
         locked ? "Locked" : null,
+        chapter.byPlan ? `With ${PLAN_NAME}` : null,
         downloaded ? "Downloaded" : null,
       ]
         .filter((part) => part !== null)
@@ -64,14 +69,20 @@ export function ChapterPreviewRow({ chapter, onOpen }: ChapterPreviewRowProps) {
         >
           {heading}
         </Text>
-        {audio ? (
-          <Text
-            className="font-ui text-muted text-[13px] leading-[18px]"
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.3}
-          >
-            {audio}
-          </Text>
+        {audio || chapter.byPlan ? (
+          <View className="flex-row items-center gap-1">
+            {chapter.byPlan ? <Ionicons name="lock-open-outline" size={13} color={colors.teal} /> : null}
+            <Text
+              className="font-ui text-muted shrink text-[13px] leading-[18px]"
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
+            >
+              {chapter.byPlan ? (
+                <Text className="font-ui-medium text-teal">{audio ? "Unlimited · " : "Unlimited"}</Text>
+              ) : null}
+              {audio}
+            </Text>
+          </View>
         ) : null}
       </View>
 

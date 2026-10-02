@@ -1,6 +1,14 @@
 /// <reference types="jest" />
 
-import { chapterStateFor, lockStateFor, resolveChapterState, type LockableChapter } from "@/types/states";
+import {
+  askServerAboutPlan,
+  chapterStateFor,
+  lockStateFor,
+  openedByPlan,
+  resolveChapterState,
+  textWithheld,
+  type LockableChapter,
+} from "@/types/states";
 
 // The one lock rule (prompt 22 step 6): free by the chapter's own access,
 // unlocked, subscribed, and "can't tell yet" while the unlocks or the
@@ -47,6 +55,60 @@ describe("chapterStateFor", () => {
       "unlocked",
       "unlocked",
     ]);
+  });
+});
+
+describe("openedByPlan", () => {
+  it("marks a chapter the dashboard locked that only the subscription opens", () => {
+    expect(openedByPlan(chapter(4), { unlockedChapterIds: NONE, isSubscribed: true })).toBe(true);
+  });
+
+  it("never marks a free chapter, one unlocked on its own, a reader without the plan, or a null access", () => {
+    expect(openedByPlan(chapter(4, "free"), { unlockedChapterIds: NONE, isSubscribed: true })).toBe(false);
+    expect(openedByPlan(chapter(4), { unlockedChapterIds: new Set(["chapter-4"]), isSubscribed: true })).toBe(false);
+    expect(openedByPlan(chapter(4), { unlockedChapterIds: NONE, isSubscribed: false })).toBe(false);
+    expect(openedByPlan(chapter(4, null), { unlockedChapterIds: NONE, isSubscribed: true })).toBe(false);
+  });
+});
+
+// Prompt 22a step 8: a refusal from the server is worth asking it about the
+// plan only for a chapter the plan alone opens, once per open.
+describe("askServerAboutPlan", () => {
+  const subscribed = { unlockedChapterIds: NONE, isSubscribed: true };
+
+  it("asks for a chapter only the subscription opens, not yet asked this open", () => {
+    expect(askServerAboutPlan(chapter(4), subscribed, false)).toBe(true);
+  });
+
+  it("asks once per open", () => {
+    expect(askServerAboutPlan(chapter(4), subscribed, true)).toBe(false);
+  });
+
+  it("never asks about a free chapter, one unlocked on its own, or a reader without the plan", () => {
+    expect(askServerAboutPlan(chapter(4, "free"), subscribed, false)).toBe(false);
+    expect(askServerAboutPlan(chapter(4), { unlockedChapterIds: new Set(["chapter-4"]), isSubscribed: true }, false)).toBe(
+      false,
+    );
+    expect(askServerAboutPlan(chapter(4), { unlockedChapterIds: NONE, isSubscribed: false }, false)).toBe(false);
+  });
+
+  it("never asks while the unlocks or the entitlement aren't known", () => {
+    expect(askServerAboutPlan(chapter(4), null, false)).toBe(false);
+  });
+});
+
+describe("textWithheld", () => {
+  it("is a read with no text for a chapter whose row says it has some", () => {
+    expect(textWithheld(true, null)).toBe(true);
+  });
+
+  it("is never a read not answered yet, a chapter without text, or text that came", () => {
+    expect(textWithheld(true, undefined)).toBe(false);
+    expect(textWithheld(false, null)).toBe(false);
+    expect(textWithheld(null, null)).toBe(false);
+    expect(textWithheld(true, "Once upon a time.")).toBe(false);
+    // Whitespace is the chapter's own text, shown as "no text" as before.
+    expect(textWithheld(true, "  ")).toBe(false);
   });
 });
 

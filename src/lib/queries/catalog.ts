@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import type { Genre } from "@/data/genres";
+import { genresInUse } from "@/lib/discover-tabs";
 import { queryKeys } from "@/lib/query-keys";
 import { supabase } from "@/lib/supabase";
 import type { CarouselBookRow } from "@/types/catalog";
@@ -19,18 +20,20 @@ const CAROUSEL_LIMIT = 20;
 
 /**
  * Published books for one M3 tab-strip entry ("Discover", "New", or a genre
- * tab). `tab` keys the query separately from `genre` because "Discover" and
- * "New" both pass `genre: null` but must not share a cache entry (prompt 11
- * step 9); both currently return the same newest-first list — "New" has no
- * distinct backing signal beyond `created_at desc`, which is already this
- * query's default order, so there is nothing further to filter on.
+ * tab). `tab` is the entry's id (`DiscoverTab.id`); it keys the query
+ * separately from `genre` because "Discover" and "New" both pass `genre: null`
+ * but must not share a cache entry (prompt 11 step 9); both currently return
+ * the same newest-first list — "New" has no distinct backing signal beyond
+ * `created_at desc`, which is already this query's default order, so there is
+ * nothing further to filter on. `genre` is whatever slug a story carries, so a
+ * genre the app has never heard of filters like any other.
  *
  * Reads `books_catalog` only (never `books`) — the view already filters
  * `status = 'published'` by construction and pre-computes chapter/audio
  * counts, which is what makes this a single query instead of an N+1
  * (AGENTS.md Data Contract).
  */
-export const catalogByTabOptions = (tab: string, genre: Genre | null) =>
+export const catalogByTabOptions = (tab: string, genre: string | null) =>
   queryOptions({
     queryKey: queryKeys.catalog.byTab(tab, genre),
     queryFn: async (): Promise<CarouselBookRow[]> => {
@@ -47,6 +50,31 @@ export const catalogByTabOptions = (tab: string, genre: Genre | null) =>
       const { data, error } = await query;
       if (error) throw error;
       return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+/**
+ * The genres with at least one published story: they are M3's genre tabs, so
+ * the strip holds exactly the genres the dashboard's stories carry, a new one
+ * included, with no app update, and none opens onto an empty screen. One
+ * request for the `genres` column of every published book, a few dozen bytes
+ * each. A tab's own list is capped at 20 books, so no tab's answer can stand
+ * in for the others.
+ *
+ * Under `queryKeys.catalog`, so every catalog change (a story published or
+ * unpublished, a genre edited) refreshes it and the strip follows within a
+ * second. PostgREST caps a response at 1,000 rows (Supabase's default), far
+ * above this catalogue; past that, replace this with a distinct-genres view in
+ * the dashboard repo's migrations.
+ */
+export const genresInUseOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.catalog.genresInUse(),
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.from("books_catalog").select("genres");
+      if (error) throw error;
+      return genresInUse(data);
     },
     staleTime: 5 * 60 * 1000,
   });

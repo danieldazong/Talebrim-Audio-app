@@ -47,8 +47,9 @@ import { chapterTextOptions } from "@/lib/queries/chapters";
 import type { DownloadRow } from "@/lib/queries/downloads";
 import { unlocksByUserOptions } from "@/lib/queries/unlocks";
 import { queryClient } from "@/lib/query-client";
+import { syncServerPlan } from "@/lib/server-plan";
 import { useDownloadsStore, type DownloadedBook, type DownloadEntry } from "@/store/downloads-store";
-import { chapterStateFor } from "@/types/states";
+import { chapterStateFor, openedByPlan, textWithheld } from "@/types/states";
 
 export type DownloadStatus = "queued" | "downloading" | "done" | "failed" | "cancelled";
 
@@ -370,9 +371,11 @@ function dropPartial(job: Job) {
 /**
  * The lock rule for a chapter about to download, against the unlocks and
  * the entitlement fetched within the last minute. Never a Locked chapter,
- * and never one whose lock can't be told: a failed input fails it.
+ * and never one whose lock can't be told: a failed input fails it. True when
+ * only Talebrim Unlimited opens it (`openedByPlan()`), so a refusal from the
+ * server may be its copy of the plan running behind (prompt 22a).
  */
-async function checkOpenable(userId: string, row: DownloadRow): Promise<void> {
+async function checkOpenable(userId: string, row: DownloadRow): Promise<boolean> {
   if (row.id === null || row.number === null) throw new DownloadError("other");
   let inputs;
   try {
@@ -387,27 +390,71 @@ async function checkOpenable(userId: string, row: DownloadRow): Promise<void> {
   } catch {
     throw new DownloadError("network");
   }
-  const state = chapterStateFor({ id: row.id, number: row.number, access: row.access }, inputs);
-  if (state.kind === "locked") throw new DownloadError("refused");
+  const chapter = { id: row.id, number: row.number, access: row.access };
+  if (chapterStateFor(chapter, inputs).kind === "locked") throw new DownloadError("refused");
+  return openedByPlan(chapter, inputs);
+}
+
+/** The chapter's narration source, signed now when `fresh`. */
+async function fetchSource(userId: string, chapterId: string, fresh: boolean): Promise<ChapterAudioSource> {
+  const options = chapterAudioSourceOptions(userId, chapterId);
+  try {
+    return await queryClient.fetchQuery(fresh ? { ...options, staleTime: 0 } : options);
+  } catch {
+    throw new DownloadError("network");
+  }
 }
 
 /**
  * The chapter's signed narration URL. `fresh` signs a new one. A refusal is
- * the storage policy saying no (a locked chapter, or a subscriber's until the
- * entitlement mirror): the chapter fails as refused and is never retried.
+ * the storage policy saying no (a locked chapter): the chapter fails as
+ * refused and is never retried. For a chapter only Talebrim Unlimited opens
+ * (`byPlan`), a refusal, or the row withheld, can be the server's copy of the
+ * plan running behind the phone's (prompt 22a step 8): the server is asked
+ * to check it once, and the chapter is signed once more, before it fails.
  */
-async function sign(userId: string, chapterId: string, fresh: boolean): Promise<Extract<ChapterAudioSource, { kind: "signed" }>> {
-  const options = chapterAudioSourceOptions(userId, chapterId);
-  let source: ChapterAudioSource;
+async function sign(
+  userId: string,
+  chapterId: string,
+  fresh: boolean,
+  byPlan: boolean,
+): Promise<Extract<ChapterAudioSource, { kind: "signed" }>> {
+  let source = await fetchSource(userId, chapterId, fresh);
+  if (byPlan && source.kind !== "signed") {
+    log("refused under the plan: the server checks it", chapterId);
+    await syncServerPlan();
+    source = await fetchSource(userId, chapterId, true);
+  }
+  if (source.kind === "refused") throw new DownloadError("refused");
+  // The row lost its narration after `has_audio` was read; for a chapter
+  // only the plan opens, the server withholding the row.
+  if (source.kind === "unavailable") throw new DownloadError(byPlan ? "refused" : "other");
+  return source;
+}
+
+/**
+ * The chapter's text, read fresh on the sanctioned terms: the lock check
+ * ran for this chapter, and the catalog row proves it published. Null when
+ * it has none. For a chapter only Talebrim Unlimited opens, a read that
+ * comes back empty although the row has text is the server withholding it
+ * (prompt 22a step 8): the server checks the plan once, the text is read once
+ * more, and still empty, the chapter fails as refused.
+ */
+async function readText(chapterId: string, hasText: boolean | null, byPlan: boolean): Promise<string | null> {
+  const read = () => queryClient.fetchQuery({ ...chapterTextOptions(chapterId), staleTime: 0 });
+  let value: string | null;
   try {
-    source = await queryClient.fetchQuery(fresh ? { ...options, staleTime: 0 } : options);
+    value = await read();
+    if (byPlan && textWithheld(hasText, value)) {
+      log("text withheld under the plan: the server checks it", chapterId);
+      await syncServerPlan();
+      value = await read();
+    }
   } catch {
     throw new DownloadError("network");
   }
-  if (source.kind === "refused") throw new DownloadError("refused");
-  // The row lost its narration after `has_audio` was read.
-  if (source.kind === "unavailable") throw new DownloadError("other");
-  return source;
+  if (byPlan && textWithheld(hasText, value)) throw new DownloadError("refused");
+  return value;
 }
 
 type PartialFile = { name: string; file: ReturnType<typeof writeTextToPartial> };
@@ -427,6 +474,7 @@ async function downloadAudio(
   userId: string,
   job: Job,
   first: Extract<ChapterAudioSource, { kind: "signed" }>,
+  byPlan: boolean,
   signal: AbortSignal,
   onProgress: (progress: { bytesWritten: number; totalBytes: number }) => void,
 ): Promise<DownloadedAudio> {
@@ -452,7 +500,7 @@ async function downloadAudio(
     } catch (error) {
       if (signal.aborted || isDiskFull(error) || attempt > 1) throw error;
       log("audio download failed, signing again", job.chapterId, { resumed: resume }, error);
-      source = await sign(userId, job.chapterId, true);
+      source = await sign(userId, job.chapterId, true, byPlan);
     }
   }
 }
@@ -460,7 +508,10 @@ async function downloadAudio(
 /**
  * One chapter: checked, sized against the free space, then its narration
  * and its text written as partial files, renamed into place together, and
- * entered in the index. A refresh fetches only what changed.
+ * entered in the index. A refresh fetches only what changed. A refresh is
+ * checked against the lock rule too, since 2026-10-02 (prompt 22a): for a
+ * chapter only the plan opens, a text the server withholds then fails it,
+ * rather than leaving the old text marked current.
  */
 async function runJob(userId: string, job: Job, signal: AbortSignal): Promise<void> {
   const { row, chapterId } = job;
@@ -468,7 +519,7 @@ async function runJob(userId: string, job: Job, signal: AbortSignal): Promise<vo
   // Removed since the check queued it: nothing to refresh.
   if (job.kind === "refresh" && existing === null) return;
 
-  if (job.kind === "download") await checkOpenable(userId, row);
+  const byPlan = await checkOpenable(userId, row);
   throwIfAborted(signal);
 
   // What to fetch. A refresh reads the narration's path again, on the
@@ -476,7 +527,7 @@ async function runJob(userId: string, job: Job, signal: AbortSignal): Promise<vo
   let source: Extract<ChapterAudioSource, { kind: "signed" }> | null = null;
   let parts = { audio: row.has_audio === true, text: row.has_text === true };
   if (job.kind === "refresh" && existing !== null) {
-    if (row.has_audio === true) source = await sign(userId, chapterId, true);
+    if (row.has_audio === true) source = await sign(userId, chapterId, true, byPlan);
     parts = refreshParts(existing, row, source?.path ?? null);
   }
 
@@ -509,24 +560,17 @@ async function runJob(userId: string, job: Job, signal: AbortSignal): Promise<vo
   let text: { partial: PartialFile; length: number } | null = null;
   try {
     if (parts.audio) {
-      source ??= await sign(userId, chapterId, false);
+      source ??= await sign(userId, chapterId, false, byPlan);
       const onProgress = ({ bytesWritten, totalBytes }: { bytesWritten: number; totalBytes: number }) => {
         if (totalBytes > 0) expectedAudio = totalBytes;
         report(bytesWritten, false);
       };
-      audio = await downloadAudio(userId, job, source, signal, onProgress);
+      audio = await downloadAudio(userId, job, source, byPlan, signal, onProgress);
     }
     throwIfAborted(signal);
 
     if (parts.text) {
-      let value: string | null;
-      try {
-        // Fetched fresh, on the sanctioned terms: the lock check above ran
-        // for this chapter, and the catalog row proves it published.
-        value = await queryClient.fetchQuery({ ...chapterTextOptions(chapterId), staleTime: 0 });
-      } catch {
-        throw new DownloadError("network");
-      }
+      const value = await readText(chapterId, row.has_text, byPlan);
       throwIfAborted(signal);
       if (value !== null && value.trim().length > 0) {
         const name = textFileName(chapterId);

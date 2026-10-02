@@ -117,9 +117,9 @@ describe("accountIdentity", () => {
 });
 
 describe("planState and planLabel", () => {
-  it("reads an active entitlement as Ad-Free", () => {
+  it("reads an active entitlement as Unlimited, the plan's name without Talebrim", () => {
     expect(planState({ active: true }, false)).toBe("ad_free");
-    expect(planLabel("ad_free")).toBe("Ad-Free");
+    expect(planLabel("ad_free")).toBe("Unlimited");
   });
 
   it("reads one known not to be active as the free plan", () => {
@@ -151,7 +151,7 @@ describe("accountSpokenLabel", () => {
 
   it("never says the email twice", () => {
     const identity = accountIdentity(user({ firstName: null, lastName: null, email: EMAIL }));
-    expect(accountSpokenLabel(identity, "Ad-Free")).toBe(`${EMAIL}, Ad-Free`);
+    expect(accountSpokenLabel(identity, "Unlimited")).toBe(`${EMAIL}, Unlimited`);
   });
 });
 
@@ -182,7 +182,7 @@ describe("deleteAccountMessage", () => {
 
   it("tells a subscriber whose plan renews to cancel it first", () => {
     expect(deleteAccountMessage(true)).toMatch(
-      /This can't be undone\.\n\nYour Ad-Free subscription isn't cancelled by this: cancel it in Google Play first\.$/,
+      /This can't be undone\.\n\nYour Talebrim Unlimited subscription isn't cancelled by this: cancel it in Google Play first\.$/,
     );
   });
 });

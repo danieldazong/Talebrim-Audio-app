@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CoverCollage } from "@/components/onboarding/cover-collage";
 import { Body, Button, Heading, Screen } from "@/components/ui";
 import { LEGAL_URLS } from "@/constants/legal";
 import {
@@ -218,16 +219,7 @@ export default function SignIn() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* MISSING ASSET: assets/Image/auth-header.png is not in the repo.
-              AGENTS.md § Image Generation Rules forbids generating, downloading
-              or hotlinking cover art, so this renders the raised block at the
-              correct height until the real collage is supplied by the CMS. */}
-          <View
-            className="w-full bg-raised"
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-            style={{ height: 260 }}
-          />
+          <CoverCollage />
 
           <View className="flex-1 px-6">
             <Heading className="mt-8 text-center">

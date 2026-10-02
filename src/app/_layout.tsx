@@ -5,7 +5,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -88,8 +88,6 @@ function RootNavigator() {
   // Reading positions reach the server when the app leaves the foreground,
   // and a newer one from another device is picked up when it returns.
   useParitySync();
-  // One screen event per route change, named by route, ids only (prompt 21a).
-  useScreenTracking();
   // New-chapter alerts (prompt 23a): the server learns at each sign-in
   // whether this phone alerts this account, and a tap on an alert opens M4.
   useAlertsSync();
@@ -99,69 +97,86 @@ function RootNavigator() {
   useDownloadsSync();
 
   return (
-    <Stack screenOptions={screenOptions}>
-      <Stack.Protected guard={!isSignedIn || !hasCompletedOnboarding}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
+    <>
+      <ScreenTracker />
+      <Stack screenOptions={screenOptions}>
+        <Stack.Protected guard={!isSignedIn || !hasCompletedOnboarding}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
 
-      <Stack.Protected guard={Boolean(isSignedIn) && hasCompletedOnboarding}>
-        {/* The tab shell — Discover/Library/Profile plus the mini player.
-            Never mounts for a signed-out or not-yet-onboarded user. */}
-        <Stack.Screen name="(tabs)" />
+        <Stack.Protected guard={Boolean(isSignedIn) && hasCompletedOnboarding}>
+          {/* The tab shell — Discover/Library/Profile plus the mini player.
+              Never mounts for a signed-out or not-yet-onboarded user. */}
+          <Stack.Screen name="(tabs)" />
 
-        {/* Non-tab routes: pushed on top of the tab shell and therefore
-            cover the bar and mini player, per prompt 08 step 10. M5/M6
-            present with neither by never mounting inside (tabs). */}
-        <Stack.Screen name="book/[id]" />
-        <Stack.Screen name="reader/[chapterId]" options={{ animation: "fade" }} />
-        {/* From the bottom, to match M6's down-chevron dismiss. */}
-        <Stack.Screen name="player/[chapterId]" options={{ animation: "slide_from_bottom" }} />
-        <Stack.Screen name="chapters/[bookId]" />
-        <Stack.Screen name="search" />
-        {/* M5a: a sheet over whatever opened it, which stays drawn beneath
-            its scrim. Faded, not slid: the scrim moves with the screen. */}
-        <Stack.Screen
-          name="paywall/[chapterId]"
-          options={{
-            presentation: "transparentModal",
-            animation: "fade",
-            contentStyle: { backgroundColor: "transparent" },
-          }}
-        />
-        <Stack.Screen name="subscription" />
-        {/* Offline downloads (prompt 24): M11's "Downloads & offline storage". */}
-        <Stack.Screen name="downloads" />
-        {/* Discover's bell: new chapters of the stories on My List. */}
-        <Stack.Screen name="updates" />
-        {/* M11's Help: a message to support@talebrim.com. */}
-        <Stack.Screen name="support" />
-        {/* New-chapter alerts: a sheet like M5a's. */}
-        <Stack.Screen
-          name="alerts"
-          options={{
-            presentation: "transparentModal",
-            animation: "fade",
-            contentStyle: { backgroundColor: "transparent" },
-          }}
-        />
-      </Stack.Protected>
+          {/* Non-tab routes: pushed on top of the tab shell and therefore
+              cover the bar and mini player, per prompt 08 step 10. M5/M6
+              present with neither by never mounting inside (tabs). */}
+          <Stack.Screen name="book/[id]" />
+          <Stack.Screen name="reader/[chapterId]" options={{ animation: "fade" }} />
+          {/* From the bottom, to match M6's down-chevron dismiss. */}
+          <Stack.Screen name="player/[chapterId]" options={{ animation: "slide_from_bottom" }} />
+          <Stack.Screen name="chapters/[bookId]" />
+          <Stack.Screen name="search" />
+          {/* M5a: a sheet over whatever opened it, which stays drawn beneath
+              its scrim. Faded, not slid: the scrim moves with the screen. */}
+          <Stack.Screen
+            name="paywall/[chapterId]"
+            options={{
+              presentation: "transparentModal",
+              animation: "fade",
+              contentStyle: { backgroundColor: "transparent" },
+            }}
+          />
+          <Stack.Screen name="subscription" />
+          {/* Offline downloads (prompt 24): M11's "Downloads & offline storage". */}
+          <Stack.Screen name="downloads" />
+          {/* Discover's bell: new chapters of the stories on My List. */}
+          <Stack.Screen name="updates" />
+          {/* M11's Help: a message to support@nouvrix.com. */}
+          <Stack.Screen name="support" />
+          {/* New-chapter alerts: a sheet like M5a's. */}
+          <Stack.Screen
+            name="alerts"
+            options={{
+              presentation: "transparentModal",
+              animation: "fade",
+              contentStyle: { backgroundColor: "transparent" },
+            }}
+          />
+        </Stack.Protected>
 
-      {/* Reachable regardless of gate state: the OAuth callback (mid-flight
-          by definition — `isSignedIn` may not have flipped yet when it
-          mounts, and gating it on that would unmount it out from under
-          `setActive` before `routeAfterAuth()` can run), and `health`, a
-          wiring probe (plus the __DEV__ clear-storage button, prompt 07 step
-          9) that stays reachable by direct navigation without being any
-          gate's landing screen (prompt 08 step 11). `app/index.tsx`, the
-          former dev scaffolding root, was deleted: it collided with
-          `(tabs)/index.tsx` for the bare `/` URL, and Discover owns `/`. */}
-      <Stack.Screen name="sso-callback" />
-      {/* Only screen that opts back into the default header — it's reached
-          by a dev-only button (no swipe-back gesture on Android without a
-          header) with no other way out otherwise. */}
-      <Stack.Screen name="health" options={{ headerShown: true, title: "" }} />
-    </Stack>
+        {/* Reachable regardless of gate state: the OAuth callback (mid-flight
+            by definition — `isSignedIn` may not have flipped yet when it
+            mounts, and gating it on that would unmount it out from under
+            `setActive` before `routeAfterAuth()` can run), and `health`, a
+            wiring probe (plus the __DEV__ clear-storage button, prompt 07 step
+            9) that stays reachable by direct navigation without being any
+            gate's landing screen (prompt 08 step 11). `app/index.tsx`, the
+            former dev scaffolding root, was deleted: it collided with
+            `(tabs)/index.tsx` for the bare `/` URL, and Discover owns `/`.
+            Being outside every gate, `health` decides for itself who sees it:
+            the owner's account in a development build, nobody else
+            (`app/health.tsx`, `lib/developer.ts`). */}
+        <Stack.Screen name="sso-callback" />
+        {/* Only screen that opts back into the default header — it's reached
+            by a dev-only button (no swipe-back gesture on Android without a
+            header) with no other way out otherwise. */}
+        <Stack.Screen name="health" options={{ headerShown: true, title: "" }} />
+      </Stack>
+    </>
   );
+}
+
+/**
+ * One screen event per route change, named by route, ids only (prompt 21a).
+ * A component of its own: the route hooks render it on every navigation, and
+ * inside `RootNavigator` they rendered the whole root stack again on every
+ * tab switch.
+ */
+function ScreenTracker() {
+  useScreenTracking();
+  return null;
 }
 
 export default function RootLayout() {
@@ -177,6 +192,18 @@ export default function RootLayout() {
   // further until Clerk AND store hydration both resolve.
   if (!ready) return null;
 
+  return <App />;
+}
+
+/**
+ * Everything under the root layout, memoized. Expo Router renders the root
+ * layout again on every navigation, a tab switch included, because its route
+ * carries the nested navigation state. Without this, every provider and the
+ * sync hooks in `RootNavigator` rendered again with it, before the next screen
+ * could show. The navigators below still update: they read their state from
+ * context, which a memo doesn't stop.
+ */
+const App = memo(function App() {
   return (
     // Gesture-handler needs one root view above every gesture; M6's scrubber
     // is the first. A plain flex-1 view otherwise.
@@ -206,4 +233,4 @@ export default function RootLayout() {
       </ClerkProvider>
     </GestureHandlerRootView>
   );
-}
+});

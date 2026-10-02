@@ -63,10 +63,13 @@ export default function Onboarding() {
         </Text>
 
         {/* Capped so the line breaks land like the design's three lines
-            instead of stretching to two on a wider phone. */}
+            instead of stretching to two on a wider phone. Only claims that
+            are true today: the frame's "Thousands of chapters" and "hundreds
+            of chapters" were replaced on 2026-10-01 (Decisions — 2026-10-01,
+            "The paywall for a first visit"). */}
         <Text className="font-ui text-muted mt-3 max-w-[330px] text-[17px] leading-[26px]">
-          Thousands of chapters of forbidden romance. Switch between reading
-          and listening without ever losing your place.
+          Romance, werewolf, vampire and fantasy serials. Switch between reading
+          and listening without losing your place.
         </Text>
 
         <View
@@ -129,21 +132,21 @@ export default function Onboarding() {
                 Read or listen
               </Text>
               <Text className="font-ui text-muted mt-0.5 text-[15px]">
-                Every story in text and audio.
+                Pick up in audio where you stopped reading.
               </Text>
             </View>
           </View>
 
           <View className="flex-row items-center gap-3">
             <View className="h-11 w-11 items-center justify-center rounded-pill bg-raised">
-              <Feather name="clock" size={20} color={colors.ember} />
+              <Feather name="bell" size={20} color={colors.ember} />
             </View>
             <View className="flex-1">
               <Text className="font-ui-semibold text-body text-[17px]">
-                New chapters weekly
+                New chapter alerts
               </Text>
               <Text className="font-ui text-muted mt-0.5 text-[15px]">
-                Serials that run for hundreds of chapters.
+                Know when a story on your list has a new chapter.
               </Text>
             </View>
           </View>
@@ -166,7 +169,7 @@ export default function Onboarding() {
             {" "}
             {freeChapters ?? ""}{" "}
           </Text>
-          free chapters.
+          {freeChapters === 1 ? "free chapter." : "free chapters."}
         </Text>
 
         <Pressable

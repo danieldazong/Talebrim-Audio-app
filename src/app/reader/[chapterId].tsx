@@ -271,8 +271,20 @@ function ReadingView({
   useKeepAwake();
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const { id, bookId, number, title, blocks, lastChapterNumber, previousId, nextId, nextLocked, restore, openedOffline } =
-    chapter;
+  const {
+    id,
+    bookId,
+    number,
+    title,
+    blocks,
+    lastChapterNumber,
+    previousId,
+    nextId,
+    nextNumber,
+    nextLocked,
+    restore,
+    openedOffline,
+  } = chapter;
   const position = useReadingPosition({
     chapterId: id,
     bookId,
@@ -356,6 +368,7 @@ function ReadingView({
           onBlockLayout={position.onBlockLayout}
           onTap={chrome.toggleToolbar}
           onNext={nextId === null ? null : () => (nextLocked ? openLockedNext(nextId) : openChapter(nextId))}
+          lockedNextNumber={nextLocked ? nextNumber : null}
           onPrevious={previousId === null ? null : () => openChapter(previousId)}
         />
       </Animated.ScrollView>
