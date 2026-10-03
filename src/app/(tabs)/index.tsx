@@ -1,5 +1,4 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { useBottomTabBarHeight } from "expo-router/tabs";
 import { router } from "expo-router";
 import { ScrollView } from "react-native";
 
@@ -19,6 +18,7 @@ import { openResumeTarget, useContinue, type ContinueView } from "@/hooks/use-co
 import { useDiscoverTabs } from "@/hooks/use-discover-tabs";
 import { useDownloadEntries } from "@/hooks/use-downloads";
 import { useHeroBooks } from "@/hooks/use-hero-carousel";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { DISCOVER_TAB } from "@/lib/discover-tabs";
 import { booksBeyondHero } from "@/lib/hero";
 import { appSettingsOptions } from "@/lib/queries/app-settings";
@@ -33,7 +33,7 @@ import type { CarouselBookRow } from "@/types/catalog";
 // import").
 
 export default function Discover() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarInset = useTabBarInset();
   // One genre tab per genre a published story carries (`lib/discover-tabs.ts`).
   const { tabs, tab, setTab } = useDiscoverTabs();
   const selectedGenres = useOnboardingStore((state) => state.selectedGenres);
@@ -97,7 +97,7 @@ export default function Discover() {
           newAudioReleases={newAudioReleases}
           publicCdnDomain={appSettings.data?.public_cdn_domain ?? null}
           onOpenBook={openBook}
-          bottomPadding={tabBarHeight}
+          bottomPadding={tabBarInset}
         />
       )}
     </Screen>

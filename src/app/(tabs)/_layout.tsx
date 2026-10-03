@@ -21,6 +21,9 @@ import { MINI_PLAYER_VISIBLE_ROUTES } from "@/lib/mini-player-visibility";
  *
  * The tabs not on screen are built in the background (`TabPreloader`), so a
  * tap switches to a screen that already exists.
+ *
+ * Android and the web only: iOS uses `_layout.ios.tsx`, the system's native
+ * tab bar (Liquid Glass on iOS 26).
  */
 export default function TabsLayout() {
   return (

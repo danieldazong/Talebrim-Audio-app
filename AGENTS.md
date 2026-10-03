@@ -357,7 +357,7 @@ Ember button labels are `#1A1420`. Never white.
 
 ### Layout
 
-393 × 852dp frames, 8pt grid, 16dp side padding, 16dp card radius, pill buttons, 2:3 covers at 12dp radius, 56dp mini player, three-item bottom nav (Discover, Library, Profile) with active ember and inactive `#A79BB5`.
+393 × 852dp frames, 8pt grid, 16dp side padding, 16dp card radius, pill buttons, 2:3 covers at 12dp radius, 56dp mini player, three-item bottom nav (Discover, Library, Profile) with active ember and inactive `#A79BB5`: the selected tab is its icon alone on an ember circle that slides from tab to tab, the others an icon over a label (Decisions — 2026-10-03, "The tab bar's sliding circle"; iOS draws the system's bar).
 
 ---
 
@@ -369,7 +369,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M2 · Onboarding Genre Picker** — Top-third collage. Headline "What do you love to read?". Genre chip grid — the dashboard's genre list, mirrored in `data/genres.ts` (see Decisions); selected chips blush-filled, unselected outlined. Step indicator. Ember pill `Start Reading`. Muted `Skip`. Selections seed recommendations; persist them and never re-show the screen.
 
-**M3 · Home / Discover** — Wordmark left; search and notification icons right. The bell opens Updates, the new-chapter inbox, with a teal dot while a chapter is new (Decisions — 2026-09-30, "Updates inbox"); until then it opened the alerts sheet, with no inbox (Decisions — 2026-09-28). Horizontal tab strip with ember underline on active: Discover, New, then one tab for every genre a published story carries (the frame draws Werewolf, Romance, Vampire and Fantasy). A genre the app has never heard of gets its tab as soon as a story carries it, and a genre with no story has none, so no tab opens onto an empty screen (Decisions — 2026-10-02, "M3's tabs follow the genres of the published stories"). Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
+**M3 · Home / Discover** — The brand left: the logo beside the name, at half the size of the frame's text wordmark (Decisions — 2026-10-03, "M3's header brand"); search and notification icons right. The bell opens Updates, the new-chapter inbox, with a teal dot while a chapter is new (Decisions — 2026-09-30, "Updates inbox"); until then it opened the alerts sheet, with no inbox (Decisions — 2026-09-28). Horizontal tab strip with ember underline on active: Discover, New, then one tab for every genre a published story carries (the frame draws Werewolf, Romance, Vampire and Fantasy). A genre the app has never heard of gets its tab as soon as a story carries it, and a genre with no story has none, so no tab opens onto an empty screen (Decisions — 2026-10-02, "M3's tabs follow the genres of the published stories"). Hero card with a single ember `Read or Listen` — since 2026-09-25 a swipeable carousel of the tab's 5 newest stories, and on the Discover tab a `Continue` card above it for returning readers (Decisions — 2026-09-25, "M3's hero carousel"). Three carousels: Picked for You, Trending Now, New Audio Releases — audio titles carry a teal headphone badge. Mini player above bottom nav. Search icon routes to M8.
 
 **M4 · Story Detail** — Flat `bg` surface (no backdrop); round back and share icons, and a `+ My List` pill left of Share that no frame draws (Decisions — 2026-09-25, "M7 as built"), then a round download button between the pill and Share that no frame draws either (Decisions — 2026-09-30, "M4's download button"). Centred 2:3 cover. Fraunces title, author beneath. Metadata row: rating · chapters · length · status. Blush genre chips. `Read` ember pill beside `Listen` teal outlined pill. Thin progress line with resume label. Synopsis with `More`. Preview chapter rows with durations and lock icons (and M9's teal Downloaded disc on a downloaded chapter), ending in an entry point to M9. **No bottom nav, no mini player.**
 
@@ -4356,7 +4356,12 @@ under § Clerk Rules.
     verified-email check holds at runtime. The switch still flips the account
     card to "Free plan" with the upsell, and back to "Unlimited" when turned
     off. The probe opens, and its user id is that account's. The log held
-    only Clerk's and RevenueCat's usual development warnings.
+    only Clerk's and RevenueCat's usual development warnings. That was with
+    the address still written in `lib/developer.ts`. The setting itself is
+    not seen on the phone yet: Metro has to be restarted with
+    `npx expo start -c` first, and until then no account sees the group, the
+    owner's included. The setting's value was checked on 2026-10-02 (present,
+    not blank, equal to the owner's account) without printing it.
   - **Not seen:** another account. That needs a second account signed in on
     the phone, and signing the owner out deletes their downloads, so the
     rule's other accounts are proven by the tests only. To check: sign in as
@@ -4423,6 +4428,194 @@ under § Clerk Rules.
   - **Before every push,** check the changed files against the values in
     both env files without printing any of them, and for email addresses
     other than the public support ones.
+  - **One real address is already in public history.** Another session found
+    it after the push: the dashboard admin's Google address, in this file's
+    commit `7f4b50e` (2026-10-01) and in the dashboard's AGENTS.md. It is the
+    only real personal address left in either repo's current files.
+    - Taking it out of the current files costs nothing, and leaves the old
+      commits as they are.
+    - Taking it out of history needs a force-push to `dev` and `main` of a
+      public repo, which for the dashboard is the branch Vercel deploys. And
+      GitHub keeps serving the old commits until its support purges them.
+    - **Left for the owner to decide**, with this recommendation: edit the
+      current files only. An address alone gives nobody access, so check that
+      the admin account has Google's 2-step verification on.
+- **Native tabs on iOS (Liquid Glass).** Asked for by the owner on
+  2026-10-02: the tab bar as Apple's Liquid Glass one, through Expo Router's
+  native tabs. This change is iOS's, built ahead of prompt 28 and not on an
+  `ios` branch, and leaves Android as it was. Android's native tabs follow
+  in a separate change (no longer planned, as assumed on 2026-10-03: Android
+  keeps its own bar, which now has a sliding circle that native tabs can't
+  draw; Decisions — 2026-10-03, "The tab bar's sliding circle"). The web
+  keeps `_layout.tsx`: native tabs there are a
+  row of text tabs. Not seen on any device: there is no iPhone or Mac yet.
+  - **The layout** is `app/(tabs)/_layout.ios.tsx`, which Expo Router uses on
+    iOS in place of `_layout.tsx` (checked with its own route builder: iOS
+    picks the `.ios` file, Android and the web the plain one). It is
+    `NativeTabs` from `expo-router/unstable-native-tabs` (expo-router
+    57.0.22, react-native-screens 4.26.2; nothing installed).
+    - SF Symbols, each filled when selected: Discover `binoculars` (SF
+      Symbols' only compass is `safari`, which Apple reserves for Safari),
+      Library `books.vertical` (Apple Books' Library) and Profile `person`.
+    - The system draws the bar. The only tokens are the ember tint of the
+      selected tab and `bg` behind each screen.
+    - Labels are in the system font, not Inter: an iOS tab bar's own type.
+  - **The mini player** is the bar's bottom accessory
+    (`NativeTabs.BottomAccessory`) while a chapter is loaded, through
+    `MiniPlayer`'s new `placement` prop.
+    - In the accessory it has no card of its own, a 32dp cover, the title
+      alone when inline, and the system's label colours, which follow the
+      glass between light and dark. With no `placement` it is unchanged.
+    - The accessory is the bar's, so it shows on every tab, as
+      `MINI_PLAYER_VISIBLE_ROUTES` allows today.
+    - iOS 26 and later only: on iOS 18 and earlier the tabs show no mini
+      player.
+  - **Bottom padding:** `useBottomTabBarHeight()` throws outside JS tabs, so
+    M3, M7 and M11 read `useTabBarInset()` (`hooks/use-tab-bar-inset.ts`).
+    It is the same height on Android and the web, and 0 on iOS
+    (`use-tab-bar-inset.ios.ts`), where the system insets each tab's scroll
+    view.
+  - **Kept native:** a second tap scrolls Library and Profile to the top
+    (their lists are their screens' first view) and pops to the root
+    (nothing to pop: each tab is one screen).
+    - Not on Discover: its scroll view sits below the header and genre strip,
+      where the system doesn't look. For the same reason it sets
+      `disableTransparentOnScrollEdge`, or on iOS 18 and earlier the bar
+      would stay see-through over it.
+    - Every tab mounts at once on iOS, so there is no preloader.
+  - **Checked:** typecheck, lint, the 409 tests, and both native bundles
+    (`expo export`). The iOS one holds the native layout and the `.ios`
+    hook, the Android one the old hook.
+  - **The `.ios` hook went missing, and was restored on 2026-10-03.** The
+    session that then started native tabs on Android, not the one that built
+    this, deleted `use-tab-bar-inset.ios.ts` to replace it with a
+    `.native.ts` for both phones. It then backed that attempt out (Decisions
+    — 2026-10-03, "The tab bar's sliding circle") and left the iOS file
+    deleted.
+    - Until it was restored, iOS would have used the plain hook, whose
+      `useBottomTabBarHeight()` throws inside native tabs, on every tab.
+    - Typecheck, lint and the 409 tests all passed meanwhile (§ Linting and
+      Validation).
+    - It was restored exactly as it was (`return 0`). An iOS export
+      (`npx expo export --platform ios --no-minify --no-bytecode`) then showed
+      `useTabBarInset` returning 0 in the bundle, with the native layout.
+      Nothing else of the Android attempt is left in the tree.
+  - **To check on an iPhone on iOS 26:**
+    - the glass bar and its ember tint
+    - the accessory's size and colours, over a bright cover too
+    - whether the last row of each list clears the accessory. If the
+      system's inset leaves it out, the iOS series adds its height.
+    - scroll to the top on Library and Profile
+  - **Seeing it needs Xcode 26:** the glass comes from the iOS 26 SDK, so
+    the app must be built with Xcode 26 or later and run on iOS 26.
+    - This PC can't build iOS. Expo Go has been built with Xcode 26 since
+      SDK 54, but this app runs on its development build.
+    - An `ios.bundleIdentifier` comes first. It is not set: the owner's
+      choice. `com.talebrim.app` would match Android, and it is permanent
+      once on the App Store.
+    - Then a Mac with Xcode 26 (`npx expo run:ios`), or an EAS simulator
+      build from this PC. A build for a phone waits for the Apple Developer
+      Program (Decisions — 2026-10-02, "iOS waits for an iPhone").
+
+## Decisions — 2026-10-03
+
+- **The tab bar's sliding circle.** Asked for by the owner at the end of
+  2026-10-02, and built on 2026-10-03. The selected tab sits inside a
+  coloured circle, showing its icon alone with no label. The other tabs show
+  icon and label, and the circle slides between tabs. Built in
+  `components/nav/tab-bar.tsx`, with `global.css`'s `nav` utilities.
+  - **No frame draws it.** Every frame labels all three tabs, the selected
+    one in ember, and `material/3.png`'s "circle" is the filled compass
+    glyph itself. The owner's spec wins.
+  - **Android and the web only.** iOS keeps the system's tab bar
+    (`_layout.ios.tsx`; Decisions — 2026-10-02, "Native tabs on iOS"), which
+    can't draw this circle. That is an assumption: the owner didn't mention
+    iOS. For the same reason it ends the plan for native tabs on Android,
+    whose bar can't draw it either.
+  - **What it looks like:**
+    - Each tab fills an equal third of the bar (`nav__item`).
+    - The selected tab is its filled glyph in `ink` on a 44dp `ember` circle.
+      The others are their outline glyph in `muted` over a 12px Inter Medium
+      label (`nav__label`).
+    - Until now every tab was its icon alone, and the selected one had its
+      own ember circle.
+    - The circle is ember because § Layout's active state is ember. Ink on it
+      matches every ember button (5.5:1). The nav stays exempt from the
+      one-ember rule.
+    - The bar is still the 56dp pill, so the tab screens' bottom padding
+      doesn't change.
+  - **The motion:**
+    - One shared value holds where the circle is, in tabs. It moves to the
+      tab just selected with `withTiming`, over 250ms on
+      `Easing.bezier(0.77, 0, 0.175, 1)`. That is the expo-animation skill's
+      tab-indicator recipe: ease-in-out, because the circle moves across the
+      bar.
+    - The circle moves by `translateX`, from the row's measured width.
+    - Each tab's two looks fade with the circle's distance from it. The
+      filled glyph is gone by 11dp, before it can stick out past the circle's
+      edge. The outline glyph and label are back by 52dp, once the circle has
+      cleared them.
+    - A tab the circle passes over dims as it passes. A tap while the circle
+      moves sends it on from where it is.
+    - All of it runs on the UI thread, so nothing renders during the slide.
+  - **Reduce Motion** (Remove animations on Android) moves the circle at
+    once. It is read with Reanimated's `useReducedMotion()`, as M5's toolbar
+    reads it.
+  - **Touch targets:** the whole third of the bar is the tab, about
+    115 × 56dp on a 393dp phone. It was the 44dp circle with 8dp of slop.
+  - **Deviation:** the labels are 12px, below § Typography's 14–16px for UI
+    chrome. The frames draw them at about 11px, and the app already builds
+    small text at 12px (M7, M11).
+  - **Checked:** typecheck, lint and the 409 tests. Also the web preview in
+    headless Edge at 393 × 852, through a temporary route since deleted:
+    - each tab at rest;
+    - the slide from Discover to Profile, recorded frame by frame at an
+      eighth of its speed;
+    - the tabs paint above the circle: where a fading label overlaps it, its
+      pixels are the label blended over ember.
+  - **Seen on the owner's phone on 2026-10-03, at rest only** (their
+    screenshot and the agent's, taken over USB and Metro): Discover selected
+    shows the compass glyph alone on the ember circle with no label, and
+    Library and Profile show an outline icon over their label. The bar kept
+    its 56dp height, and nothing above it moved.
+  - **Not seen:** the slide itself. To check on the development build:
+    - tap from Discover to Profile and back;
+    - tap a third tab while the circle is moving;
+    - turn on Remove animations;
+    - set the largest text size.
+- **M3's header brand.** Asked for by the owner on 2026-10-03: the
+  "talebrim" text at the top of Discover was too large, and the logo showed
+  nowhere after onboarding. The owner asked for the name at half the size,
+  with the logo, or for a recommendation on whether the name is needed beside
+  it. Built in `components/discover/discover-header.tsx`.
+  - **What it is now:** the logo (`images.logo`) at 22 × 20dp, then the name
+    8dp to its right in Fraunces at 12px, half the 24px it was. The logo is
+    white headphones over three sound bars, the middle one ember. Its drawing
+    is 192 × 172 px with no margin, so it keeps that ratio and sits on the
+    16dp edge. The row is still 44dp tall, set by the buttons, so nothing
+    below it moved.
+  - **Recommended to the owner: keep the name beside the logo, small.**
+    - The logo says "audio", and Talebrim is read and listen. The name says
+      what the app is, and a new brand's name should show wherever its logo
+      does.
+    - Apps such as Spotify and Netflix drop the wordmark only once the mark
+      is recognised on its own.
+    - To show the logo alone later, delete the `Text` in the header. If 12px
+      reads too small, `text-sm` (14px) is the next step.
+  - **Deviations:** from `material/3.png`, which draws a text wordmark, and
+    from § Screen Inventory's M3 line, now changed to match. The owner asked
+    for it. The name at 12px is below § Typography's 14–16px for UI chrome:
+    it is a logotype, and the owner asked for half.
+  - **Ember:** the logo's middle bar is a brand mark and not an action, so
+    the hero's `Read or Listen` stays the screen's one ember button.
+  - **Screen readers:** the logo is hidden from them (`accessible={false}`),
+    and the name beside it is read, as before. The name still stops growing
+    at 1.3× text.
+  - **Checked:** typecheck, lint and the 409 tests. Seen on the owner's
+    phone after a reload, at 12px. A 14px try was never seen: the phone
+    stopped taking edits ("Learned on 2026-10-03").
+  - **Not seen:** the web preview, or a narrower phone. The lockup is about
+    70dp wide in a 393dp row, so there is room.
 
 ---
 
@@ -4553,11 +4746,26 @@ code before it is built.
 - **Tab switches render less** (its own entry): built, and its temporary
   `[tabperf]` timing code removed before the commit. Not yet timed on the
   phone.
-- **Committed and pushed on 2026-10-02:** everything since `7f4b50e`, to
-  `dev` and `main`, with no personal email address in it, since both
-  repos are public ("The GitHub repos are public"). The dashboard's 22a
-  changes are its commits `527930f` and `39d8035`, and `4a98a7f` records
-  their publishing.
+- **Committed and pushed on 2026-10-02:** everything since `7f4b50e`, as
+  `dd21d32`, to `dev` and `main`, with no personal email address in it,
+  since both repos are public ("The GitHub repos are public"). The
+  dashboard's 22a changes are its commits `527930f` and `39d8035`, and
+  `4a98a7f` records their publishing.
+**Status, 2026-10-03** (Decisions — 2026-10-03):
+- **Built since `dd21d32`, and pushed to `dev` and `main` on 2026-10-03:**
+  - The tab bar's sliding circle, on Android and the web. Seen on the
+    owner's phone at rest; the slide itself isn't recorded as seen.
+  - M3's header brand: the logo beside the name at half its old size. Seen on
+    the phone.
+  - Native tabs on iOS, built on 2026-10-02 and not seen on any device: there
+    is no iPhone or Mac yet. Its `use-tab-bar-inset.ios.ts` was found missing
+    on 2026-10-03 and restored (its entry).
+- **Waiting on the owner:**
+  - Restart Metro with `npx expo start -c`. The running one started before
+    `EXPO_PUBLIC_DEVELOPER_EMAIL` was added to `.env.local`, so until then no
+    account sees the "Development" group, the owner's included.
+  - The one real address still in public history ("The GitHub repos are
+    public"): edit the current files only, or rewrite history.
 Open before M5 ships:
 - The age gate (§ Content Rules). Every live book is `mature_17`, and nothing
   gates it yet. It needs its own prompt, and a decision on whether M1's 18+
@@ -5406,6 +5614,20 @@ npm test
 
 Fix errors. A change that does not typecheck is not done.
 
+**Those three commands can't see a platform file** (`name.ios.ts`,
+`name.android.ts`, `name.native.ts`, `_layout.ios.tsx`). TypeScript and lint
+resolve only the plain `name.ts`, and no test imports these hooks. On
+2026-10-03 `use-tab-bar-inset.ios.ts` had been missing for hours, which would
+have crashed every tab on iOS, while all three passed. After adding, changing
+or deleting a platform file, export that platform to a folder outside the repo
+and look for the file's code in the bundle:
+
+```bash
+npx expo export --platform ios --no-minify --no-bytecode --output-dir <folder>
+```
+
+It took about a minute and a half on 2026-10-03, and needs no phone.
+
 Do not disable a rule to silence an error; fix the cause. An inline disable needs a justification comment. Do not reformat files you did not otherwise change.
 
 ---
@@ -5488,6 +5710,18 @@ Command Prompt's `%LOCALAPPDATA%`, which PowerShell rejects.
   \"main\"" again in the log, the same process). Android had destroyed the
   activity while memory was short. That time nothing was loaded in the
   player afterwards.
+
+**Learned on 2026-10-03:**
+- **Edits can stop reaching the phone.** Fast Refresh delivered none of three
+  edits in a row, with the app still listed as a target at
+  `localhost:8081/json/list`. Step 3's link (the `am start` with the
+  dev-client URL, no force-stop needed) reloads the bundle: the screen is
+  grey for about 25 seconds, then the app is back. Take the screenshot after
+  that, not before.
+- **A second Metro may be running.** `expo start --no-dev --minify --port
+  8082` is a production-style bundle for timing and has no hot reload. The
+  phone was on 8081 (`adb -d reverse --list` shows the mapping, and 8081's
+  `/json/list` names the phone; 8082's lists no target).
 
 ---
 

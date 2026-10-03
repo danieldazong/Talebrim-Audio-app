@@ -218,16 +218,21 @@
   @apply absolute inset-x-4 bottom-[7px] h-px bg-surface;
 }
 
-/* Bottom nav — three-item, AGENTS.md § Layout. Active item is a filled
-   ember circle with a dark glyph. */
+/* Bottom nav — three-item, AGENTS.md § Layout. Each tab fills an equal
+   slot. The selected one is its dark glyph alone on an ember circle, which
+   slides from tab to tab (components/nav/tab-bar.tsx, where the circle is
+   drawn); the others are an outline icon over a `nav__label`. */
 @utility nav {
-  @apply h-14 flex-row items-center justify-around rounded-pill bg-raised px-2;
+  @apply h-14 flex-row rounded-pill bg-raised px-2;
 }
 @utility nav__item {
-  @apply h-11 w-11 items-center justify-center rounded-pill;
+  @apply flex-1 items-center justify-center;
 }
-@utility nav__item--active {
-  @apply bg-ember;
+@utility nav__label {
+  font-family: var(--font-ui-medium);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-muted);
 }
 
 /* Typography helpers. */

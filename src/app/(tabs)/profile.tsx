@@ -1,7 +1,6 @@
 import { useUser } from "@clerk/expo";
 import * as Application from "expo-application";
 import { router } from "expo-router";
-import { useBottomTabBarHeight } from "expo-router/tabs";
 import { useState } from "react";
 import { Linking, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -19,6 +18,7 @@ import { useEntitlement, useFreeReaderPreview } from "@/hooks/use-entitlement";
 import { useIsDeveloper } from "@/hooks/use-is-developer";
 import { usePurchase } from "@/hooks/use-purchase";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { alertsStatusWords } from "@/lib/alerts";
 import { isAnalyticsOptedOut, optInToAnalytics, optOutOfAnalytics, track } from "@/lib/analytics";
 import { confirmDestructive } from "@/lib/confirm";
@@ -44,7 +44,7 @@ function openLink(url: string) {
 }
 
 export default function Profile() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarInset = useTabBarInset();
   const { isLoaded, user } = useUser();
   const isDeveloper = useIsDeveloper();
   const entitlement = useEntitlement();
@@ -57,7 +57,7 @@ export default function Profile() {
       <ScrollView
         className="no-scrollbar"
         // The last line clears the mini player and the tab bar, as on M7.
-        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + 16 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarInset + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         <Text accessibilityRole="header" className="text-heading text-[26px] leading-8" maxFontSizeMultiplier={1.3}>

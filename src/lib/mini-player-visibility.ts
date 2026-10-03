@@ -13,6 +13,10 @@ export type TabRouteName = "index" | "library" | "profile";
  * true  — M3 (Discover/index), M7 (Library), M11 (Profile)
  * false — none today; M5/M6 are non-tab stack screens and are excluded by
  *         living outside this map, not by a `false` entry.
+ *
+ * On iOS the mini player is the native tab bar's accessory
+ * (`(tabs)/_layout.ios.tsx`), which belongs to the bar and shows on every
+ * tab. A `false` here needs that layout to follow the focused tab.
  */
 export const MINI_PLAYER_VISIBLE_ROUTES: Record<TabRouteName, boolean> = {
   index: true, // M3 Discover

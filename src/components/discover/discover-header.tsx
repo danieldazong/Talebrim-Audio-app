@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { images } from "@/constants/images";
 import { useUnreadUpdates } from "@/hooks/use-updates";
 import { colors } from "@/theme";
 
@@ -9,13 +11,16 @@ type DiscoverHeaderProps = {
   onPressSearch: () => void;
 };
 
+/** The logo is a 192 × 172 px drawing with no margin; kept to that ratio. */
+const LOGO_SIZE = { width: 22, height: 20 };
+
 /**
- * M3 header — AGENTS.md prompt 09 step 2. Wordmark left, search and
+ * M3 header — AGENTS.md prompt 09 step 2. The brand left, search and
  * notification icons right.
  *
- * // MISSING ASSET: wordmark — AGENTS.md defines no logo asset and the
- * Image Generation Rules forbid creating one, so this renders the word
- * "talebrim" as a Fraunces text wordmark instead of an image.
+ * The brand is the logo beside the name in Fraunces, at half the size of the
+ * frame's text wordmark (Decisions — 2026-10-03, "M3's header brand"). The logo
+ * is decorative: the name beside it says the same to a screen reader.
  *
  * DEVIATION TO REPORT: the design material's header reads "NovelNow" — the
  * product name is talebrim (AGENTS.md throughout). Rendering "talebrim",
@@ -26,9 +31,12 @@ export function DiscoverHeader({ onPressSearch }: DiscoverHeaderProps) {
 
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Text className="text-heading text-2xl" maxFontSizeMultiplier={1.3}>
-        talebrim
-      </Text>
+      <View className="flex-row items-center gap-2">
+        <Image source={images.logo} contentFit="contain" style={LOGO_SIZE} accessible={false} />
+        <Text className="text-heading text-xs" maxFontSizeMultiplier={1.3}>
+          talebrim
+        </Text>
+      </View>
 
       <View className="flex-row items-center gap-2">
         <Pressable

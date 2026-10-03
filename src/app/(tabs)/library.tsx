@@ -1,4 +1,3 @@
-import { useBottomTabBarHeight } from "expo-router/tabs";
 import { router } from "expo-router";
 import { useState } from "react";
 import { FlatList, StyleSheet, useWindowDimensions, View } from "react-native";
@@ -20,6 +19,7 @@ import {
 import { Screen } from "@/components/ui";
 import { openResumeTarget } from "@/hooks/use-continue";
 import { useLibrary } from "@/hooks/use-library";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import type { LibrarySegment } from "@/lib/library";
 import { layout } from "@/theme";
 
@@ -42,7 +42,7 @@ function openBook(id: string) {
 }
 
 export default function Library() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarInset = useTabBarInset();
   const { width, fontScale } = useWindowDimensions();
   // Screen state, never persisted. Books is the default.
   const [segment, setSegment] = useState<LibrarySegment>("books");
@@ -97,7 +97,7 @@ export default function Library() {
         }
         ListEmptyComponent={emptyState}
         // The last row clears the mini player and the tab bar, as on M3.
-        contentContainerStyle={{ paddingBottom: tabBarHeight + 16 }}
+        contentContainerStyle={{ paddingBottom: tabBarInset + 16 }}
         showsVerticalScrollIndicator={false}
       />
     </Screen>
