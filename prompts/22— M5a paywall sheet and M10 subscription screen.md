@@ -68,8 +68,9 @@ Read AGENTS.md first and follow it strictly. Do only what is on this page.
 > - **Unchanged from the first review (2026-09-25):**
 >   - "Unlock all chapters" is M9's caption, not a purchase.
 >   - M5a has no plan cards: its "Go Ad-Free" opens M10.
->   - M5a has no ember action until prompt 23 (two `TODO(unlocks)`
->     positions).
+>   - M5a's one ember action is `See plans` (since 2026-10-01), and nothing
+>     follows it in version 1: the free ways in (prompt 23) are version 2
+>     (the owner, 2026-10-06).
 >   - Android only, until the iOS series (AGENTS.md § Decisions —
 >     2026-09-29).
 >   - The entitlement id is `ad_free`.
@@ -139,8 +140,9 @@ In short:
   - A plan switch passes `{ oldProductIdentifier }` with the SDK's default
     replacement mode.
 - **Every locked path opens M5a.** All 14 `TODO(paywall)` markers were
-  replaced (none are left in `src`). Two `TODO(unlocks)` positions in M5a
-  wait for prompt 23.
+  replaced (none are left in `src`). M5a keeps no `TODO(unlocks)`: its two
+  comments say the free ways in (prompt 23) are version 2 (deferred
+  2026-10-06).
 - **Analytics:** `paywall_shown`, `plan_selected`, `purchase_started`,
   `purchase_completed`, `purchase_cancelled`, `purchase_failed` (`kind`),
   `restore_tapped` (`from`: `paywall`, `subscription` or `profile`) and
@@ -171,7 +173,9 @@ In short:
       - `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`
 
       Never `EXPO_PUBLIC_POSTHOG_DEBUG` or `EXPO_PUBLIC_DEVELOPER_EMAIL` (the
-      owner's address, for development builds only), and never a secret. The Clerk key
+      owner's address, for development builds only), and never a secret. The
+      list stays six: version 1 has no ads (prompt 23 is version 2, which
+      would add a public ad unit id then). The Clerk key
       stays the development instance's (`pk_test_…`), the dashboard's
       instance (AGENTS.md rule 5): the production cutover is deferred. List
       the names you created in the report.

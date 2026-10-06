@@ -1,0 +1,1191 @@
+diff --git a/src/app/paywall/[chapterId].tsx b/src/app/paywall/[chapterId].tsx
+index 5ea14a4..cd8a1da 100644
+--- a/src/app/paywall/[chapterId].tsx
++++ b/src/app/paywall/[chapterId].tsx
+@@ -7,6 +7,7 @@ import { Button, Cover, Sheet, TextLink } from "@/components/ui";
+ import { PLAN_NAME } from "@/constants/plan";
+ import { usePaywallChapter, type PaywallView } from "@/hooks/use-paywall-chapter";
+ import { usePurchase } from "@/hooks/use-purchase";
++import { useUnlockOptions } from "@/hooks/use-unlock-options";
+ import { track } from "@/lib/analytics";
+ import { isUuid } from "@/lib/ids";
+ import { isParityMode, isPaywallFrom, openUnlockedChapter, paywallLines, type PaywallFrom } from "@/lib/paywall";
+@@ -23,9 +24,12 @@ import { colors } from "@/theme";
+ //
+ // It sells the story the reader is in: its cover, "Keep reading {story}",
+ // the locked chapter, three benefits, then "See plans", its one ember action
+-// (Decisions — 2026-10-01, "The paywall for a first visit"). A subscription is
+-// the only way past a lock in version 1: free ways in (wait-for-free, rewarded
+-// ads: prompt 23) are version 2 (Decisions — 2026-10-06).
++// (Decisions — 2026-10-01, "The paywall for a first visit"). Beneath it,
++// prompt 23's free ways in, as teal outlined buttons so "See plans" stays the
++// one ember (the owner, 2026-10-03): "Unlock free" (Part A, one free chapter
++// per story every 24 hours), and later "Watch an ad to unlock" (Part B). The
++// server writes every unlock; the sheet only asks, and opens the chapter once
++// the reader's unlocks, read back, say it is open.
+ //
+ // Never shown for a chapter that isn't locked: a chapter that turns out open
+ // (a subscription, an unlock, a restore) replaces the sheet with that
+@@ -53,7 +57,7 @@ export default function PaywallRoute() {
+   const { chapterId, mode, from } = useLocalSearchParams<{ chapterId: string; mode?: string; from?: string }>();
+ 
+   return (
+-    <Sheet onClose={close}>
++    <Sheet onClose={close} scrollable>
+       {isUuid(chapterId) ? (
+         <ChapterPaywall
+           key={chapterId}
+@@ -79,6 +83,8 @@ type ChapterPaywallProps = {
+ function ChapterPaywall({ chapterId, mode, from }: ChapterPaywallProps) {
+   const { view, story, storyPending, managementUrl, retry } = usePaywallChapter(chapterId);
+   const { running, message, restore } = usePurchase("paywall");
++  // Null for an open chapter and for a subscriber: neither is ever offered a free unlock.
++  const { wait, opened: reportUnlockOpened } = useUnlockOptions(view.status === "locked" ? view.chapter : null);
+   const status = view.status;
+   const navigation = useNavigation();
+   // Set just before the sheet gives way to M10 or to the chapter, so only a
+@@ -92,8 +98,9 @@ function ChapterPaywall({ chapterId, mode, from }: ChapterPaywallProps) {
+     if (status !== "open" || opened.current) return;
+     opened.current = true;
+     leaving.current = true;
++    reportUnlockOpened();
+     openUnlockedChapter(chapterId, mode, from);
+-  }, [status, chapterId, mode, from]);
++  }, [status, chapterId, mode, from, reportUnlockOpened]);
+ 
+   // Once per open, when the sheet first shows a locked chapter.
+   const bookId = view.status === "locked" ? view.chapter.bookId : null;
+@@ -170,8 +177,7 @@ function ChapterPaywall({ chapterId, mode, from }: ChapterPaywallProps) {
+         ))}
+       </View>
+ 
+-      {/* The sheet's one ember action. Version 2's free ways in would go
+-          beneath it, as teal outlined buttons (prompt 23, deferred). */}
++      {/* The sheet's one ember action. */}
+       <Button
+         label="See plans"
+         accessibilityLabel={`See plans. Opens the ${PLAN_NAME} plans.`}
+@@ -179,6 +185,32 @@ function ChapterPaywall({ chapterId, mode, from }: ChapterPaywallProps) {
+         className="mt-6 h-12 self-stretch"
+       />
+ 
++      {/* The free unlock: teal, never a second ember. No fixed height, so its
++          countdown can wrap at large text; 10.5dp above and below makes the
++          48dp of "See plans" at the default size. */}
++      {wait ? (
++        <>
++          <Button
++            label={wait.label}
++            variant="accent"
++            accessibilityLabel={wait.accessibilityLabel}
++            disabled={wait.disabled}
++            loading={wait.loading}
++            onPress={() => void wait.claim()}
++            className="mt-3 self-stretch py-[10.5px]"
++          />
++          {wait.line ? (
++            <Text
++              accessibilityLiveRegion="polite"
++              className="font-ui text-muted mt-2 text-center text-sm leading-5"
++              maxFontSizeMultiplier={1.5}
++            >
++              {wait.line}
++            </Text>
++          ) : null}
++        </>
++      ) : null}
++
+       {message ? (
+         <Text
+           accessibilityLiveRegion="polite"
+diff --git a/src/components/ui/sheet.tsx b/src/components/ui/sheet.tsx
+index 65ec03c..547435a 100644
+--- a/src/components/ui/sheet.tsx
++++ b/src/components/ui/sheet.tsx
+@@ -1,19 +1,29 @@
+-import { Pressable, View } from "react-native";
++import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+ import { useSafeAreaInsets } from "react-native-safe-area-context";
+ 
+ type SheetProps = {
+   /** Tapping the scrim. Android back closes the route itself. */
+   onClose: () => void;
++  /**
++   * Lets the content scroll inside the sheet when it is taller than the
++   * screen leaves room for (a small phone, large text), instead of running
++   * off the top. Off by default: the alerts sheet has never needed it.
++   */
++  scrollable?: boolean;
+   children: React.ReactNode;
+ };
+ 
++/** Scrim kept above a tall sheet, so there is always something to tap to close it. */
++const SCRIM_GAP = 24;
++
+ /**
+  * A sheet route's frame: the scrim, and the `raised` sheet at the bottom,
+  * above the home indicator. M5a's and the alerts sheet's, each a
+  * `transparentModal` route over whatever opened it (`app/_layout.tsx`).
+  */
+-export function Sheet({ onClose, children }: SheetProps) {
++export function Sheet({ onClose, scrollable = false, children }: SheetProps) {
+   const insets = useSafeAreaInsets();
++  const { height } = useWindowDimensions();
+ 
+   return (
+     <View className="flex-1 justify-end">
+@@ -26,10 +36,31 @@ export function Sheet({ onClose, children }: SheetProps) {
+       <View
+         accessibilityViewIsModal
+         className="items-center rounded-t-card bg-raised px-6 pt-8"
+-        style={{ paddingBottom: insets.bottom + 16 }}
++        style={{
++          paddingBottom: insets.bottom + 16,
++          ...(scrollable ? { maxHeight: height - insets.top - SCRIM_GAP } : null),
++        }}
+       >
+-        {children}
++        {scrollable ? (
++          <ScrollView
++            style={styles.scroll}
++            contentContainerStyle={styles.content}
++            showsVerticalScrollIndicator={false}
++            bounces={false}
++          >
++            {children}
++          </ScrollView>
++        ) : (
++          children
++        )}
+       </View>
+     </View>
+   );
+ }
++
++const styles = StyleSheet.create({
++  // Shrinks to the sheet's own maximum height, and takes only the content's
++  // when that fits.
++  scroll: { alignSelf: "stretch", flexShrink: 1 },
++  content: { alignItems: "center" },
++});
+diff --git a/src/lib/__tests__/query-client.test.ts b/src/lib/__tests__/query-client.test.ts
+index a61d186..f199fdf 100644
+--- a/src/lib/__tests__/query-client.test.ts
++++ b/src/lib/__tests__/query-client.test.ts
+@@ -47,6 +47,14 @@ describe("shouldPersistQuery", () => {
+     expect(persisted(queryKeys.downloads.rowsByBook("book-1"))).toBe(false);
+   });
+ 
++  // The free unlock's countdown (prompt 23): the monotonic clock it is
++  // measured on restarts with the app, so a copy from disk would count from
++  // nowhere. The reader's unlocks, which are permanent, do persist.
++  it("never persists the free unlock's countdown, but still persists the unlocks themselves", () => {
++    expect(persisted(queryKeys.waitUnlock.status("user_a", "book-1"))).toBe(false);
++    expect(persisted(queryKeys.unlocks.byUser("user_a"))).toBe(true);
++  });
++
+   it("persists the catalog", () => {
+     expect(persisted(queryKeys.book.detail("book-1"))).toBe(true);
+     expect(persisted(queryKeys.appSettings.all())).toBe(true);
+diff --git a/src/lib/analytics.ts b/src/lib/analytics.ts
+index eea7feb..643069f 100644
+--- a/src/lib/analytics.ts
++++ b/src/lib/analytics.ts
+@@ -19,6 +19,7 @@ import { isUuid } from "@/lib/ids";
+ import type { RestorePoint } from "@/lib/parity/convert";
+ import type { PaywallFrom, SubscriptionFrom } from "@/lib/paywall";
+ import type { SupportTopic } from "@/lib/support";
++import type { UnlockFailureKind, UnlockSource } from "@/lib/unlock";
+ import type { ParitySourceMode } from "@/store/parity-store";
+ 
+ type HandoffDirection = "read_to_listen" | "listen_to_read";
+@@ -67,6 +68,21 @@ type AnalyticsEvents = {
+   purchase_failed: { package_id: string; kind: PurchaseFailure } & StoryProps;
+   restore_tapped: { from: "paywall" | "subscription" | "profile" };
+   restore_completed: { entitled: boolean };
++  // Free unlocks (prompt 23). Ids, counts and fixed words only: never a title.
++  /**
++   * M5a's free options, once per open, once the free unlock's status is known.
++   * `wait`: the free unlock is available to take (false while it counts
++   * down). `ad`: a rewarded ad is available (Part B; always false until then).
++   */
++  unlock_offered: { book_id: string; chapter_id: string; wait: boolean; ad: boolean };
++  /** The server wrote the reader's free unlock for this chapter. */
++  wait_unlock_claimed: { book_id: string; chapter_id: string };
++  /** M5a showed the free unlock counting down, once per open. `seconds_left` is the server's answer. */
++  wait_unlock_unavailable: { book_id: string; chapter_id: string; seconds_left: number };
++  /** The unlock the reader just claimed was read back and opened its chapter; `seconds` since the tap. */
++  unlock_recorded: { book_id: string; chapter_id: string; source: UnlockSource; seconds: number };
++  /** A claim that didn't end in an unlock: the request failed (`network`), or the server said no (`refused`). */
++  unlock_record_failed: { book_id: string; chapter_id: string; source: UnlockSource; kind: UnlockFailureKind };
+   // New-chapter alerts (prompt 23a). Never a push token.
+   /** The alerts sheet asked, once per open. */
+   notify_prompt_shown: { from: AlertsFrom };
+diff --git a/src/lib/queries/unlocks.ts b/src/lib/queries/unlocks.ts
+index 4fcbaaf..ec08bca 100644
+--- a/src/lib/queries/unlocks.ts
++++ b/src/lib/queries/unlocks.ts
+@@ -2,18 +2,21 @@ import { queryOptions } from "@tanstack/react-query";
+ 
+ import { queryKeys } from "@/lib/query-keys";
+ import { supabase } from "@/lib/supabase";
++import { parseWaitSeconds } from "@/lib/unlock";
+ import type { UnlockRow } from "@/types/reader";
+ 
+ export type Unlock = Pick<UnlockRow, "id" | "chapter_id" | "source" | "created_at">;
+ 
+ /**
+- * Every chapter the signed-in reader has permanently unlocked (rewarded ad
+- * or one-off purchase). Feeds `resolveChapterState()`'s `isUnlockedByUser`.
+- * RLS scopes `unlocks` to the caller; `userId` keys the cache per account.
++ * Every chapter the signed-in reader has permanently unlocked (rewarded ad,
++ * one-off purchase or the free unlock). Feeds `resolveChapterState()`'s
++ * `isUnlockedByUser`. RLS scopes `unlocks` to the caller; `userId` keys the
++ * cache per account.
+  *
+  * Read only, and the app can never write here: the table grants readers
+- * SELECT alone, so an unlock can only come from a server function after the
+- * ad or purchase is verified (the paywall prompt). Subscription access is not
++ * SELECT alone, so an unlock can only come from a server function
++ * (`claim_wait_unlock()`, or the one Google's ad callback will call). Nothing
++ * opens a chapter but a row read back from here. Subscription access is not
+  * in this table — it comes from the RevenueCat entitlement at read time.
+  */
+ export const unlocksByUserOptions = (userId: string) =>
+@@ -28,3 +31,44 @@ export const unlocksByUserOptions = (userId: string) =>
+       return data;
+     },
+   });
++
++/** The free unlock's countdown, as the server gave it and when it landed. */
++export type WaitUnlockStatus = {
++  /** Whole seconds until the reader's next free unlock in the story; 0 when one is available. */
++  seconds: number;
++  /** When the answer landed, from `performance.now()`: the countdown's zero, never the phone's date. */
++  receivedAt: number;
++};
++
++/**
++ * Seconds until the reader's next free unlock in one story
++ * (`wait_unlock_status()`). Always fetched fresh, and never persisted
++ * (`shouldPersistQuery()`): the countdown runs on the monotonic clock, which
++ * restarts with the app. The server's clock decides when it ends, not the
++ * phone's. The caller turns it off for a chapter that isn't locked.
++ */
++export const waitUnlockStatusOptions = (userId: string, bookId: string) =>
++  queryOptions({
++    queryKey: queryKeys.waitUnlock.status(userId, bookId),
++    queryFn: async (): Promise<WaitUnlockStatus> => {
++      const { data, error } = await supabase.rpc("wait_unlock_status", { p_book_id: bookId });
++      if (error) throw error;
++      const receivedAt = performance.now();
++      const seconds = parseWaitSeconds(data);
++      if (seconds === null) throw new Error("wait_unlock_status: unexpected answer");
++      return { seconds, receivedAt };
++    },
++    staleTime: 0,
++  });
++
++/**
++ * Asks the server to open one locked chapter with the reader's free unlock
++ * (`claim_wait_unlock()`). Returns its answer unread: `parseWaitClaim()` reads
++ * it. Throws when the request fails. A claim never opens a chapter by itself:
++ * only the `unlocks` row, read back, does.
++ */
++export async function claimWaitUnlock(chapterId: string): Promise<unknown> {
++  const { data, error } = await supabase.rpc("claim_wait_unlock", { p_chapter_id: chapterId });
++  if (error) throw error;
++  return data;
++}
+diff --git a/src/lib/query-client.ts b/src/lib/query-client.ts
+index 5d0be4e..f5d954e 100644
+--- a/src/lib/query-client.ts
++++ b/src/lib/query-client.ts
+@@ -81,6 +81,7 @@ const NEVER_PERSISTED: readonly unknown[] = [
+   queryKeys.audio.all()[0],
+   queryKeys.billing.all()[0],
+   queryKeys.downloads.all()[0],
++  queryKeys.waitUnlock.all()[0],
+ ];
+ 
+ /** Prefixes below a root, for keys that live in memory only while the rest of their root persists. */
+@@ -96,7 +97,9 @@ function startsWith(key: readonly unknown[], prefix: readonly unknown[]): boolea
+  * text. A signed URL is a bearer credential, so it lives in memory only
+  * (AGENTS.md § Storage buckets). The entitlement is the SDK's to keep on the
+  * device: a TanStack copy could outlive a sign-out or a lapse (prompt 22 step
+- * 5). Chapter text is large (a live chapter reached 314,950 characters), and
++ * 5). The free unlock's countdown is measured on the monotonic clock, which
++ * restarts with the app, so a copy from disk would count from nowhere (prompt
++ * 23). Chapter text is large (a live chapter reached 314,950 characters), and
+  * the whole cache is one AsyncStorage value that Android can fail to read
+  * back past about 2 MB. Offline reading is what downloads are for, and they
+  * keep text in files of their own (prompt 24 step 10). The rest of
+diff --git a/src/lib/query-keys.ts b/src/lib/query-keys.ts
+index 9435436..7896e91 100644
+--- a/src/lib/query-keys.ts
++++ b/src/lib/query-keys.ts
+@@ -122,6 +122,13 @@ export const queryKeys = {
+     byUser: (userId: string) => ["unlocks", userId] as const,
+   },
+ 
++  waitUnlock: {
++    /** Everything the free unlock's countdown reads — never persisted (`shouldPersistQuery()`, lib/query-client.ts). */
++    all: () => ["waitUnlock"] as const,
++    /** Seconds until the reader's next free unlock in one story — `lib/queries/unlocks.ts`. */
++    status: (userId: string, bookId: string) => [...queryKeys.waitUnlock.all(), userId, "status", bookId] as const,
++  },
++
+   libraryItems: {
+     /** The reader's My List — `lib/queries/library-items.ts`. */
+     byUser: (userId: string) => ["libraryItems", userId] as const,
+diff --git a/src/types/database.ts b/src/types/database.ts
+index 8470ff9..b29610f 100644
+--- a/src/types/database.ts
++++ b/src/types/database.ts
+@@ -807,6 +807,7 @@ export type Database = {
+     }
+     Functions: {
+       can_play_audio: { Args: { object_name: string }; Returns: boolean }
++      claim_wait_unlock: { Args: { p_chapter_id: string }; Returns: Json }
+       clerk_user_id: { Args: never; Returns: string }
+       has_active_plan: { Args: never; Returns: boolean }
+       is_admin: { Args: never; Returns: boolean }
+@@ -836,6 +837,7 @@ export type Database = {
+         Args: { p_enabled: boolean; p_token: string }
+         Returns: undefined
+       }
++      wait_unlock_status: { Args: { p_book_id: string }; Returns: number }
+     }
+     Enums: {
+       book_status: "draft" | "published"
+diff --git a/src/hooks/use-unlock-options.ts b/src/hooks/use-unlock-options.ts
+new file mode 100644
+index 0000000..85f8c7f
+--- /dev/null
++++ b/src/hooks/use-unlock-options.ts
+@@ -0,0 +1,231 @@
++import { useAuth } from "@clerk/expo";
++import { useQuery, useQueryClient } from "@tanstack/react-query";
++import { useCallback, useEffect, useRef, useState } from "react";
++
++import { useEntitlement } from "@/hooks/use-entitlement";
++import { useIsOnline } from "@/hooks/use-downloads";
++import { useIsForeground } from "@/hooks/use-is-foreground";
++import type { PaywallChapter } from "@/hooks/use-paywall-chapter";
++import { track } from "@/lib/analytics";
++import { entitlementOptions } from "@/lib/queries/billing";
++import { chapterDetailOptions } from "@/lib/queries/chapters";
++import { claimWaitUnlock, unlocksByUserOptions, waitUnlockStatusOptions } from "@/lib/queries/unlocks";
++import { syncServerPlan } from "@/lib/server-plan";
++import {
++  UNLOCK_FAILED,
++  claimFailureKind,
++  countdownAt,
++  parseWaitClaim,
++  subscribedLine,
++  waitButtonView,
++  waitOption,
++  type UnlockFailureKind,
++  type WaitClaim,
++  type WaitStatus,
++} from "@/lib/unlock";
++
++/** How many times the read-back of a just-claimed unlock is tried: the unlock is permanent, so it is worth a retry or two. */
++const READ_BACK_RETRIES = 2;
++
++/**
++ * M5a's `Unlock free` — prompt 23, Part A. The free unlock: one chapter per
++ * story every 24 hours, claimed from the server (`claim_wait_unlock()`), which
++ * keeps the clock and writes the unlock. This hook never opens a chapter and
++ * never writes anything: it asks, shows what the server answered, and
++ * refetches the reader's unlocks. M5a's own effect opens the chapter once
++ * `usePaywallChapter()` says it is `open`, which only a row read back (or a
++ * plan) can make it.
++ *
++ * `chapter` is the locked chapter M5a is showing, or null: for an open chapter
++ * the hook does nothing, so neither free option is ever offered for one.
++ *
++ * The countdown is the server's seconds less the time since they landed, on the
++ * monotonic clock (`lib/unlock.ts`), redrawn once a minute. It is asked for
++ * again when it reaches 0 and whenever the app returns to the foreground:
++ * Android's monotonic clock may not tick while the phone sleeps, so a count
++ * is never carried across a background.
++ */
++export function useUnlockOptions(chapter: PaywallChapter | null) {
++  const { userId } = useAuth();
++  const queryClient = useQueryClient();
++  const entitlement = useEntitlement();
++  const online = useIsOnline();
++  const foreground = useIsForeground();
++
++  const chapterId = chapter?.id ?? null;
++  const bookId = chapter?.bookId ?? null;
++  const locked = chapterId !== null;
++
++  const statusQuery = useQuery({
++    ...waitUnlockStatusOptions(userId ?? "", bookId ?? ""),
++    enabled: Boolean(userId) && locked,
++  });
++  const { data, refetch: refetchStatus } = statusQuery;
++
++  // --- The countdown ---------------------------------------------------------
++  // `now` moves only when a timer says the words will change, so the sheet
++  // redraws once a minute. The words and the timer both come from
++  // `countdownAt()` with this same `now`: a timer read from a fresher clock
++  // than the words left a label up for a whole minute (2026-10-03).
++  const [now, setNow] = useState(() => performance.now());
++  useEffect(() => {
++    if (data === undefined || data.seconds === 0) return;
++    const { redrawInMs } = countdownAt(data.seconds, data.receivedAt, now);
++    if (redrawInMs === null) {
++      // Over by our count: the server decides whether it really is.
++      void refetchStatus();
++      return;
++    }
++    const timer = setTimeout(() => setNow(performance.now()), redrawInMs);
++    return () => clearTimeout(timer);
++  }, [data, now, refetchStatus]);
++
++  // Back from the background: ask again, never carry the count over it.
++  const wasForeground = useRef(foreground);
++  useEffect(() => {
++    if (foreground && !wasForeground.current && locked && Boolean(userId)) void refetchStatus();
++    wasForeground.current = foreground;
++  }, [foreground, locked, userId, refetchStatus]);
++
++  const secondsLeft = data === undefined ? null : countdownAt(data.seconds, data.receivedAt, now).left;
++  const status: WaitStatus =
++    secondsLeft !== null ? { state: "ready", secondsLeft } : statusQuery.isError ? { state: "failed" } : { state: "loading" };
++  const option = waitOption({ locked, subscribed: entitlement.data?.active === true, online, status });
++  const countdown = option.kind === "cooldown" ? option.secondsLeft : null;
++
++  // --- Analytics, once per open ----------------------------------------------
++  const offered = useRef(false);
++  useEffect(() => {
++    if (offered.current || chapterId === null || bookId === null || data === undefined) return;
++    offered.current = true;
++    // `wait`: available to take. `ad`: Part B's rewarded ad, not built.
++    track("unlock_offered", { book_id: bookId, chapter_id: chapterId, wait: data.seconds === 0, ad: false });
++  }, [chapterId, bookId, data]);
++
++  const countdownShown = useRef(false);
++  useEffect(() => {
++    if (countdownShown.current || chapterId === null || bookId === null || countdown === null) return;
++    countdownShown.current = true;
++    track("wait_unlock_unavailable", { book_id: bookId, chapter_id: chapterId, seconds_left: Math.round(countdown) });
++  }, [chapterId, bookId, countdown]);
++
++  // --- The claim ---------------------------------------------------------------
++  const [claiming, setClaiming] = useState(false);
++  const [claimLine, setClaimLine] = useState<string | null>(null);
++  const busy = useRef(false);
++  const mounted = useRef(true);
++  useEffect(() => {
++    mounted.current = true;
++    return () => {
++      mounted.current = false;
++    };
++  }, []);
++  // A claim whose unlock is waiting to be read back, so `opened()` can say how long it took.
++  const pending = useRef<{ bookId: string; chapterId: string; startedAt: number } | null>(null);
++
++  const claim = useCallback(async () => {
++    if (chapterId === null || bookId === null || !userId || busy.current) return;
++    busy.current = true;
++    setClaiming(true);
++    setClaimLine(null);
++    const ids = { book_id: bookId, chapter_id: chapterId };
++    const startedAt = performance.now();
++    // The one line a failed claim leaves, and whether the spinner stays: it
++    // stays only while the chapter is about to open.
++    let line: string | null = null;
++    let keepSpinning = false;
++
++    const readBack = () => queryClient.fetchQuery({ ...unlocksByUserOptions(userId), staleTime: 0, retry: READ_BACK_RETRIES });
++    const failed = (kind: UnlockFailureKind) => {
++      track("unlock_record_failed", { ...ids, source: "wait", kind });
++      line = UNLOCK_FAILED;
++    };
++
++    let failure: UnlockFailureKind | null = null;
++    let answer: WaitClaim = { status: "failed" };
++    try {
++      answer = parseWaitClaim(await claimWaitUnlock(chapterId));
++    } catch (error) {
++      failure = claimFailureKind(error);
++    }
++
++    if (failure !== null) {
++      failed(failure);
++    } else if (answer.status === "claimed" || answer.status === "not_locked") {
++      if (answer.status === "claimed") track("wait_unlock_claimed", ids);
++      try {
++        // "Not locked" is a free chapter or one unlocked already, so it also
++        // reads the chapter's own row: the dashboard may have just freed it.
++        const [unlocks, row] = await Promise.all([
++          readBack(),
++          answer.status === "not_locked"
++            ? queryClient.fetchQuery({ ...chapterDetailOptions(chapterId), staleTime: 0 })
++            : Promise.resolve(null),
++        ]);
++        if (unlocks.some((unlock) => unlock.chapter_id === chapterId) || row?.access === "free") {
++          // Read back: M5a's effect opens the chapter, and `opened()` reports it.
++          if (answer.status === "claimed") pending.current = { bookId, chapterId, startedAt };
++          keepSpinning = true;
++        } else {
++          failed("refused");
++        }
++      } catch {
++        failed("network");
++      }
++    } else if (answer.status === "subscribed") {
++      // The server's copy says they have the plan and this phone's doesn't
++      // (yet): ask the server to check with RevenueCat, then read both again.
++      const plan = await syncServerPlan();
++      await Promise.all([
++        queryClient.invalidateQueries({ queryKey: entitlementOptions(userId).queryKey }),
++        queryClient.invalidateQueries({ queryKey: unlocksByUserOptions(userId).queryKey }),
++      ]);
++      line = subscribedLine(plan);
++    } else if (answer.status === "cooldown") {
++      // Claimed elsewhere in the last 24 hours: ask again, and the countdown
++      // shows it. If that read fails too, say so rather than leave the button
++      // as it was, with nothing to tell the reader.
++      const refreshed = await refetchStatus();
++      if (refreshed.isError) line = UNLOCK_FAILED;
++    } else {
++      failed("refused");
++    }
++
++    busy.current = false;
++    if (!mounted.current) return;
++    setClaimLine(line);
++    if (!keepSpinning) setClaiming(false);
++  }, [chapterId, bookId, userId, queryClient, refetchStatus]);
++
++  /** M5a calls it when the chapter opens: reports the unlock the reader just claimed, once. */
++  const opened = useCallback(() => {
++    const claimed = pending.current;
++    if (claimed === null) return;
++    pending.current = null;
++    track("unlock_recorded", {
++      book_id: claimed.bookId,
++      chapter_id: claimed.chapterId,
++      source: "wait",
++      seconds: Math.round((performance.now() - claimed.startedAt) / 1000),
++    });
++  }, []);
++
++  const view = option.kind === "hidden" ? null : waitButtonView(option);
++  return {
++    /** Null where `Unlock free` isn't offered: an open chapter, or a subscriber. */
++    wait:
++      view === null
++        ? null
++        : {
++            label: view.label,
++            accessibilityLabel: claiming ? "Unlock this chapter free. Unlocking." : view.accessibilityLabel,
++            disabled: view.disabled,
++            loading: claiming,
++            // What the claim left, unless the phone is offline: that is what
++            // the reader needs to hear now.
++            line: option.kind === "offline" ? view.line : (claimLine ?? view.line),
++            claim,
++          },
++    opened,
++  };
++}
+diff --git a/src/lib/__tests__/unlock.test.ts b/src/lib/__tests__/unlock.test.ts
+new file mode 100644
+index 0000000..7df9c80
+--- /dev/null
++++ b/src/lib/__tests__/unlock.test.ts
+@@ -0,0 +1,356 @@
++/// <reference types="jest" />
++
++import { QueryClient } from "@tanstack/react-query";
++
++import { claimWaitUnlock, waitUnlockStatusOptions } from "@/lib/queries/unlocks";
++import { queryKeys } from "@/lib/query-keys";
++import {
++  PLAN_ACTIVE_LINE,
++  PLAN_UNCONFIRMED_LINE,
++  claimFailureKind,
++  countdownAt,
++  formatCountdown,
++  formatCountdownSpoken,
++  parseWaitClaim,
++  parseWaitSeconds,
++  redrawDelayMs,
++  remainingSeconds,
++  subscribedLine,
++  waitButtonView,
++  waitOption,
++  type WaitOption,
++  type WaitStatus,
++} from "@/lib/unlock";
++
++// Prompt 23, Part A: the free unlock. Everything the server answers is read as
++// untrusted data; the countdown is the server's seconds less the time since
++// they landed, never the phone's date; and the button's state is one rule.
++
++const mockRpc = jest.fn();
++jest.mock("@/lib/supabase", () => ({
++  supabase: { rpc: (...args: unknown[]) => mockRpc(...args) },
++}));
++
++describe("parseWaitClaim", () => {
++  it("reads each answer the server gives", () => {
++    expect(parseWaitClaim({ status: "claimed" })).toEqual({ status: "claimed" });
++    expect(parseWaitClaim({ status: "not_locked" })).toEqual({ status: "not_locked" });
++    expect(parseWaitClaim({ status: "subscribed" })).toEqual({ status: "subscribed" });
++    expect(parseWaitClaim({ status: "unavailable" })).toEqual({ status: "unavailable" });
++    expect(parseWaitClaim({ status: "cooldown", seconds_left: 18_720 })).toEqual({ status: "cooldown", secondsLeft: 18_720 });
++  });
++
++  it("rounds a fractional cooldown up, never down to an early unlock", () => {
++    expect(parseWaitClaim({ status: "cooldown", seconds_left: 59.2 })).toEqual({ status: "cooldown", secondsLeft: 60 });
++  });
++
++  it("reads anything else as failed: a cooldown without a usable number, unknown words, not an object", () => {
++    const garbage: unknown[] = [
++      null,
++      undefined,
++      "claimed",
++      42,
++      true,
++      [],
++      ["claimed"],
++      {},
++      { status: "" },
++      { status: "CLAIMED" },
++      { status: "granted" },
++      { status: 1 },
++      { status: "cooldown" },
++      { status: "cooldown", seconds_left: "60" },
++      { status: "cooldown", seconds_left: null },
++      { status: "cooldown", seconds_left: Number.NaN },
++      { status: "cooldown", seconds_left: Number.POSITIVE_INFINITY },
++      { status: "cooldown", seconds_left: -5 },
++    ];
++    for (const value of garbage) expect(parseWaitClaim(value)).toEqual({ status: "failed" });
++  });
++});
++
++describe("parseWaitSeconds", () => {
++  it("reads whole seconds, rounding up, and refuses anything else", () => {
++    expect(parseWaitSeconds(0)).toBe(0);
++    expect(parseWaitSeconds(86_400)).toBe(86_400);
++    expect(parseWaitSeconds(0.2)).toBe(1);
++    for (const value of [null, undefined, "60", -1, Number.NaN, Number.POSITIVE_INFINITY, {}, []]) {
++      expect(parseWaitSeconds(value)).toBeNull();
++    }
++  });
++});
++
++describe("claimFailureKind", () => {
++  it("is refused when the server answered with a code, and network when nothing got through", () => {
++    expect(claimFailureKind({ code: "42501", message: "permission denied" })).toBe("refused");
++    expect(claimFailureKind({ code: "", message: "TypeError: Network request failed" })).toBe("network");
++    expect(claimFailureKind(new TypeError("Network request failed"))).toBe("network");
++    expect(claimFailureKind(null)).toBe("network");
++    expect(claimFailureKind("boom")).toBe("network");
++  });
++});
++
++describe("formatCountdown", () => {
++  it("shows whole minutes and hours, never seconds", () => {
++    expect(formatCountdown(0)).toBe("less than a minute");
++    expect(formatCountdown(59)).toBe("less than a minute");
++    expect(formatCountdown(60)).toBe("1m");
++    expect(formatCountdown(2_520)).toBe("42m");
++    expect(formatCountdown(3_599)).toBe("59m");
++    expect(formatCountdown(3_600)).toBe("1h");
++    expect(formatCountdown(3_660)).toBe("1h 1m");
++    expect(formatCountdown(18_720)).toBe("5h 12m");
++    expect(formatCountdown(43_200)).toBe("12h");
++    expect(formatCountdown(86_400)).toBe("24h");
++  });
++
++  it("truncates a fraction and never reads below zero or from a bad number", () => {
++    expect(formatCountdown(119.9)).toBe("1m");
++    expect(formatCountdown(-30)).toBe("less than a minute");
++    expect(formatCountdown(Number.NaN)).toBe("less than a minute");
++  });
++});
++
++describe("formatCountdownSpoken", () => {
++  it("says it as words a screen reader reads as a duration", () => {
++    expect(formatCountdownSpoken(0)).toBe("less than a minute");
++    expect(formatCountdownSpoken(59)).toBe("less than a minute");
++    expect(formatCountdownSpoken(60)).toBe("1 minute");
++    expect(formatCountdownSpoken(3_599)).toBe("59 minutes");
++    expect(formatCountdownSpoken(3_600)).toBe("1 hour");
++    expect(formatCountdownSpoken(18_720)).toBe("5 hours 12 minutes");
++    expect(formatCountdownSpoken(43_200)).toBe("12 hours");
++    expect(formatCountdownSpoken(86_400)).toBe("24 hours");
++  });
++});
++
++describe("remainingSeconds", () => {
++  it("is the server's seconds less the time since they landed, on the monotonic clock", () => {
++    expect(remainingSeconds(600, 1_000, 1_000)).toBe(600);
++    expect(remainingSeconds(600, 1_000, 31_000)).toBe(570);
++  });
++
++  it("never goes below 0, and never counts time before the answer", () => {
++    expect(remainingSeconds(10, 1_000, 61_000)).toBe(0);
++    expect(remainingSeconds(600, 5_000, 1_000)).toBe(600);
++  });
++});
++
++describe("redrawDelayMs", () => {
++  it("waits for the next whole minute, so it redraws once a minute and not every second", () => {
++    // 5h 12m 30s: the words next change 30 seconds from now.
++    expect(redrawDelayMs(18_750)).toBe(30_050);
++    expect(redrawDelayMs(125)).toBe(5_050);
++  });
++
++  it("waits out the last minute in one step, to the moment it ends", () => {
++    expect(redrawDelayMs(42)).toBe(42_050);
++  });
++
++  it("never spins: a countdown sitting exactly on a minute, or almost over, waits at least a second", () => {
++    expect(redrawDelayMs(120)).toBe(1_050);
++    expect(redrawDelayMs(0.2)).toBe(1_050);
++  });
++});
++
++// The words on screen and the timer behind them come from one reading of the
++// clock (2026-10-03). They once came from two: the screen's, taken when the
++// sheet mounted, read the full answer, and the timer's, fresh, read a few
++// milliseconds less. For an answer of a whole number of minutes that put the
++// timer a whole minute out, and the label stayed on "1m" for 60 seconds.
++describe("countdownAt", () => {
++  const RECEIVED = 10_000;
++
++  it("counts from the answer: the server's seconds, less the time since", () => {
++    expect(countdownAt(18_720, RECEIVED, RECEIVED)).toEqual({ left: 18_720, redrawInMs: 1_050 });
++    expect(countdownAt(600, RECEIVED, RECEIVED + 30_000).left).toBe(570);
++  });
++
++  it("counts no time before the answer: a clock from when the sheet mounted, ahead of it", () => {
++    expect(countdownAt(60, RECEIVED, RECEIVED - 4_000)).toEqual({ left: 60, redrawInMs: 1_050 });
++  });
++
++  it("an answer of exactly a minute redraws in about a second, never in a whole minute", () => {
++    for (const seconds of [60, 120, 3_600, 18_720, 86_400]) {
++      const { redrawInMs } = countdownAt(seconds, RECEIVED, RECEIVED);
++      expect(redrawInMs).toBe(1_050);
++    }
++  });
++
++  it("is over, with nothing to redraw, at 0 and beyond", () => {
++    expect(countdownAt(10, RECEIVED, RECEIVED + 10_000)).toEqual({ left: 0, redrawInMs: null });
++    expect(countdownAt(10, RECEIVED, RECEIVED + 99_000)).toEqual({ left: 0, redrawInMs: null });
++  });
++
++  it("never leaves a label up after it is wrong: it stays true until the redraw, except the first second after a boundary", () => {
++    const answers = [1, 5, 59, 60, 61, 90, 119, 120, 121, 599, 600, 3_599, 3_600, 3_601, 18_720, 43_200, 86_399, 86_400];
++    const elapsed = [0, 1, 20, 500, 999, 1_000, 1_001, 30_000, 59_000, 59_999, 60_000, 61_000];
++    for (const seconds of answers) {
++      for (const sinceMs of elapsed) {
++        const frame = countdownAt(seconds, RECEIVED, RECEIVED + sinceMs);
++        if (frame.redrawInMs === null) continue;
++        const shown = formatCountdown(frame.left);
++        // True for the whole span between redraws, bar the second a countdown
++        // spends just past a boundary, which the timer's one-second floor allows.
++        for (let ms = 1_100; ms < frame.redrawInMs; ms += 250) {
++          const truth = remainingSeconds(seconds, RECEIVED, RECEIVED + sinceMs + ms);
++          if (truth <= 0) continue;
++          expect(formatCountdown(truth)).toBe(shown);
++        }
++        // And at the redraw, the words move on or the countdown is over.
++        const next = remainingSeconds(seconds, RECEIVED, RECEIVED + sinceMs + frame.redrawInMs);
++        if (next > 0) expect(formatCountdown(next)).not.toBe(shown);
++      }
++    }
++  });
++});
++
++describe("waitOption", () => {
++  const ready = (secondsLeft: number): WaitStatus => ({ state: "ready", secondsLeft });
++  const input = { locked: true, subscribed: false, online: true, status: ready(0) };
++
++  it("is available when the chapter is locked and the server says a free unlock is due", () => {
++    expect(waitOption(input)).toEqual({ kind: "available" });
++  });
++
++  it("counts down while the 24 hours run", () => {
++    expect(waitOption({ ...input, status: ready(18_720) })).toEqual({ kind: "cooldown", secondsLeft: 18_720 });
++  });
++
++  it("is never offered for an open chapter", () => {
++    expect(waitOption({ ...input, locked: false })).toEqual({ kind: "hidden" });
++    expect(waitOption({ ...input, locked: false, status: ready(18_720) })).toEqual({ kind: "hidden" });
++    expect(waitOption({ ...input, locked: false, online: false })).toEqual({ kind: "hidden" });
++  });
++
++  it("is never offered to a subscriber", () => {
++    expect(waitOption({ ...input, subscribed: true })).toEqual({ kind: "hidden" });
++    expect(waitOption({ ...input, subscribed: true, status: ready(18_720) })).toEqual({ kind: "hidden" });
++  });
++
++  it("says so offline, since nothing can be claimed", () => {
++    expect(waitOption({ ...input, online: false })).toEqual({ kind: "offline" });
++    expect(waitOption({ ...input, online: false, status: { state: "loading" } })).toEqual({ kind: "offline" });
++    expect(waitOption({ ...input, online: false, status: { state: "failed" } })).toEqual({ kind: "offline" });
++  });
++
++  it("keeps a countdown it already knows, even offline: it is the more useful answer", () => {
++    expect(waitOption({ ...input, online: false, status: ready(600) })).toEqual({ kind: "cooldown", secondsLeft: 600 });
++  });
++
++  it("waits while the status loads", () => {
++    expect(waitOption({ ...input, status: { state: "loading" } })).toEqual({ kind: "loading" });
++  });
++
++  it("stays enabled when the status can't be read: the server decides on the tap", () => {
++    expect(waitOption({ ...input, status: { state: "failed" } })).toEqual({ kind: "available" });
++  });
++});
++
++describe("waitButtonView", () => {
++  const view = (option: WaitOption) => {
++    if (option.kind === "hidden") throw new Error("hidden has no view");
++    return waitButtonView(option);
++  };
++
++  it("loading: disabled, the plain label, no line", () => {
++    expect(view({ kind: "loading" })).toEqual({
++      label: "Unlock free",
++      accessibilityLabel: "Unlock free. Checking whether a free chapter is available.",
++      disabled: true,
++      line: null,
++    });
++  });
++
++  it("available: enabled, with the rule beneath it", () => {
++    expect(view({ kind: "available" })).toEqual({
++      label: "Unlock free",
++      accessibilityLabel: "Unlock this chapter free. One free chapter per story every 24 hours.",
++      disabled: false,
++      line: "One free chapter per story every 24 hours.",
++    });
++  });
++
++  it("cooldown: disabled, the countdown is the label, spoken as words", () => {
++    expect(view({ kind: "cooldown", secondsLeft: 18_720 })).toEqual({
++      label: "Next free chapter in 5h 12m",
++      accessibilityLabel: "Unlock free. Not available: next free chapter in 5 hours 12 minutes.",
++      disabled: true,
++      line: null,
++    });
++    expect(view({ kind: "cooldown", secondsLeft: 30 }).label).toBe("Next free chapter in less than a minute");
++  });
++
++  it("offline: disabled, and says to connect", () => {
++    expect(view({ kind: "offline" })).toEqual({
++      label: "Unlock free",
++      accessibilityLabel: "Unlock free. Not available: connect to the internet to unlock.",
++      disabled: true,
++      line: "Connect to the internet to unlock.",
++    });
++  });
++});
++
++describe("subscribedLine", () => {
++  it("tells a real plan to restore, and an unconfirmed one to try again", () => {
++    expect(subscribedLine({ active: true })).toBe(PLAN_ACTIVE_LINE);
++    expect(subscribedLine({ active: false })).toBe(PLAN_UNCONFIRMED_LINE);
++    expect(subscribedLine(null)).toBe(PLAN_UNCONFIRMED_LINE);
++  });
++});
++
++// The data layer: what is asked, and what an unreadable answer does.
++describe("waitUnlockStatusOptions", () => {
++  const client = new QueryClient();
++  afterAll(() => client.clear());
++  beforeEach(() => {
++    mockRpc.mockReset();
++    client.clear();
++  });
++
++  it("asks wait_unlock_status for the story and stamps the answer on the monotonic clock", async () => {
++    mockRpc.mockResolvedValue({ data: 18_720, error: null });
++    const now = jest.spyOn(performance, "now").mockReturnValue(1_234.5);
++    await expect(client.fetchQuery(waitUnlockStatusOptions("user_a", "book-1"))).resolves.toEqual({
++      seconds: 18_720,
++      receivedAt: 1_234.5,
++    });
++    expect(mockRpc).toHaveBeenCalledWith("wait_unlock_status", { p_book_id: "book-1" });
++    now.mockRestore();
++  });
++
++  it("is always fetched fresh, and keyed per account and story", () => {
++    const options = waitUnlockStatusOptions("user_a", "book-1");
++    expect(options.staleTime).toBe(0);
++    expect(options.queryKey).toEqual(queryKeys.waitUnlock.status("user_a", "book-1"));
++    expect(options.queryKey).not.toEqual(queryKeys.waitUnlock.status("user_b", "book-1"));
++    expect(options.queryKey).not.toEqual(queryKeys.waitUnlock.status("user_a", "book-2"));
++  });
++
++  it("fails on an answer it can't read, and on a refusal, rather than guess", async () => {
++    mockRpc.mockResolvedValueOnce({ data: "soon", error: null });
++    await expect(client.fetchQuery(waitUnlockStatusOptions("user_a", "book-1"))).rejects.toThrow("unexpected answer");
++
++    client.clear();
++    mockRpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "permission denied" } });
++    await expect(client.fetchQuery(waitUnlockStatusOptions("user_a", "book-1"))).rejects.toEqual(
++      expect.objectContaining({ code: "42501" }),
++    );
++  });
++});
++
++describe("claimWaitUnlock", () => {
++  beforeEach(() => mockRpc.mockReset());
++
++  it("asks claim_wait_unlock for exactly the chapter, and returns the answer unread", async () => {
++    mockRpc.mockResolvedValue({ data: { status: "cooldown", seconds_left: 60 }, error: null });
++    await expect(claimWaitUnlock("chapter-1")).resolves.toEqual({ status: "cooldown", seconds_left: 60 });
++    expect(mockRpc).toHaveBeenCalledTimes(1);
++    expect(mockRpc).toHaveBeenCalledWith("claim_wait_unlock", { p_chapter_id: "chapter-1" });
++  });
++
++  it("throws when the request fails, so a failed claim is never read as an answer", async () => {
++    mockRpc.mockResolvedValue({ data: null, error: { code: "", message: "TypeError: Network request failed" } });
++    await expect(claimWaitUnlock("chapter-1")).rejects.toEqual(expect.objectContaining({ message: expect.stringContaining("Network") }));
++  });
++});
+diff --git a/src/lib/unlock.ts b/src/lib/unlock.ts
+new file mode 100644
+index 0000000..f69716c
+--- /dev/null
++++ b/src/lib/unlock.ts
+@@ -0,0 +1,226 @@
++// Free ways to unlock one locked chapter — prompt 23. No React, no hooks, no
++// JSX (AGENTS.md § lib/).
++//
++// Part A, wait-for-free: one free unlock per reader per story every 24 hours,
++// by the server's clock (`claim_wait_unlock()`, `wait_unlock_status()`, the
++// dashboard repo's migration 20261003120000). The app never writes an unlock:
++// the server answers, and only the `unlocks` row read back opens the chapter
++// (AGENTS.md § Billing Rules). Part B's rewarded ad is not built.
++//
++// Everything the server answers is read here as the untrusted data it is.
++
++/** What the server answered to a claim. `failed` is anything we can't read. */
++export type WaitClaim =
++  | { status: "claimed" }
++  | { status: "cooldown"; secondsLeft: number }
++  | { status: "not_locked" }
++  | { status: "subscribed" }
++  | { status: "unavailable" }
++  | { status: "failed" };
++
++/**
++ * Reads `claim_wait_unlock()`'s answer. A status we don't know, a cooldown
++ * without a number of seconds, or anything that isn't the object the server
++ * sends is `failed`: never guessed at.
++ */
++export function parseWaitClaim(value: unknown): WaitClaim {
++  if (typeof value !== "object" || value === null) return { status: "failed" };
++  const { status, seconds_left: secondsLeft } = value as Record<string, unknown>;
++  switch (status) {
++    case "claimed":
++    case "not_locked":
++    case "subscribed":
++    case "unavailable":
++      return { status };
++    case "cooldown":
++      return typeof secondsLeft === "number" && Number.isFinite(secondsLeft) && secondsLeft >= 0
++        ? { status: "cooldown", secondsLeft: Math.ceil(secondsLeft) }
++        : { status: "failed" };
++    default:
++      return { status: "failed" };
++  }
++}
++
++/**
++ * Reads `wait_unlock_status()`'s answer: whole seconds until the next free
++ * unlock, 0 when one is available. Null for anything else.
++ */
++export function parseWaitSeconds(value: unknown): number | null {
++  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.ceil(value) : null;
++}
++
++/**
++ * Why a claim never got an answer: the request didn't get through (`network`),
++ * or the server refused it (`refused`). PostgREST gives every refusal a
++ * `code`; a failed fetch has none.
++ */
++export type ClaimFailureKind = "network" | "refused";
++
++/** What earned an unlock, as analytics names it: the free unlock, or (Part B) a rewarded ad. */
++export type UnlockSource = "wait" | "ad";
++
++/** Why an unlock never reached the reader. `timeout` is Part B's: an ad's unlock that never arrived. */
++export type UnlockFailureKind = ClaimFailureKind | "timeout";
++
++export function claimFailureKind(error: unknown): ClaimFailureKind {
++  const code = typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
++  return typeof code === "string" && code.length > 0 ? "refused" : "network";
++}
++
++/** Whole minutes and hours, never seconds: "5h 12m", "42m", "1h", "less than a minute". */
++export function formatCountdown(seconds: number): string {
++  const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
++  if (total < 60) return "less than a minute";
++  const hours = Math.floor(total / 3600);
++  const minutes = Math.floor((total % 3600) / 60);
++  if (hours === 0) return `${minutes}m`;
++  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
++}
++
++function unit(count: number, name: string): string {
++  return `${count} ${name}${count === 1 ? "" : "s"}`;
++}
++
++/** `formatCountdown()` as a screen reader should hear it: "5 hours 12 minutes". */
++export function formatCountdownSpoken(seconds: number): string {
++  const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
++  if (total < 60) return "less than a minute";
++  const hours = Math.floor(total / 3600);
++  const minutes = Math.floor((total % 3600) / 60);
++  return [hours > 0 ? unit(hours, "hour") : null, minutes > 0 ? unit(minutes, "minute") : null]
++    .filter((part) => part !== null)
++    .join(" ");
++}
++
++/**
++ * The seconds still to wait: the server's answer, less the time since it
++ * landed. Both times come from the monotonic clock (`performance.now()`),
++ * never the phone's date, which can be set to anything. Never below 0.
++ */
++export function remainingSeconds(secondsAtAnswer: number, receivedAt: number, now: number): number {
++  return Math.max(0, secondsAtAnswer - Math.max(0, now - receivedAt) / 1000);
++}
++
++/**
++ * How long until the countdown's words next change, so it redraws once a
++ * minute and not every second: at the next whole minute, and in the last
++ * minute, when it ends. At least a second, so a countdown sitting exactly on a
++ * minute can't spin.
++ */
++export function redrawDelayMs(remaining: number): number {
++  const untilChange = remaining < 60 ? remaining : remaining % 60;
++  return Math.max(1_000, untilChange * 1_000) + 50;
++}
++
++/** One reading of the countdown: the seconds left, and when to look again (null once it is over). */
++export type CountdownFrame = { left: number; redrawInMs: number | null };
++
++/**
++ * The countdown at one reading of the clock. The words on screen and the timer
++ * behind them both come from this, with the same three numbers, so they can't
++ * disagree. They did while each read its own clock: the screen's was taken
++ * when the sheet mounted, before the server's answer, so it read the full
++ * answer, and the timer's was fresh and read a few milliseconds less. For an
++ * answer of a whole number of minutes ("1m" exactly) that put the timer a
++ * whole minute out, and the label stayed on "1m" for 60 seconds (found live,
++ * 2026-10-03). A `clock` from before the answer counts no time at all.
++ */
++export function countdownAt(secondsAtAnswer: number, receivedAt: number, clock: number): CountdownFrame {
++  const left = remainingSeconds(secondsAtAnswer, receivedAt, clock);
++  return { left, redrawInMs: left > 0 ? redrawDelayMs(left) : null };
++}
++
++/** The status query as the rule below sees it. */
++export type WaitStatus = { state: "loading" } | { state: "failed" } | { state: "ready"; secondsLeft: number };
++
++export type WaitOption =
++  /** Not offered at all: the chapter is open, or the reader has the plan. */
++  | { kind: "hidden" }
++  | { kind: "loading" }
++  | { kind: "available" }
++  | { kind: "cooldown"; secondsLeft: number }
++  | { kind: "offline" };
++
++type WaitOptionInput = {
++  /** M5a is showing a locked chapter: false for one that is open (free, unlocked or subscribed). */
++  locked: boolean;
++  /** The reader has Talebrim Unlimited. Their plan opens everything, so they never see this. */
++  subscribed: boolean;
++  online: boolean;
++  status: WaitStatus;
++};
++
++/**
++ * Which state M5a's `Unlock free` is in. A running cooldown wins, even
++ * offline: it is the more useful answer. Otherwise nothing can be claimed
++ * offline. A status that couldn't be read leaves the button enabled: the
++ * server decides on the tap, and answers with the cooldown if there is one.
++ */
++export function waitOption({ locked, subscribed, online, status }: WaitOptionInput): WaitOption {
++  if (!locked || subscribed) return { kind: "hidden" };
++  if (status.state === "ready" && status.secondsLeft > 0) return { kind: "cooldown", secondsLeft: status.secondsLeft };
++  if (!online) return { kind: "offline" };
++  if (status.state === "loading") return { kind: "loading" };
++  return { kind: "available" };
++}
++
++export const WAIT_UNLOCK_LABEL = "Unlock free";
++export const WAIT_UNLOCK_RULE = "One free chapter per story every 24 hours.";
++export const WAIT_UNLOCK_OFFLINE = "Connect to the internet to unlock.";
++export const UNLOCK_FAILED = "Couldn't unlock this chapter. Check your connection and try again.";
++export const PLAN_ACTIVE_LINE = "You have an active plan. If this chapter stays locked, tap Restore purchases.";
++export const PLAN_UNCONFIRMED_LINE = "We couldn't confirm your plan just now. Try again.";
++
++/**
++ * What to tell a reader whose claim the server answered "subscribed" when this
++ * phone doesn't (yet) know the plan, once the server has checked it with
++ * RevenueCat (`syncServerPlan()`). Active: their plan is real and this phone
++ * is behind; Restore purchases is the way to catch it up. Otherwise the check
++ * failed or the server's copy was stale: they can simply try again.
++ */
++export function subscribedLine(plan: { active: boolean } | null): string {
++  return plan?.active === true ? PLAN_ACTIVE_LINE : PLAN_UNCONFIRMED_LINE;
++}
++
++export type WaitButtonView = {
++  label: string;
++  /** What the button does and its state, as a screen reader hears it. */
++  accessibilityLabel: string;
++  disabled: boolean;
++  /** Beneath the button: the rule, or why it can't be used. */
++  line: string | null;
++};
++
++/** The words and state of `Unlock free` for each option that shows. */
++export function waitButtonView(option: Exclude<WaitOption, { kind: "hidden" }>): WaitButtonView {
++  switch (option.kind) {
++    case "loading":
++      return {
++        label: WAIT_UNLOCK_LABEL,
++        accessibilityLabel: "Unlock free. Checking whether a free chapter is available.",
++        disabled: true,
++        line: null,
++      };
++    case "available":
++      return {
++        label: WAIT_UNLOCK_LABEL,
++        accessibilityLabel: `Unlock this chapter free. ${WAIT_UNLOCK_RULE}`,
++        disabled: false,
++        line: WAIT_UNLOCK_RULE,
++      };
++    case "cooldown":
++      return {
++        label: `Next free chapter in ${formatCountdown(option.secondsLeft)}`,
++        accessibilityLabel: `Unlock free. Not available: next free chapter in ${formatCountdownSpoken(option.secondsLeft)}.`,
++        disabled: true,
++        line: null,
++      };
++    case "offline":
++      return {
++        label: WAIT_UNLOCK_LABEL,
++        accessibilityLabel: "Unlock free. Not available: connect to the internet to unlock.",
++        disabled: true,
++        line: WAIT_UNLOCK_OFFLINE,
++      };
++  }
++}

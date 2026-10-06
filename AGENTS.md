@@ -96,6 +96,12 @@ done, and date it in the entry it points to.
    done on 2026-10-02: Decisions — 2026-10-02, "Support emails come from
    talebrim.com".)
 
+Removed on 2026-10-06: the AdMob item (an AdMob account, a rewarded ad unit,
+consent messages, a test device, and a read of AdMob's content rules against
+the catalogue). The owner moved rewarded ads, and the free unlock beside them,
+to version 2 (Decisions — 2026-10-06, "Version 1 is subscription-only"). Its
+steps are kept in `docs/v2/README.md` for the day they come back.
+
 Removed on 2026-10-02: the deferred setup's last check, connectivity lost
 mid-chapter, which the owner reported working (§ Deferred setup, step 9).
 The deferred setup is complete. The Apple Developer Program is not a reminder
@@ -115,7 +121,7 @@ The app serves readers through:
 - **read/listen parity** — one bookmark shared between reader and player, in both directions, across devices
 - genre-based discovery and search
 - a personal library with continue-reading and offline downloads
-- rewarded-ad chapter unlocks and an ad-free subscription
+- the Talebrim Unlimited subscription, the only way past a lock in version 1 (rewarded-ad and wait-for-free unlocks are version 2: Decisions — 2026-10-06)
 - Mature content behind an age gate (**the label is `Mature 18+`** — see Data Contract)
 
 The core differentiator is parity. If a user listens to chapter 12 in the car and opens the reader at home, the text must open exactly where the audio stopped. Architectural decisions defer to that.
@@ -141,7 +147,13 @@ Use the following stack:
 - `expo-audio` for audio playback — replaces `react-native-track-player`
   (decided 2026-09-24; installed by prompt 18)
 - RevenueCat for subscriptions and entitlements
-- `react-native-google-mobile-ads` for rewarded ads
+- **Not in version 1:** `react-native-google-mobile-ads`, for the rewarded ads
+  of version 2 (prompt 23, deferred on 2026-10-06). It is not installed, and
+  version 1 installs no ads library. When version 2 takes it up: 17.2.0 on
+  2026-10-03, installed with `npm install` (Expo's version table doesn't list
+  it), native so a development build after it, and required inside
+  `lib/ads.ts` only where ads run, never imported at the top of a module, as
+  `react-native-purchases` is (Decisions — 2026-10-03, "Prompt 23 review")
 - Server-side route handlers or Supabase Edge Functions for secrets and privileged operations
 - `expo-keep-awake` — M5 only (approved 2026-09-23; installed by prompt 14)
 - `@react-native-community/netinfo` — wired once into TanStack Query's
@@ -375,7 +387,7 @@ Ember button labels are `#1A1420`. Never white.
 
 **M5 · Reader** — Light mode `#FBF7F1` by default (sepia and dark are user choices). Literata 18sp/1.7. Minimal top bar: back, chapter title, `Aa`. Fraunces chapter heading. Floating bottom toolbar on `#2C1E42` with brightness, `Aa`, bookmark, and a teal Listen icon that hands off to M6 at the equivalent position. Ember progress bar with position label. **No bottom nav, no mini player.**
 
-**M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet. Since 2026-10-01 it sells the story (Decisions — 2026-10-01, "The paywall for a first visit"): the story's cover, "Keep reading {story}" ("Keep listening to…" from the player), a lock beside the locked chapter's name, at most three true benefits, the ember `See plans`, then muted `Not now`, restore-purchases and manage-subscription links. States what the subscription gives before any purchase. Never shown for an already-unlocked chapter. `See plans` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall"). Prompt 23 adds "Unlock free" and `Watch ad & continue`, and the owner then decides which button is the ember. Until 2026-10-01 the plan was for "Unlock free" to be the ember while the reader's free unlock for the book is available, otherwise the ad (Decisions — 2026-09-25, "Retention and revenue").
+**M5a · Paywall bottom sheet (over Reader)** — `#2C1E42` sheet. Since 2026-10-01 it sells the story (Decisions — 2026-10-01, "The paywall for a first visit"): the story's cover, "Keep reading {story}" ("Keep listening to…" from the player), a lock beside the locked chapter's name, at most three true benefits, the ember `See plans`, then muted `Not now`, restore-purchases and manage-subscription links. States what the subscription gives before any purchase. Never shown for an already-unlocked chapter. `See plans` opens M10 rather than listing plans (Decisions — 2026-09-25, "Paywall"). In version 1 a subscription is the only way past a lock: the sheet has no free unlock and no ads (the owner, 2026-10-06: Decisions — 2026-10-06, "Version 1 is subscription-only"). The two free ways (wait-for-free and rewarded ads, prompt 23) are version 2, and would go beneath `See plans` as teal outlined buttons, which stays the ember. Known gap, for prompts 26 and 27 (an estimate, not measured on this sheet: from the web preview with emulated 1.3× text, less the free unlock's buttons): at 1.3× text on a 360 × 640 phone the sheet may run about 35dp past what the screen leaves room for, which would cut off its top, the cover. A scrolling `Sheet` fixed that and is in the archive, `docs/v2/`.
 
 **Alerts sheet (over M4 or Discover)** — No frame; built from M5a's sheet (`components/ui/sheet.tsx`). `#2C1E42` sheet, bell icon. Off: Fraunces "Get notified when new chapters come out?", a muted line that alerts are only for stories on My List, ember `Notify me`, muted `Not now`. On: "New chapter alerts are on" and an outlined `Turn off`. Blocked in Android's settings: one line and an outlined `Open settings`. Web preview and Expo Go: one line that alerts work in the Android app, and `Close`. Opens by itself once per account, after the first My List add the server confirms; Updates' alerts row always opens it, and so will M11's (prompt 25). The Discover bell opened it until 2026-09-30. Built by prompt 23a (Decisions — 2026-09-28).
 
@@ -1616,7 +1628,12 @@ under § Clerk Rules.
   - **M5a offers three ways in:** unlock free, watch an ad, go ad-free. Its
     one ember action is "Unlock free" while the reader's free unlock for the
     book is available, otherwise "Watch ad & continue" (§ M5a). Prompt 22
-    lays the sheet out; prompt 23 wires the two unlocks.
+    lays the sheet out; prompt 23 wires the two unlocks. (Revised
+    2026-10-03: the ember stays on "See plans", with the two free options as
+    teal outlined buttons under it. Decisions — 2026-10-03, "Prompt 23
+    review". **Deferred 2026-10-06:** version 1 offers "See plans" only, and
+    both free options are version 2: Decisions — 2026-10-06, "Version 1 is
+    subscription-only".)
   - **Wait-for-free:** one free unlock per reader per book every 24 hours,
     by the server's clock, permanent like every unlock, never offered on a
     chapter the reader can already open. Server-written only: recommended as
@@ -1624,7 +1641,10 @@ under § Clerk Rules.
     `wait_unlock_status(book_id)`, and a `wait` value for `unlocks.source`,
     in an additive migration from the dashboard repo. Prompt 23's note,
     which also flags that its step 7 (the app writing ad unlocks) breaks
-    "Unlocks are server-written only".
+    "Unlocks are server-written only". (Resolved 2026-10-03: a server
+    function that Google's own signed callback calls writes the ad unlock.
+    Decisions — 2026-10-03, "Prompt 23 review". Built 2026-10-03 and taken
+    out again on 2026-10-06: version 2.)
   - **Analytics: PostHog**, explicit events only, the Clerk user id as the
     identity and reset at sign-out, no text, titles or search terms. Its own
     prompt, 21a, runs in Expo Go; prompts 22, 23 and 23a add their events.
@@ -1908,18 +1928,23 @@ under § Clerk Rules.
      code and behave as M10 does until RevenueCat is set up.
   5. RevenueCat and Google Play: prompt 22's store setup (step 17) and
      sandbox tests (step 18).
-  6. Prompt 23, rewarded ads and wait-for-free.
+  6. ~~Prompt 23, wait-for-free and rewarded ads.~~ **Version 2** (the
+     owner, 2026-10-06: Decisions — 2026-10-06, "Version 1 is
+     subscription-only"). It was reviewed and split on 2026-10-03 (Decisions —
+     2026-10-03, "Prompt 23 review"), and Part A, wait-for-free, was built
+     that day and taken out again on 2026-10-06. Nothing of it is in version
+     1.
   7. Prompts 26 and 27, the states and accessibility passes. Last, because
-     they go over every screen, M5a's two ember actions from prompt 23
-     included.
+     they go over every screen.
   - **Until step 5, billing stays off:** every reader is "not subscribed",
     and M5a's Go Ad-Free leads to M10's "available in the Android app"
     message. Accepted: there are no real readers yet.
   - **Start the Google Play developer account now anyway.** It has the
     longest lead time left: identity verification takes days, and a
     personal account must run a closed test with at least 12 testers for
-    14 days before production access. AdMob, for prompt 23, has its own
-    approval. Neither waits on any prompt.
+    14 days before production access. It waits on no prompt. (This line also
+    named AdMob's approval, for prompt 23; ads are version 2 since
+    2026-10-06.)
 - **New-chapter notifications (prompt 23a review).** Settled on 2026-09-25
   while reviewing prompt 23a against the code, the deferred setup and
   `material/3.png`, `6.png` and `10.png`. The prompt carries the detail; the
@@ -3230,7 +3255,11 @@ under § Clerk Rules.
       (Deployed and proven later the same day: "Account deletion removes
       the reader's analytics".)
   - **Not in the pages yet, by design:** rewarded ads. Prompt 23 adds AdMob,
-    and the privacy policy must change in the same change.
+    and the privacy policy must change in the same change. The Privacy
+    introduction says "we don't use it for advertising", which stops being
+    true; prompt 23's Part C rewrites it, with Help's "Locked chapters"
+    section, before any ad reaches a reader. (Version 2, since 2026-10-06:
+    with no ads in version 1, the Privacy introduction stays true as it is.)
 - **Help is a message to support.** Asked for by the owner on 2026-10-01,
   after M11's Help opened `talebrim.com/help` on the phone and got the
   dashboard's 404, since the pages aren't deployed. Help now opens a form in
@@ -4616,6 +4645,428 @@ under § Clerk Rules.
     stopped taking edits ("Learned on 2026-10-03").
   - **Not seen:** the web preview, or a narrower phone. The lockup is about
     70dp wide in a 393dp row, so there is room.
+- **Prompt 23 review.** Settled on 2026-10-03, at the owner's request, while
+  reviewing prompt 23 against the code as built through 22a, the live
+  database, the ads library (17.2.0, read from its published package) and
+  Google's AdMob documents. The prompt was rewritten
+  (`prompts/23 — Rewarded ads for chapter unlocks.md`). Nothing was built.
+  **Deferred to version 2 on 2026-10-06** (Decisions — 2026-10-06, "Version 1
+  is subscription-only"): this review stands as the record for version 2.
+  - **Decided by the owner:**
+    - `See plans` stays M5a's one ember button. The two free options are teal
+      outlined buttons under it (`Button`, variant `accent`). The 2026-09-25
+      plan, "Unlock free" as the ember while it is available, is dropped.
+    - A watched ad becomes an unlock only through Google's signed callback
+      (AdMob server-side verification, "SSV") to a new Edge Function,
+      `admob-ssv`. The app never claims an ad unlock. The options passed over:
+      trusting the phone, which lets anyone with a script call it for every
+      chapter and unlock the catalogue; and leaving ads out of version 1.
+  - **Three parts, with a stop between A and B** (decided in the review; the
+    owner may flip):
+    - **Part A, wait-for-free,** needs no AdMob account and no new build. A
+      migration in the dashboard repo adds `wait` to `unlocks_source_check`
+      and two `security definer` functions. `claim_wait_unlock(p_chapter_id)`
+      answers `claimed`, `cooldown` (with the seconds left), `not_locked`,
+      `subscribed` or `unavailable`, as data, serialised by an advisory lock
+      per reader and story. `wait_unlock_status(p_book_id)` is the seconds
+      until the next free unlock. One free unlock per reader per story every
+      24 hours, on the server's clock, for the chapter the reader tapped;
+      never for a subscriber, a free chapter or an unlocked one. M5a's
+      `Unlock free` counts down from the server's seconds, never from the
+      phone's clock.
+    - **Part B, ads,** needs the owner's AdMob account, a new native
+      dependency and a development build made after it. The app asks for a
+      rewarded ad only on the reader's tap, with the reader's id and the
+      chapter id in the SDK's server-side verification options. Google then
+      calls `admob-ssv`, which verifies the signature (ECDSA P-256, DER
+      encoded, against Google's published keys), that `ad_unit` is the
+      owner's own and that the chapter is in a published book, and only then
+      writes the `unlocks` row. The reader sees "Unlocking your chapter…" for
+      a few seconds, because Google says callbacks "may experience delays".
+    - **Part C,** the public pages, the records and the Play forms, goes with
+      Part B and comes before any ad can reach a reader.
+  - **What the 2026-09-25 draft got wrong,** each fixed in the rewrite:
+    - Step 7 had the app insert `source = 'ad'` rows. Readers hold SELECT on
+      `unlocks` only, so it could not work, and a client insert policy would
+      let anyone replaying their token unlock everything.
+    - Step 13 said not to build the server check, and called a spoofed reward
+      "one chapter". With a claim function it is every chapter.
+    - Step 16 made subscribe the ember against AGENTS.md's M5a, and step 9
+      read `free_chapters_at_start`; a chapter's own `access` decides since
+      2026-09-30.
+    - Step 3 said "app IDs for both platforms". The plugin's options are
+      `androidAppId` and `iosAppId`, and iOS isn't built.
+    - It cited the wrong prompts ("the sheet from prompt 23" is 22, "prompt
+      14" is 13, "the prompt-19 player module" is 18, and the development
+      build is the deferred setup, not "prompts 19 and 23") and
+      `tailwind.config.js`, which doesn't exist. It cited no image, so there
+      was no wrong image path to fix.
+  - **Checked on 2026-10-03,** read-only:
+    - The live `unlocks` table is empty. `unlocks_source_check` allows `ad`
+      and `purchase`; the table is unique on `(user_id, chapter_id)`;
+      `authenticated` holds SELECT only and `service_role` everything; no
+      wait or reward function exists. The server already opens a locked
+      chapter's text and narration for a reader holding an `unlocks` row
+      (22a), so a new row needs no new policy.
+    - `react-native-google-mobile-ads` 17.2.0: peers `expo >=47` and
+      `react-native >=0.86.0`, met by Expo 57 and React Native 0.86.3. Its
+      config plugin takes `androidAppId`, `iosAppId`, `androidSdk` (classic by
+      default; "nextgen" is Google's newer SDK, not used) and others, and
+      warns when an app ID is missing. Its Android manifest carries
+      `INTERNET`, `WAKE_LOCK` and `ACCESS_NETWORK_STATE`; the ads SDK adds
+      its own at merge, which the build step reports.
+    - Its API: `RewardedAd`, `RewardedAdEventType.EARNED_REWARD`,
+      `useRewardedAd` (`status` is `idle`, `loading`, `loaded`, `showing`,
+      `closed`, `no-fill` or `error`, and `earnedReward`),
+      `RequestOptions.serverSideVerificationOptions` (`userId`, `customData`),
+      `AdsConsent` (`gatherConsent`, `getConsentInfo`,
+      `showPrivacyOptionsForm`) and `TestIds.REWARDED`. Google's UMP consent
+      SDK is bundled with it.
+    - Google's SSV document: the callback carries `ad_network`, `ad_unit`,
+      `custom_data`, `reward_amount`, `reward_item`, `timestamp`,
+      `transaction_id`, `user_id`, then `signature` and `key_id`. The signed
+      message is everything before `&signature=`. The keys are at
+      `gstatic.com/admob/reward/verifier-keys.json` (one key that day, served
+      with `Cache-Control: max-age=0`). Google retries up to five times, a
+      second apart, and expects a 200. Whether a test ad on a live unit sends
+      a callback isn't documented: Part B finds out.
+    - **The `ad_unit` check matters most.** Anyone with an AdMob account could
+      point their own unit's callback at the function's URL and receive
+      validly signed callbacks carrying any `user_id` and `custom_data`.
+  - **A risk to weigh before Part B: AdMob's content rules.** Read on
+    2026-10-03, as summaries of two pages: Google Publisher Policies do not
+    allow graphic sexual text or non-consensual sexual themes, simulated or
+    real; sexually suggestive content is restricted, meaning fewer ad sources
+    and lower earnings. Every live book is `mature_17`, and the catalogue
+    includes `dark_romance`. AdMob may restrict or refuse the app, and also
+    reviews an app before real ads serve (general knowledge, not re-read that
+    day: its console shows the status). If it does, the free routes are Part A
+    and the plan. The owner reads the pages and decides:
+    https://support.google.com/admob/answer/10502938 and
+    https://support.google.com/admob/answer/10437795.
+  - **Consent is built, not reported.** The 2026-09-25 draft told the builder
+    to report it as a gap. Google requires a consent message for readers in
+    the EEA and UK, and its UMP SDK also covers regulated US states. Part B
+    runs the form the first time an ad is about to be offered, never at launch.
+    M11 gets a "Privacy choices" row only where the SDK says one is required
+    (in no frame: for design review). Apple's tracking prompt waits for the
+    iOS series.
+  - **Ad units and test devices:** a development build uses
+    `TestIds.REWARDED`, and the live unit only when the phone is also
+    registered as a test device (`EXPO_PUBLIC_ADMOB_TEST_DEVICE`, never in
+    EAS's production environment). A store build uses
+    `EXPO_PUBLIC_ADMOB_REWARDED_ANDROID` and has no ads without it, never
+    falling back to a test unit. `app.json` carries Google's sample App ID
+    until the owner's exists, which a store build must never ship.
+  - **Analytics** (typed; ids and fixed words): `unlock_offered`,
+    `wait_unlock_claimed`, `wait_unlock_unavailable`, `unlock_recorded` and
+    `unlock_record_failed` in Part A; `ad_requested`, `ad_unavailable`,
+    `ad_rewarded` and `ad_dismissed_early` in Part B.
+  - **Two pages stop being true when ads ship,** found in the dashboard repo:
+    the Privacy introduction ("we don't use it for advertising") and Help's
+    "Locked chapters". Part C changes them with the owner's yes and publishes
+    as 22a did.
+  - **Changed in this review:** the prompt; prompt 22's step 17 (a seventh
+    production variable) and two of its stale notes about M5a's ember; here,
+    a third owner reminder, M5a's spec line, the Tech Stack bullet, Billing
+    Rules, the Data Contract's `unlocks` note, the build order, the status
+    block and the notes in "Retention and revenue" and the pages. No code, no
+    migration and no secret.
+  - **The owner may flip:** the split (one build, after AdMob), and Part B's
+    whole shape if AdMob's rules rule it out.
+- **Prompt 23, Part A as built (wait-for-free).** **Taken out of version 1 on
+  2026-10-06** (Decisions — 2026-10-06, "Version 1 is subscription-only"). This
+  entry is the record for version 2: nothing it describes is in the app or the
+  database today, and "live", "built" and "the app" below mean 2026-10-03.
+  Built on 2026-10-03 as reviewed (previous entry), at the owner's "implement
+  it". The owner said yes to the migration after seeing it, and it was pushed
+  the same day. Part B (ads) and Part C were never started.
+  - **The server** (dashboard repo, migration `20261003120000_wait_unlock.sql`,
+    since undone by `20261006120000`): `unlocks.source`
+    accepts `wait` (one `ALTER` with both subcommands, so there is no gap;
+    the table was empty), and two `security definer` functions,
+    `wait_unlock_status()` and `claim_wait_unlock()`, executable by
+    `authenticated` only (`anon` revoked: the project's default privileges
+    would have granted it). No policy, view or grant on `unlocks` changed,
+    and nothing on `books`, `chapters`, `app_settings` or `activity_log`.
+    Regenerated types gained two lines in each repo and lost none.
+  - **Proven on the live database:**
+    - `supabase/verify/wait_unlock_rls.sql`, 58 checks: readers A, B, an
+      ad-unlocked reader, a subscriber, a lapsed plan, an admin, `anon` and
+      `service_role`. It ages rows as the owner to test the edges (half a
+      second left rounds up to 1; exactly 24 hours is over). First dry-run
+      inside a rolled-back transaction (58 of 58, and the live database
+      unchanged afterwards), then live: 58 of 58.
+    - Six deliberately broken copies (no cooldown, a subscriber not
+      recognised, `floor` for `ceil`, `anon` allowed, an ad unlock starting
+      the cooldown, no advisory lock) each failed the script.
+    - The five older scripts, before and after, unchanged:
+      `reader_tables_rls` 47, `new_chapter_alerts_rls` 53,
+      `audio_read_policy` 27, `entitlements_rls` 31, `locked_text_rls` 29.
+    - The one check that can't run live: a draft book's chapter. No draft
+      exists, so it reports "none live", as the older scripts do for the same
+      reason. The branch is the same `published` join `can_play_audio()` uses.
+    - **Over HTTP, 34 checks**, with five throwaway `+clerk_test` readers
+      (Clerk's Backend API) and the project's keys read in-process: before
+      the claim a locked chapter's text was withheld and its narration
+      refused; after it, both were served (the signed URL returned bytes); a
+      second chapter of the story answered `cooldown`; another story's
+      claimed; the same chapter again `not_locked`; a subscriber (a plan row
+      written as the functions write it) `subscribed` with no row; a free
+      chapter `not_locked`, and a locked one still claimable after it; no
+      token or only the anon key 401; a direct insert into `unlocks` 403.
+      **Five simultaneous claims** on five chapters of one story gave exactly
+      one `claimed` and four `cooldown`, one row; five on one chapter gave one
+      `claimed`, four `not_locked`, one row. Every throwaway was deleted
+      through `delete-account` (200, no row left, Clerk 404), and the real
+      readers' unlocks were the same before and after (the table holds none).
+    - The dashboard's `typecheck`, `lint` (0 errors, its 4 existing
+      warnings) and `build` passed.
+  - **The app:**
+    - `lib/unlock.ts` (new, pure, tested): `parseWaitClaim()` reads the
+      server's answer as untrusted data (anything unknown, a cooldown without
+      a number, a non-object: `failed`); `formatCountdown()` ("5h 12m",
+      "42m", "less than a minute") and its spoken form; the countdown's
+      arithmetic; `waitOption()`, the one rule for `Unlock free`'s state; and
+      its words.
+    - `lib/queries/unlocks.ts`: `waitUnlockStatusOptions()` (fresh every
+      time, with the answer's arrival time stamped from `performance.now()`)
+      and `claimWaitUnlock()`. `queryKeys.waitUnlock` is in `NEVER_PERSISTED`:
+      the monotonic clock restarts with the app, so a copy from disk would
+      count from nowhere. The reader's unlocks, which are permanent, still
+      persist.
+    - `hooks/use-unlock-options.ts` drives the button; M5a
+      (`app/paywall/[chapterId].tsx`) draws it. Both `TODO(unlocks)` markers
+      are gone.
+    - `components/ui/sheet.tsx` gained `scrollable`, which M5a sets: the
+      body scrolls inside the sheet's own height (the window less the top
+      inset and 24dp of scrim) when it doesn't fit. The alerts sheet is
+      unchanged.
+    - `lib/analytics.ts`: five typed events (below).
+  - **How `Unlock free` behaves.** A teal outlined pill 12dp under
+    `See plans`, which stays the sheet's one ember. Its states: loading
+    (disabled, "Unlock free"), available (enabled, the line "One free chapter
+    per story every 24 hours."), cooldown (disabled, the label is "Next free
+    chapter in 5h 12m"), claiming (the button's spinner), offline (disabled,
+    "Connect to the internet to unlock."), and a failed claim (enabled again,
+    "Couldn't unlock this chapter. Check your connection and try again." in a
+    polite live region: no alert, no toast). A running cooldown wins over
+    offline. A status the phone couldn't read leaves it enabled: the server
+    decides on the tap.
+    - **The countdown trusts the server.** The server's seconds less the time
+      since they landed, on the monotonic clock. It redraws once a minute
+      (the next whole minute, then the end), asks the server again when it
+      reaches 0, and asks again whenever the app returns to the foreground,
+      so a count never crosses a background. Its label is not a live region,
+      so a screen reader never hears it tick: it reads the label on focus.
+    - **A claim never opens a chapter.** After `claimed` or `not_locked` the
+      hook reads the reader's unlocks back (two retries); `not_locked` also
+      reads the chapter's own row, since the dashboard may just have freed
+      it. M5a's existing effect opens the chapter when
+      `usePaywallChapter()` says `open`, and nothing else does. `cooldown`
+      refetches the status. `unavailable`, a garbled answer and a failed
+      request show the one failed line. `subscribed` asks the server to check
+      the plan (`syncServerPlan()`), reads the entitlement and unlocks again,
+      and says so.
+    - **Analytics** (ids, flags, counts and fixed words): `unlock_offered`
+      once per open once the status is known (`wait` true when a free unlock
+      is available to take, false while it counts down; `ad` is false until
+      Part B), `wait_unlock_claimed`, `wait_unlock_unavailable` once per open
+      when the countdown shows (`seconds_left`), `unlock_recorded` (the unlock
+      this tap created, read back and opening its chapter; `seconds` from the
+      tap) and `unlock_record_failed` (`kind`: `network` or `refused`;
+      `timeout` is Part B's).
+  - **Seen in the web preview**, 53 checks, as a throwaway reader signed in
+    through the real UI, against the live backend, driven through headless
+    Edge's DevTools protocol (the script and its screenshots stay in the
+    session's scratchpad, not the repo):
+    - **States:** available; claiming (spinner, disabled, "Unlocking" label,
+      a second tap sends no second claim); the countdown on a cold load
+      ("Next free chapter in 23h 59m", disabled, no line), still right after
+      another cold load; another story's locked chapter available; offline
+      and back; a chapter already unlocked goes straight to the reader and
+      neither option is ever drawn for it.
+    - **Answers, by intercepting the claim:** a failed request, `unavailable`,
+      a garbled answer and a cooldown without seconds each leave one line,
+      the button enabled, one claim sent and nothing opened. A `cooldown`
+      answer refetches the status. `subscribed` calls `sync-entitlement` once
+      and shows the line. An unlock written server-side behind the app's back
+      (as if claimed on another phone): the tap read it back and opened the
+      chapter.
+    - **The real claim:** exactly one `wait` row, for exactly the tapped
+      chapter. The reader route opened 0.6 to 1.3 seconds after the server's
+      answer (three runs), and the chapter's text was on screen 1.2 to 2.1
+      seconds after it (two runs: the first run's text probe was broken). That
+      is the web preview over the t3.nano's ~450ms per request. The prompt's
+      "about a second" is met for the route and not quite for the text, which
+      waits on the chapter's own request. Not measured on the phone.
+    - **The countdown's timers, live** (a second script, 13 checks, with
+      rows written server-side so a cooldown ends within the run): from "1m"
+      the label changed once, to "less than a minute", when 60 seconds were
+      left (within 1.5 seconds of it), and once more, to an enabled "Unlock
+      free", when the server's cooldown ended (within 1.5 seconds), with
+      nothing tapped: two changes in about 80 seconds, so it redraws only when
+      its words change. The server was asked again exactly once, when the
+      count reached 0. With the app hidden nothing was asked, and returning
+      to the foreground asked once and showed the server's count (23h 59m).
+      A cooldown first shown at 62 seconds left moved to "less than a minute"
+      within 3 seconds.
+    - **A real bug these found, and fixed** (`countdownAt()`, `lib/unlock.ts`).
+      An early run left "1m" on screen for the whole last minute. A temporary
+      development log (since removed) first suggested the script's own
+      expectations were wrong, and that explained a different, earlier miss
+      (the script timed from when it wrote the row, not from when the
+      server's answer arrived, 19 seconds later). It did not explain this.
+      The cause: the words on screen were counted from a clock reading taken
+      when the sheet mounted, before the answer, so they read the whole
+      answer, while the timer behind them read a fresher clock, a few
+      milliseconds later. For an answer of a whole number of minutes (60,
+      120, 3,600 seconds: one in sixty) that put the timer a whole minute
+      out. Both now come from one function with the same three numbers, and
+      a test sweeps 18 answers at 12 moments and fails if a label would ever
+      be left standing. It fails against a copy whose timer reads a clock 30
+      milliseconds fresher than the words, which is the old bug's shape.
+      Proven live with the server answering exactly 3,600, 60 and 120 seconds:
+      "1h" became "59m" in 1.0 seconds; "1m" became "less than a minute" in
+      1.1 seconds and "Unlock free" arrived at 60.0; 120 seconds stepped 2m,
+      1m, less than a minute, available at 1.0, 60.1 and 120.0 seconds.
+    - **One more branch, found by reading the code.** A claim the server
+      answered "cooldown" while the status read behind it also failed left the
+      button as it was, with nothing said. It now shows the failed line; with
+      the status readable the countdown shows (5 checks).
+    - **Layout.** At 393 × 852 and at 360 × 640 with default text, everything
+      fits with no scrolling (the content measures about 503 to 531dp), the
+      failed line included. At 1.3× text on 360 × 640, emulated by scaling
+      every text node (the web has no font scale), the content with a line
+      showing is 728dp in a 568dp slot, so the sheet scrolls inside itself:
+      `See plans` is on screen, `Unlock free` just below the fold (its edge
+      shows), and `Not now` is reachable at the end. The cooldown label wraps
+      to two lines there (85dp) rather than clipping, which is why the pill
+      has no fixed height: 10.5dp above and below makes the 48dp of
+      `See plans` on a phone (24 line + 21 + the 1.5dp border twice). The web
+      draws it at 47dp because it snaps the border to 1px.
+    - **Analytics on the wire** (PostHog's gzipped batches): all five events,
+      with the right flags, a `kind` on each failure, `seconds_left` an
+      integer of at most 86400, and no property outside ids, flags, counts
+      and fixed words.
+  - **Not seen on the phone.** The phone was not attached and no Metro for it
+    was running, so the prompt's step 10 wasn't run on a device. Still to
+    check there, as a reader with no plan (reader B, or the owner's account
+    once its Test Store plan has ended; read RevenueCat's customer first,
+    since a plan makes the claim answer `subscribed`, and the "View as a free
+    reader" switch changes only what the phone shows): a locked chapter opens
+    M5a with `Unlock free` enabled; the tap opens the chapter's text; a second
+    locked chapter of the story shows the countdown; another story's is
+    available; airplane mode; a cold restart keeps the countdown right; the
+    sheet at the largest text size; and the pill at 48dp. Signing out deletes
+    the phone's downloads: tell the owner first.
+  - **Copy, flagged for the owner:** the prompt's own ("Unlock free",
+    "One free chapter per story every 24 hours.", "Next free chapter in 5h
+    12m", "Connect to the internet to unlock.", the failed line); and two
+    lines the prompt doesn't give, for a claim the server answers
+    `subscribed`: "You have an active plan. If this chapter stays locked, tap
+    Restore purchases." and "We couldn't confirm your plan just now. Try
+    again." Screen reader labels: "Unlock this chapter free. One free chapter
+    per story every 24 hours.", "Unlock free. Not available: next free chapter
+    in 5 hours 12 minutes.", "Unlock free. Not available: connect to the
+    internet to unlock.", "Unlock free. Checking whether a free chapter is
+    available." and "Unlock this chapter free. Unlocking."
+  - **Deviations from the prompt:** the two `subscribed` lines (the prompt
+    names the actions and no words, and a tap that does nothing visible is
+    not a state); `not_locked` also refetches the chapter's row; and the
+    pill has no fixed height (above). `unlock_offered`'s `wait` is "available
+    to take", which the prompt leaves open. The migration sets its lock
+    timeout with `set_config('lock_timeout', '5s', true)`, which is `SET
+    LOCAL` as a function call, so it holds when the file runs as a script.
+  - **Checked:** `typecheck`, `lint` and 441 tests passed, 32 of them new:
+    the server's answers, the countdown at 0, 59, 60, 3,599, 3,600, 43,200 and
+    86,400 seconds, the free-option rule (locked, open, subscribed, offline,
+    status failed), the data layer, and the status key never persisted (with a
+    control run that fails without it). The Android bundle exported. After
+    that, `countdownAt()` added tests, and the two files that hold the
+    feature's tests (43 tests) passed again, with typecheck and lint. On
+    2026-10-06 the archive (`docs/v2/free-unlocks-app.patch`) was applied to
+    the clean tree, typechecked and tested (the same 43 pass), then reversed.
+
+## Decisions — 2026-10-06
+
+- **Version 1 is subscription-only; free unlocks wait for version 2.** Decided
+  by the owner on 2026-10-06: remove the rewarded ads (prompt 23), add them as
+  a version 2 feature, and make version 1 subscription-based.
+  - **What it means.** Talebrim Unlimited is the only way past a lock in
+    version 1, besides a chapter's own `access = free` (the first one to three
+    chapters of every story today). M5a offers `See plans`, its one ember,
+    then "Not now", Restore purchases and Manage subscription, and nothing
+    else. No ads, no ads library, no AdMob account, no consent message and no
+    free unlock.
+  - **Read as both free ways** (an assumption, which the owner can flip).
+    Prompt 23 holds two: wait-for-free (Part A) and rewarded ads (Part B, with
+    Part C's pages and forms). The owner wrote "reward ad (Prompt 23)" and
+    "subscription base", so all of it comes out. Part A was the only part
+    built, on 2026-10-03, so it was the only part to take out. Parts B and C
+    were never started: there was nothing to remove but the plan.
+  - **Taken out of the app** (the tree is the last commit again, except M5a's
+    two comments, which now say version 2):
+    - `lib/unlock.ts`, `hooks/use-unlock-options.ts` and their tests.
+    - The two additions to `lib/queries/unlocks.ts`, the `waitUnlock` query
+      key and its `NEVER_PERSISTED` entry, and the five analytics events.
+    - `Sheet`'s `scrollable`, built for the extra buttons. M5a's large-text
+      gap is recorded under § M5a for prompts 26 and 27.
+    - The regenerated types: both repos' `database.ts` are identical to their
+      commits again.
+    - `typecheck`, `lint` and 409 tests (31 suites) pass: the count before
+      Part A. No ads configuration was ever added to `app.json`, `eas.json`
+      or `package.json`.
+  - **Taken out of the database, with the owner's yes** (dashboard repo,
+    migration `20261006120000_remove_wait_unlock.sql`, applied 2026-10-06). It
+    drops `claim_wait_unlock()` and `wait_unlock_status()` and puts
+    `unlocks_source_check` back to `ad` and `purchase`.
+    - **Why it couldn't stay:** both functions were executable by every
+      signed-in reader through the API, whatever the app drew. With the button
+      gone, a reader who knew a name could still open one chapter per story
+      per day without a subscription.
+    - **Safe by construction:** it touches only this app's own objects (no
+      policy, view or grant, nothing on `books`, `chapters`, `app_settings` or
+      `activity_log`), and it can't delete an unlock: the check can't go back
+      on if a `wait` row exists, and the migration then rolls back whole. The
+      table held none.
+    - **Proven:** a 12-check dry run inside a transaction that rolled back (the
+      live database unchanged after it), then the same 12 live: the functions
+      gone, the check back to `ad` and `purchase`, a `wait` unlock refused
+      again (23514), `ad` and `purchase` still accepted, signed-in readers and
+      `anon` finding no such function (42883), readers still unable to write
+      `unlocks` (42501). The five older verify scripts are unchanged:
+      `reader_tables_rls` 47, `new_chapter_alerts_rls` 53,
+      `audio_read_policy` 27, `entitlements_rls` 31 and `locked_text_rls` 29.
+  - **Kept for version 2:**
+    - `docs/v2/free-unlocks-app.patch` and `docs/v2/README.md`: the app's
+      Part A as one patch of 11 files, with how to bring it back. It was
+      applied to the clean tree, typechecked and tested (43 tests), then
+      reversed.
+    - The dashboard's `supabase/migrations/20261003120000_wait_unlock.sql`,
+      which stays: an applied migration is history, and deleting the file
+      would stop `supabase db push`. Its verify script moved to
+      `supabase/verify/v2/`. Rehearsed: that migration's SQL, then the script,
+      inside a transaction that rolled back, passed 58 of 58.
+    - The two 2026-10-03 entries above, including the countdown bug the live
+      tests found and the way it was fixed.
+    - `prompts/23 — Rewarded ads for chapter unlocks.md`, as the version 2
+      spec, with a banner saying so.
+  - **Left as built:** the `unlocks` table, and the lock rule that reads it
+    (`unlocksByUserOptions()`, `resolveChapterState()`). Nothing writes
+    `unlocks` in version 1, but the rule is what version 2 and any one-off
+    purchase would plug into, and every screen already reads it.
+  - **Owner reminders:** item 3 (the AdMob account, ad unit, consent messages,
+    test device and a read of AdMob's content rules) is removed. Its steps are
+    in `docs/v2/README.md`. Items 1 and 2 are unchanged.
+  - **Public pages unchanged.** With no ads in version 1, the Privacy
+    introduction ("we don't use it for advertising") stays true, and Part C,
+    which would have rewritten it, never ran.
+  - **Prompt files:** prompt 23 carries the version 2 banner. Prompt 22's three
+    notes from the 2026-10-03 review now say the same (M5a's ember is
+    `See plans` and nothing follows it; no seventh production variable).
+  - **Not seen on the phone:** it was not attached. M5a is the committed file
+    with two comments changed, so it looks as it did on 2026-10-01.
 
 ---
 
@@ -4680,7 +5131,8 @@ seconds, with Continue on the Discover tab; the owner has seen both working
 in the web preview and on BlueStacks (Decisions — 2026-09-25, "M3's hero
 carousel and Continue").
 The owner decided notifications, wait-for-free and analytics on 2026-09-25
-(Decisions — 2026-09-25, "Retention and revenue"). Analytics (21a) is built
+(Decisions — 2026-09-25, "Retention and revenue"; wait-for-free moved to
+version 2 on 2026-10-06). Analytics (21a) is built
 and confirmed sending real events, tagged `environment = development`, with
 no IP or location and no duplicate or server-render events (Decisions —
 2026-09-25, "Analytics as built"). The deferred setup is under way: the first
@@ -4721,9 +5173,9 @@ Test Store in the development build ("RevenueCat's Test Store until Google
 Play").
 Prompt 22a (the entitlement mirror, locked text on the server) was built on
 2026-10-02 (Decisions — 2026-10-02, "Subscriber access on the server as
-built"). Then prompt 23, and the passes 26 and 27 last (Decisions —
-2026-09-25, "Build order from here"). Each prompt is reviewed against the
-code before it is built.
+built"). Then the passes 26 and 27 last (Decisions — 2026-09-25, "Build order
+from here"); prompt 23 is version 2 (Decisions — 2026-10-06). Each prompt is
+reviewed against the code before it is built.
 **Status, 2026-10-02** (Decisions — 2026-10-02):
 - **Live and proven:** support email comes from `support@talebrim.com`
   (talebrim.com verified in Resend); talebrim.com's pages name Nouvrix LLC
@@ -4760,6 +5212,12 @@ code before it is built.
   - Native tabs on iOS, built on 2026-10-02 and not seen on any device: there
     is no iPhone or Mac yet. Its `use-tab-bar-inset.ios.ts` was found missing
     on 2026-10-03 and restored (its entry).
+- **Prompt 23 is version 2.** Part A, wait-for-free, was built on 2026-10-03
+  and live on the server (Decisions — 2026-10-03, "Prompt 23, Part A as
+  built"). On 2026-10-06 the owner made version 1 subscription-only, and Part
+  A came out of the app and the database again, kept as an archive for version
+  2. Parts B (ads) and C were never started (Decisions — 2026-10-06,
+  "Version 1 is subscription-only").
 - **Waiting on the owner:**
   - Restart Metro with `npx expo start -c`. The running one started before
     `EXPO_PUBLIC_DEVELOPER_EMAIL` was added to `.env.local`, so until then no
@@ -5066,7 +5524,7 @@ page from the dashboard repo, and the app links to them (Decisions —
   `https://talebrim.com/privacy`, the account deletion URL in the Data
   safety form is `https://talebrim.com/delete-account`, and the listing's
   contact email is `support@nouvrix.com`.
-Keep the pages true as the app changes: rewarded ads (prompt 23) need the
+Keep the pages true as the app changes: rewarded ads (version 2, prompt 23) will need the
 privacy policy updated first.
 
 ---
@@ -5285,7 +5743,13 @@ history (see Phase 2).
   a client sends. Applied 2026-09-24 (see parity above).
   `book_id` is denormalised so Library needs no join.
 - `unlocks.source` is `ad` | `purchase`. A subscription never writes here:
-  access comes from the RevenueCat entitlement at read time.
+  access comes from the RevenueCat entitlement at read time. **Nothing writes
+  `unlocks` in version 1** (the table is empty): its two writers are version 2's,
+  both server functions (wait-for-free's `claim_wait_unlock()`, and the
+  `admob-ssv` Edge Function for an ad Google confirms: Decisions — 2026-10-03,
+  "Prompt 23 review"). Version 1 still reads the table in its lock rule, so a
+  row written by any future route opens exactly its chapter. A third value,
+  `wait`, existed from 2026-10-03 to 2026-10-06.
 - Policies are `to authenticated`, scoped to
   `user_id = (select auth.jwt() ->> 'sub')`, with **no `is_admin()` branch**.
   An operator sees only their own rows. `anon` has no grants at all.
@@ -5352,6 +5816,11 @@ Decisions — 2026-10-02, "Subscriber access on the server as built").
   `supabase/verify/locked_text_rls.sql` (29), with
   `audio_read_policy.sql` (27, its subscriber cases added) in the dashboard
   repo.
+
+**Not in the database since 2026-10-06:** wait-for-free (`claim_wait_unlock()`,
+`wait_unlock_status()` and a `wait` unlock source), built on 2026-10-03 and
+dropped by migration `20261006120000` when version 1 became subscription-only.
+Version 2 brings it back (Decisions — 2026-10-06; `docs/v2/README.md`).
 
 **Still does not exist:** `bookmarks` (M5's bookmark button is omitted until
 it does).
@@ -5558,7 +6027,7 @@ app. Do not create one.
 - The yearly savings badge is **computed** from fetched package prices. Never hardcode a discount percentage.
 - Restore Purchases is mandatory and must be reachable from M10 and M11 (Google Play policy).
 - IAP does not work in Expo Go or on simulators. Plan EAS Build; test on real devices.
-- Rewarded ads require a custom dev client. Never gate an already-unlocked chapter behind an ad.
+- **Version 1 sells the subscription only.** Free ways past a lock, rewarded ads and wait-for-free (prompt 23), are version 2 and are not built (Decisions — 2026-10-06, "Version 1 is subscription-only"). When they are, these rules stand: rewarded ads need a custom dev client, and an already-unlocked chapter is never gated behind an ad. A free unlock opens one chapter, and only the server writes it: Google's signed callback (server-side verification) calls a function for an ad, and `claim_wait_unlock()` writes the wait-for-free one by the server's clock. The app only asks, shows what the server answered, and opens the chapter once the `unlocks` row, read back, says it is open. An ad is shown only after the reader's own tap, and the reward is the SDK's earned-reward event, never an ad closing. (Decisions — 2026-10-03, "Prompt 23 review" and "Prompt 23, Part A as built", the record for version 2.)
 
 ---
 

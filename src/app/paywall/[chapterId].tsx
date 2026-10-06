@@ -23,8 +23,9 @@ import { colors } from "@/theme";
 //
 // It sells the story the reader is in: its cover, "Keep reading {story}",
 // the locked chapter, three benefits, then "See plans", its one ember action
-// (Decisions — 2026-10-01, "The paywall for a first visit"). Prompt 23 adds
-// "Unlock free" and "Watch ad & continue"; the owner then sets the order.
+// (Decisions — 2026-10-01, "The paywall for a first visit"). A subscription is
+// the only way past a lock in version 1: free ways in (wait-for-free, rewarded
+// ads: prompt 23) are version 2 (Decisions — 2026-10-06).
 //
 // Never shown for a chapter that isn't locked: a chapter that turns out open
 // (a subscription, an unlock, a restore) replaces the sheet with that
@@ -169,10 +170,8 @@ function ChapterPaywall({ chapterId, mode, from }: ChapterPaywallProps) {
         ))}
       </View>
 
-      {/* TODO(unlocks): prompt 23's "Unlock free" and "Watch ad & continue"
-          join here; the owner then decides which one is the ember. */}
-
-      {/* The sheet's one ember action. */}
+      {/* The sheet's one ember action. Version 2's free ways in would go
+          beneath it, as teal outlined buttons (prompt 23, deferred). */}
       <Button
         label="See plans"
         accessibilityLabel={`See plans. Opens the ${PLAN_NAME} plans.`}
